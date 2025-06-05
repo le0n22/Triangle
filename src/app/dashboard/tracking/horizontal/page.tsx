@@ -119,9 +119,10 @@ export default function HorizontalTrackingPage() {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* Main Content Area - now directly lays out the columns */}
-      <main className="flex-1 flex flex-row gap-4 p-4 overflow-hidden"> {/* flex-1 makes main take available space, overflow-hidden prevents its content from scrolling page */}
+      {/* Removed p-4, applying specific padding: pt-0 to move content up, px-4 and pb-4 for side/bottom spacing */}
+      <main className="flex-1 flex flex-row gap-4 pt-0 px-4 pb-4 overflow-hidden">
         {/* Left Panel Wrapper */}
         <div className="w-2/5 min-w-[360px] max-w-[500px] flex flex-col min-h-0"> {/* min-h-0 allows shrinking */}
           <OrderListPanel
@@ -142,3 +143,4 @@ export default function HorizontalTrackingPage() {
     </div>
   );
 }
+    
