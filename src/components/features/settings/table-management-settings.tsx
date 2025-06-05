@@ -4,7 +4,27 @@
 import { useState } from 'react';
 import type { Table } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -25,44 +45,66 @@ interface TableManagementSettingsProps {
 }
 
 export function TableManagementSettings({ initialTables }: TableManagementSettingsProps) {
-  const [tables, setTables] = useState<Table[]>(initialTables);
+  const [tables, setTables] = useState<Table[]>(initialTables.sort((a,b) => a.number - b.number));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newTableNumber, setNewTableNumber] = useState('');
-  const [newTableCapacity, setNewTableCapacity] = useState('');
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTable, setEditingTable] = useState<Table | null>(null);
+  const [tableToDelete, setTableToDelete] = useState<Table | null>(null);
+
+  const [addForm, setAddForm] = useState({ number: '', capacity: '' });
+  const [editForm, setEditForm] = useState({ id: '', number: '', capacity: '' });
+
   const { toast } = useToast();
 
   const handleAddTable = () => {
-    if (!newTableNumber || !newTableCapacity) {
+    if (!addForm.number || !addForm.capacity) {
       toast({ title: 'Error', description: 'Please fill in all fields.', variant: 'destructive' });
       return;
     }
     const newTable: Table = {
       id: `t-${Date.now()}`,
-      number: parseInt(newTableNumber, 10),
-      capacity: parseInt(newTableCapacity, 10),
-      status: 'available', // Default status
+      number: parseInt(addForm.number, 10),
+      capacity: parseInt(addForm.capacity, 10),
+      status: 'available',
     };
     setTables(prev => [...prev, newTable].sort((a,b) => a.number - b.number));
     toast({ title: 'Table Added', description: `Table ${newTable.number} has been added.` });
-    setNewTableNumber('');
-    setNewTableCapacity('');
+    setAddForm({ number: '', capacity: '' });
     setIsAddDialogOpen(false);
   };
+
+  const openEditDialog = (table: Table) => {
+    setEditingTable(table);
+    setEditForm({ id: table.id, number: table.number.toString(), capacity: table.capacity.toString() });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateTable = () => {
+    if (!editForm.number || !editForm.capacity || !editingTable) {
+      toast({ title: 'Error', description: 'Please fill in all fields.', variant: 'destructive' });
+      return;
+    }
+    const updatedTable: Table = {
+      ...editingTable,
+      number: parseInt(editForm.number, 10),
+      capacity: parseInt(editForm.capacity, 10),
+    };
+    setTables(prev => prev.map(t => t.id === editingTable.id ? updatedTable : t).sort((a,b) => a.number - b.number));
+    toast({ title: 'Table Updated', description: `Table ${updatedTable.number} has been updated.` });
+    setIsEditDialogOpen(false);
+    setEditingTable(null);
+  };
   
-  const handleEditTable = (table: Table) => {
-    // Placeholder for edit functionality
-    console.log('Editing table:', table);
-    toast({ title: 'Edit Table', description: `Edit functionality for Table ${table.number} not yet implemented.`});
+  const confirmDeleteTable = (table: Table) => {
+    setTableToDelete(table);
   };
 
-  const handleDeleteTable = (tableId: string) => {
-    // Placeholder for delete functionality
-    console.log('Deleting table ID:', tableId);
-    const tableName = tables.find(t => t.id === tableId)?.number;
-    // setTables(prev => prev.filter(t => t.id !== tableId)); // Actual delete logic
-    toast({ title: 'Delete Table', description: `Delete functionality for Table ${tableName} not yet fully implemented.`});
+  const handleDeleteTable = () => {
+    if (!tableToDelete) return;
+    setTables(prev => prev.filter(t => t.id !== tableToDelete.id));
+    toast({ title: 'Table Deleted', description: `Table ${tableToDelete.number} has been deleted.` });
+    setTableToDelete(null); // Closes the AlertDialog implicitly via onOpenChange
   };
-
 
   return (
     <Card className="shadow-lg">
@@ -84,12 +126,12 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tableNumber" className="text-right">Number</Label>
-                <Input id="tableNumber" type="number" value={newTableNumber} onChange={(e) => setNewTableNumber(e.target.value)} className="col-span-3" />
+                <Label htmlFor="addTableNumber" className="text-right">Number</Label>
+                <Input id="addTableNumber" type="number" value={addForm.number} onChange={(e) => setAddForm({...addForm, number: e.target.value})} className="col-span-3" />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tableCapacity" className="text-right">Capacity</Label>
-                <Input id="tableCapacity" type="number" value={newTableCapacity} onChange={(e) => setNewTableCapacity(e.target.value)} className="col-span-3" />
+                <Label htmlFor="addTableCapacity" className="text-right">Capacity</Label>
+                <Input id="addTableCapacity" type="number" value={addForm.capacity} onChange={(e) => setAddForm({...addForm, capacity: e.target.value})} className="col-span-3" />
               </div>
             </div>
             <DialogFooter>
@@ -115,12 +157,28 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
                 <TableCell className="font-medium">{table.number}</TableCell>
                 <TableCell>{table.capacity}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => handleEditTable(table)} className="mr-2">
+                  <Button variant="ghost" size="icon" onClick={() => openEditDialog(table)} className="mr-2">
                     <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteTable(table.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <AlertDialog open={!!tableToDelete && tableToDelete.id === table.id} onOpenChange={(isOpen) => !isOpen && setTableToDelete(null)}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => confirmDeleteTable(table)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete table {tableToDelete?.number}.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setTableToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteTable} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}
@@ -132,6 +190,32 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
           </TableBody>
         </ShadcnTable>
       </CardContent>
+
+      {/* Edit Table Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
+          <DialogHeader>
+            <DialogTitle>Edit Table {editingTable?.number}</DialogTitle>
+            <DialogDescription>Update the details for this table.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editTableNumber" className="text-right">Number</Label>
+              <Input id="editTableNumber" type="number" value={editForm.number} onChange={(e) => setEditForm({...editForm, number: e.target.value})} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="editTableCapacity" className="text-right">Capacity</Label>
+              <Input id="editTableCapacity" type="number" value={editForm.capacity} onChange={(e) => setEditForm({...editForm, capacity: e.target.value})} className="col-span-3" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateTable} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
+
+    

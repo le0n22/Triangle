@@ -1,14 +1,35 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { MenuItem, MenuCategory, Modifier } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit2, Trash2 } from 'lucide-react';
 import {
@@ -25,78 +46,202 @@ import Image from 'next/image';
 
 interface MenuItemManagementSettingsProps {
   initialMenuItems: MenuItem[];
-  categories: MenuCategory[]; // To select a category for the item
-  modifiers: Modifier[]; // To select available modifiers for the item
+  categories: MenuCategory[]; 
+  modifiers: Modifier[]; 
 }
 
-interface NewMenuItemState {
+interface MenuItemFormState {
+  id?: string;
   name: string;
   description: string;
   price: string;
-  category: string;
+  category: string; // Category ID
   imageUrl: string;
   dataAiHint: string;
-  // availableModifiers: string[]; // Store IDs of selected modifiers
+  availableModifiers: string[]; // Store IDs of selected modifiers
 }
 
-export function MenuItemManagementSettings({ initialMenuItems, categories, modifiers: allModifiers }: MenuItemManagementSettingsProps) {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialMenuItems);
+export function MenuItemManagementSettings({ initialMenuItems, categories: initialCategories, modifiers: allModifiers }: MenuItemManagementSettingsProps) {
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialMenuItems.sort((a,b) => a.name.localeCompare(b.name)));
+  const [categories, setCategories] = useState<MenuCategory[]>(initialCategories); // Added for dynamic updates if categories change
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const [menuItemToDelete, setMenuItemToDelete] = useState<MenuItem | null>(null);
+  
   const { toast } = useToast();
 
-  const initialFormState: NewMenuItemState = {
+  const initialFormState: MenuItemFormState = {
     name: '',
     description: '',
     price: '',
-    category: categories.length > 0 ? categories[0].id : '', // Default to first category if available
+    category: initialCategories.length > 0 ? initialCategories[0].id : '',
     imageUrl: '',
     dataAiHint: '',
-    // availableModifiers: [],
+    availableModifiers: [],
   };
-  const [newItemForm, setNewItemForm] = useState<NewMenuItemState>(initialFormState);
+  const [currentForm, setCurrentForm] = useState<MenuItemFormState>(initialFormState);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setNewItemForm(prev => ({ ...prev, [name]: value }));
+    setCurrentForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleCategoryChange = (value: string) => {
-    setNewItemForm(prev => ({ ...prev, category: value }));
+    setCurrentForm(prev => ({ ...prev, category: value }));
+  };
+
+  const handleModifierToggle = (modifierId: string) => {
+    setCurrentForm(prev => {
+      const newModifiers = prev.availableModifiers.includes(modifierId)
+        ? prev.availableModifiers.filter(id => id !== modifierId)
+        : [...prev.availableModifiers, modifierId];
+      return { ...prev, availableModifiers: newModifiers };
+    });
+  };
+  
+  const resetAndCloseAddDialog = () => {
+    setCurrentForm(initialFormState);
+    setIsAddDialogOpen(false);
+  };
+
+  const resetAndCloseEditDialog = () => {
+    setCurrentForm(initialFormState);
+    setIsEditDialogOpen(false);
+    setEditingMenuItem(null);
   };
 
   const handleAddMenuItem = () => {
-    if (!newItemForm.name || !newItemForm.price || !newItemForm.category) {
+    if (!currentForm.name || !currentForm.price || !currentForm.category) {
       toast({ title: 'Error', description: 'Name, price, and category are required.', variant: 'destructive' });
       return;
     }
-    const selectedCategoryInfo = categories.find(c => c.id === newItemForm.category);
+    const selectedCategoryInfo = categories.find(c => c.id === currentForm.category);
+    const selectedModifiers = allModifiers.filter(m => currentForm.availableModifiers.includes(m.id));
+
     const newMenuItem: MenuItem = {
       id: `item-${Date.now()}`,
-      name: newItemForm.name,
-      description: newItemForm.description,
-      price: parseFloat(newItemForm.price),
-      category: selectedCategoryInfo ? selectedCategoryInfo.name : 'Uncategorized', // Use category name
-      imageUrl: newItemForm.imageUrl || undefined,
-      dataAiHint: newItemForm.dataAiHint || undefined,
-      availableModifiers: [], // Simplified for now
+      name: currentForm.name,
+      description: currentForm.description,
+      price: parseFloat(currentForm.price),
+      category: selectedCategoryInfo ? selectedCategoryInfo.name : 'Uncategorized', // Use category name for display
+      imageUrl: currentForm.imageUrl || undefined,
+      dataAiHint: currentForm.dataAiHint || undefined,
+      availableModifiers: selectedModifiers,
     };
     setMenuItems(prev => [...prev, newMenuItem].sort((a,b) => a.name.localeCompare(b.name)));
     toast({ title: 'Menu Item Added', description: `"${newMenuItem.name}" has been added.` });
-    setNewItemForm(initialFormState);
-    setIsAddDialogOpen(false);
+    resetAndCloseAddDialog();
   };
   
-  const handleEditItem = (item: MenuItem) => {
-    console.log('Editing item:', item);
-    toast({ title: 'Edit Item', description: `Edit functionality for ${item.name} not yet implemented.`});
+  const openEditDialog = (item: MenuItem) => {
+    const categoryId = categories.find(c => c.name === item.category)?.id || (categories.length > 0 ? categories[0].id : '');
+    setEditingMenuItem(item);
+    setCurrentForm({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price.toString(),
+      category: categoryId,
+      imageUrl: item.imageUrl || '',
+      dataAiHint: item.dataAiHint || '',
+      availableModifiers: item.availableModifiers?.map(m => m.id) || [],
+    });
+    setIsEditDialogOpen(true);
   };
 
-  const handleDeleteItem = (itemId: string) => {
-    console.log('Deleting item ID:', itemId);
-    const itemName = menuItems.find(item => item.id === itemId)?.name;
-    // setMenuItems(prev => prev.filter(item => item.id !== itemId)); // Actual delete logic
-    toast({ title: 'Delete Item', description: `Delete functionality for ${itemName} not yet fully implemented.`});
+  const handleUpdateMenuItem = () => {
+    if (!currentForm.name || !currentForm.price || !currentForm.category || !editingMenuItem) {
+      toast({ title: 'Error', description: 'Name, price, and category are required.', variant: 'destructive' });
+      return;
+    }
+    const selectedCategoryInfo = categories.find(c => c.id === currentForm.category);
+    const selectedModifiers = allModifiers.filter(m => currentForm.availableModifiers.includes(m.id));
+
+    const updatedMenuItem: MenuItem = {
+      ...editingMenuItem,
+      name: currentForm.name,
+      description: currentForm.description,
+      price: parseFloat(currentForm.price),
+      category: selectedCategoryInfo ? selectedCategoryInfo.name : 'Uncategorized',
+      imageUrl: currentForm.imageUrl || undefined,
+      dataAiHint: currentForm.dataAiHint || undefined,
+      availableModifiers: selectedModifiers,
+    };
+    setMenuItems(prev => prev.map(item => item.id === editingMenuItem.id ? updatedMenuItem : item).sort((a,b) => a.name.localeCompare(b.name)));
+    toast({ title: 'Menu Item Updated', description: `"${updatedMenuItem.name}" has been updated.` });
+    resetAndCloseEditDialog();
   };
+
+  const confirmDeleteMenuItem = (item: MenuItem) => {
+    setMenuItemToDelete(item);
+  };
+
+  const handleDeleteMenuItem = () => {
+    if (!menuItemToDelete) return;
+    setMenuItems(prev => prev.filter(item => item.id !== menuItemToDelete.id));
+    toast({ title: 'Menu Item Deleted', description: `"${menuItemToDelete.name}" has been deleted.` });
+    setMenuItemToDelete(null);
+  };
+
+  const renderFormFields = () => (
+    <div className="grid gap-3 py-2">
+      <div className="space-y-1">
+        <Label htmlFor="name">Name</Label>
+        <Input id="name" name="name" value={currentForm.name} onChange={handleInputChange} />
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="description">Description</Label>
+        <Textarea id="description" name="description" value={currentForm.description} onChange={handleInputChange} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label htmlFor="price">Price</Label>
+          <Input id="price" name="price" type="number" value={currentForm.price} onChange={handleInputChange} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="category">Category</Label>
+          <Select name="category" onValueChange={handleCategoryChange} value={currentForm.category}>
+            <SelectTrigger id="category">
+              <SelectValue placeholder="Select a category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(cat => (
+                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <Label htmlFor="imageUrl">Image URL</Label>
+        <Input id="imageUrl" name="imageUrl" value={currentForm.imageUrl} onChange={handleInputChange} placeholder="https://placehold.co/100x100.png" />
+      </div>
+        <div className="space-y-1">
+        <Label htmlFor="dataAiHint">Image AI Hint</Label>
+        <Input id="dataAiHint" name="dataAiHint" value={currentForm.dataAiHint} onChange={handleInputChange} placeholder="e.g. pizza food" />
+      </div>
+      <div className="space-y-1">
+        <Label>Available Modifiers</Label>
+        <ScrollArea className="h-32 rounded-md border p-2">
+          {allModifiers.map(modifier => (
+            <div key={modifier.id} className="flex items-center space-x-2 mb-1.5">
+              <Checkbox
+                id={`mod-${modifier.id}-${currentForm.id || 'add'}`}
+                checked={currentForm.availableModifiers.includes(modifier.id)}
+                onCheckedChange={() => handleModifierToggle(modifier.id)}
+              />
+              <Label htmlFor={`mod-${modifier.id}-${currentForm.id || 'add'}`} className="text-sm font-normal">
+                {modifier.name} (+${modifier.priceChange.toFixed(2)})
+              </Label>
+            </div>
+          ))}
+           {allModifiers.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No modifiers configured.</p>}
+        </ScrollArea>
+      </div>
+    </div>
+  );
 
 
   return (
@@ -106,9 +251,9 @@ export function MenuItemManagementSettings({ initialMenuItems, categories, modif
           <CardTitle className="font-headline">Menu Item Management</CardTitle>
           <CardDescription>Add, edit, or remove menu items.</CardDescription>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) resetAndCloseAddDialog(); else setIsAddDialogOpen(true); }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setCurrentForm(initialFormState)}>
               <PlusCircle className="mr-2 h-4 w-4" /> Add Menu Item
             </Button>
           </DialogTrigger>
@@ -117,44 +262,11 @@ export function MenuItemManagementSettings({ initialMenuItems, categories, modif
               <DialogTitle>Add New Menu Item</DialogTitle>
               <DialogDescription>Enter details for the new menu item.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" name="name" value={newItemForm.name} onChange={handleInputChange} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" name="description" value={newItemForm.description} onChange={handleInputChange} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="price">Price</Label>
-                <Input id="price" name="price" type="number" value={newItemForm.price} onChange={handleInputChange} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="category">Category</Label>
-                <Select name="category" onValueChange={handleCategoryChange} defaultValue={newItemForm.category}>
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="imageUrl">Image URL</Label>
-                <Input id="imageUrl" name="imageUrl" value={newItemForm.imageUrl} onChange={handleInputChange} placeholder="https://placehold.co/100x100.png" />
-              </div>
-               <div className="space-y-1.5">
-                <Label htmlFor="dataAiHint">Image AI Hint</Label>
-                <Input id="dataAiHint" name="dataAiHint" value={newItemForm.dataAiHint} onChange={handleInputChange} placeholder="e.g. pizza food" />
-              </div>
-              {/* Modifier selection can be added here later */}
-            </div>
+            <ScrollArea className="max-h-[calc(80vh-150px)] pr-3">
+              {renderFormFields()}
+            </ScrollArea>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={resetAndCloseAddDialog}>Cancel</Button>
               <Button onClick={handleAddMenuItem} className="bg-primary hover:bg-primary/90 text-primary-foreground">Add Item</Button>
             </DialogFooter>
           </DialogContent>
@@ -169,6 +281,7 @@ export function MenuItemManagementSettings({ initialMenuItems, categories, modif
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-center">Modifiers</TableHead>
               <TableHead className="text-right w-[150px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -187,24 +300,62 @@ export function MenuItemManagementSettings({ initialMenuItems, categories, modif
                 <TableCell className="font-medium">{item.name}</TableCell>
                 <TableCell>{item.category}</TableCell>
                 <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
+                <TableCell className="text-center text-xs">
+                  {item.availableModifiers && item.availableModifiers.length > 0 ? item.availableModifiers.length : '0'}
+                </TableCell>
                 <TableCell className="text-right">
-                   <Button variant="ghost" size="icon" onClick={() => handleEditItem(item)} className="mr-2">
+                   <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)} className="mr-2">
                     <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <AlertDialog open={!!menuItemToDelete && menuItemToDelete.id === item.id} onOpenChange={(isOpen) => !isOpen && setMenuItemToDelete(null)}>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={() => confirmDeleteMenuItem(item)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action will permanently delete the menu item "{menuItemToDelete?.name}".
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setMenuItemToDelete(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteMenuItem} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}
             {menuItems.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">No menu items found.</TableCell>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">No menu items found.</TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </CardContent>
+
+      {/* Edit Menu Item Dialog */}
+       <Dialog open={isEditDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) resetAndCloseEditDialog(); else setIsEditDialogOpen(true); }}>
+        <DialogContent className="sm:max-w-lg bg-card text-card-foreground">
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item: {editingMenuItem?.name}</DialogTitle>
+            <DialogDescription>Update the details for this menu item.</DialogDescription>
+          </DialogHeader>
+           <ScrollArea className="max-h-[calc(80vh-150px)] pr-3">
+            {renderFormFields()}
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={resetAndCloseEditDialog}>Cancel</Button>
+            <Button onClick={handleUpdateMenuItem} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
+
+    
