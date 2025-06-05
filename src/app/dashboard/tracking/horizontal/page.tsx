@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { ExternalOrder } from '@/types';
 import { OrderListPanel } from '@/components/features/order-tracking/horizontal/order-list-panel';
 import { OrderDetailPanel } from '@/components/features/order-tracking/horizontal/order-detail-panel';
@@ -84,13 +84,19 @@ const initialMockExternalOrders: ExternalOrder[] = [
 
 
 export default function HorizontalTrackingPage() {
-  const [orders, setOrders] = useState<ExternalOrder[]>(() => 
-    initialMockExternalOrders.sort((a, b) => parseISO(b.placedAt).getTime() - parseISO(a.placedAt).getTime())
-  );
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(
-    orders.length > 0 ? orders.find(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED_BY_RESTAURANT' && o.status !== 'CANCELLED_BY_USER')?.id || orders[0].id : null
-  );
+  const [orders, setOrders] = useState<ExternalOrder[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [activeList, setActiveList] = useState<'incoming' | 'outgoing'>('incoming');
+
+  useEffect(() => {
+    const sortedOrders = initialMockExternalOrders.sort((a, b) => parseISO(b.placedAt).getTime() - parseISO(a.placedAt).getTime());
+    setOrders(sortedOrders);
+    if (sortedOrders.length > 0) {
+      const firstActiveOrder = sortedOrders.find(o => o.status !== 'DELIVERED' && o.status !== 'CANCELLED_BY_RESTAURANT' && o.status !== 'CANCELLED_BY_USER');
+      setSelectedOrderId(firstActiveOrder?.id || sortedOrders[0].id);
+    }
+  }, []);
+
 
   const selectedOrder = useMemo(() => {
     return orders.find(order => order.id === selectedOrderId) || null;
@@ -137,7 +143,7 @@ export default function HorizontalTrackingPage() {
 
       {/* Main Content Area */}
       <main className="flex-grow flex p-4 gap-4 overflow-hidden">
-        <div className="w-2/5 min-w-[400px] max-w-[600px] flex flex-col">
+        <div className="w-2/5 min-w-[400px] max-w-[600px] flex flex-col min-h-0">
           <OrderListPanel
             orders={ordersToDisplay}
             selectedOrderId={selectedOrderId}
@@ -149,10 +155,11 @@ export default function HorizontalTrackingPage() {
             totalIncomingAmount={totalIncomingAmount}
           />
         </div>
-        <div className="flex-grow flex flex-col"> {/* Ensure this div can also flex its child */}
+        <div className="flex-grow flex flex-col min-h-0">
           <OrderDetailPanel order={selectedOrder} />
         </div>
       </main>
     </div>
   );
 }
+
