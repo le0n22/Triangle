@@ -4,10 +4,12 @@ export type TableStatus = 'available' | 'occupied' | 'reserved' | 'dirty';
 
 export interface Table {
   id: string;
+  name?: string; // Optional name for the table
   number: number;
   status: TableStatus;
   capacity: number;
   currentOrderId?: string;
+  currentOrderTotal?: number; // Optional total for the current order
 }
 
 export interface Modifier {
@@ -159,3 +161,4 @@ export type TranslationKey =
   | 'menu_items'
   | 'modifiers'
   | 'order_platforms';
+

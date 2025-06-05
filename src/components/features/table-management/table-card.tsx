@@ -4,10 +4,10 @@
 import type { Table, TableStatus } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CircleCheck, CalendarClock, Trash2, UsersRound, Utensils } from 'lucide-react';
+import { CircleCheck, CalendarClock, Trash2, UsersRound, Utensils, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import React from 'react'; // Import React for cloneElement
+import React from 'react'; 
 
 interface TableCardProps {
   table: Table;
@@ -38,66 +38,72 @@ const statusText: Record<TableStatus, string> = {
 
 export function TableCard({ table, position, onTableDragStart }: TableCardProps) {
   const Icon = statusIcons[table.status] || Utensils;
+  const title = table.name ? `${table.name} (${table.number})` : `Table ${table.number}`;
 
   const handleDragStartInternal = (e: React.DragEvent<HTMLDivElement>) => {
     onTableDragStart(e, table.id);
   };
 
   const linkHref = table.status === 'available' || table.status === 'occupied'
-    ? `/dashboard/order/${table.id}`
+    ? `/dashboard/order/${table.id}` // Assuming order page uses table.id
     : '#';
   
   const isClickable = table.status !== 'dirty' && table.status !== 'reserved';
   
-  // Define the core card structure once. It should not have absolute positioning itself
-  // as that will be handled by its wrapper (Link or direct clone).
   const cardItself = (
     <Card
       draggable={true}
       onDragStart={handleDragStartInternal}
       className={cn(
-        "hover:shadow-lg transition-all duration-200 flex flex-col w-44 h-40", // Fixed size
+        "hover:shadow-lg transition-all duration-200 flex flex-col w-44 h-44", // Increased height slightly
         statusColors[table.status]
-        // Opacity will be handled by the wrapper or cloneElement logic
       )}
-      style={{ cursor: 'grab' }} // The card is always grabbable
+      style={{ cursor: 'grab' }}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
-        <CardTitle className="text-xl font-headline font-bold">
-          Table {table.number}
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3 px-3"> {/* Adjusted padding */}
+        <CardTitle className="text-lg font-headline font-bold leading-tight">
+          {title}
         </CardTitle>
         <Icon className={cn("h-5 w-5", statusColors[table.status] ? 'text-inherit' : 'text-muted-foreground')} />
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col justify-between px-4 pb-4 pt-0">
-        <div>
-          <Badge variant="outline" className={cn("text-xs", statusColors[table.status] ? 'text-inherit border-current' : '')}>
+      <CardContent className="flex-grow flex flex-col justify-between px-3 pb-3 pt-0"> {/* Adjusted padding */}
+        <div className="space-y-1">
+          <Badge variant="outline" className={cn("text-xs py-0.5", statusColors[table.status] ? 'text-inherit border-current' : '')}>
             {statusText[table.status]}
           </Badge>
-          <p className="text-xs text-muted-foreground mt-1.5">
+          <p className="text-xs text-muted-foreground">
             Capacity: {table.capacity} guests
           </p>
         </div>
-        {table.status === 'occupied' && table.currentOrderId && (
-          <p className="text-xs text-primary mt-1.5">Order ID: {table.currentOrderId.substring(0,8)}...</p>
+        {table.status === 'occupied' && (
+          <div className="mt-1.5 space-y-0.5">
+            {table.currentOrderId && (
+              <p className="text-xs text-primary truncate">Order: {table.currentOrderId.substring(0,8)}...</p>
+            )}
+            {typeof table.currentOrderTotal === 'number' && (
+              <div className="flex items-center text-sm font-semibold text-accent">
+                <DollarSign className="h-3.5 w-3.5 mr-1" />
+                {table.currentOrderTotal.toFixed(2)}
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
   );
 
   if (isClickable) {
-    // Link component will be absolutely positioned.
-    // cardItself is a child and will fill the Link area.
     return (
       <Link
         href={linkHref}
-        draggable={false} // Prevent the Link itself from being dragged
+        draggable={false} 
         style={{
           position: 'absolute',
           left: `${position.x}px`,
           top: `${position.y}px`,
-          width: '176px', // Corresponds to w-44
-          height: '160px', // Corresponds to h-40
-          cursor: 'pointer', // Link is clickable
+          width: '176px', 
+          height: '176px', // h-44 = 176px
+          cursor: 'pointer', 
         }}
       >
         {cardItself}
@@ -105,15 +111,13 @@ export function TableCard({ table, position, onTableDragStart }: TableCardProps)
     );
   }
 
-  // Not clickable: The Card itself is the root and needs absolute positioning and dimming.
-  // We clone cardItself to add these specific styles for this case.
   return React.cloneElement(cardItself, {
     style: {
-      ...cardItself.props.style, // Keep existing styles like cursor: 'grab'
+      ...cardItself.props.style, 
       position: 'absolute',
       left: `${position.x}px`,
       top: `${position.y}px`,
-      opacity: 0.75, // Dim non-clickable cards
+      opacity: 0.75, 
     }
   });
 }
