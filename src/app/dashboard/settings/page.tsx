@@ -7,7 +7,8 @@ import { TableManagementSettings } from '@/components/features/settings/table-ma
 import { CategoryManagementSettings } from '@/components/features/settings/category-management-settings';
 import { MenuItemManagementSettings } from '@/components/features/settings/menu-item-management-settings';
 import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings';
-import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings'; // New import
+import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings';
+import { ThemeSettings } from '@/components/features/settings/theme-settings'; // New import
 import type { Table, MenuCategory, MenuItem, Modifier, DeliveryPlatform } from '@/types'; 
 
 // Mock data (ideally this would come from a global store or API in a real app)
@@ -54,8 +55,9 @@ export default function SettingsPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">Settings</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 mb-6"> {/* Adjusted grid-cols */}
           <TabsTrigger value="restaurant">Restaurant</TabsTrigger>
+          <TabsTrigger value="appearance">Appearance</TabsTrigger> {/* New Tab */}
           <TabsTrigger value="tables">Tables</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="menu_items">Menu Items</TabsTrigger>
@@ -64,6 +66,9 @@ export default function SettingsPage() {
         </TabsList>
         <TabsContent value="restaurant">
           <RestaurantSettings />
+        </TabsContent>
+        <TabsContent value="appearance"> {/* New Tab Content */}
+          <ThemeSettings />
         </TabsContent>
         <TabsContent value="tables">
           <TableManagementSettings initialTables={mockTablesData} />
