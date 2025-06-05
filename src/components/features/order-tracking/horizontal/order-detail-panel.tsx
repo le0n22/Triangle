@@ -42,23 +42,23 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
   return (
     <Card className="h-full flex flex-col shadow-lg rounded-r-lg bg-card text-card-foreground overflow-hidden">
-      <CardHeader className="p-4 border-b border-border shrink-0">
+      <CardHeader className="p-3 border-b border-border shrink-0"> {/* Reduced padding */}
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3 min-w-0"> {/* Added min-w-0 */}
-            <PlatformIcon className="w-10 h-10 shrink-0" />
-            <div className="min-w-0"> {/* Added min-w-0 */}
-              <CardTitle className="text-lg font-semibold truncate">
+          <div className="flex items-center gap-2 min-w-0"> {/* Reduced gap */}
+            <PlatformIcon className="w-8 h-8 shrink-0" /> {/* Reduced icon size */}
+            <div className="min-w-0"> 
+              <CardTitle className="text-base font-semibold truncate"> {/* Adjusted font size */}
                 {order.shortCode} - {order.customerName}
               </CardTitle>
-              <CardDescription className="text-sm truncate">{order.paymentServiceType}</CardDescription>
+              <CardDescription className="text-xs truncate">{order.paymentServiceType}</CardDescription>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleEditOrder} className="text-muted-foreground hover:text-primary shrink-0">
-            <Edit3 className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={handleEditOrder} className="text-muted-foreground hover:text-primary shrink-0 h-7 w-7"> {/* Adjusted button size */}
+            <Edit3 className="h-4 w-4" />
             <span className="sr-only">Edit Order</span>
           </Button>
         </div>
-        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+        <div className="mt-1 space-y-0.5 text-xs text-muted-foreground"> {/* Reduced margin and spacing */}
           {order.customerPhoneNumber && (
             <div className="flex items-center">
               <Phone className="w-3 h-3 mr-1.5 shrink-0" /> {order.customerPhoneNumber}
@@ -103,7 +103,6 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           </div>
         )}
       </CardContent>
-      {/* Removed the bottom total amount display div */}
     </Card>
   );
 }
