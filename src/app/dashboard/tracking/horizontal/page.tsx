@@ -131,21 +131,11 @@ export default function HorizontalTrackingPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          <span className="font-semibold text-lg text-white">MENULUX Pos</span>
-          <span className="text-purple-400 font-medium">TAKE AWAY</span>
+          {/* Removed "MENULUX Pos" and "TAKE AWAY" */}
         </div>
         <div className="flex items-center gap-4 text-xs">
           <Bell className="h-5 w-5 text-yellow-400" />
-          <div className="flex items-center gap-1 text-green-400">
-            <Wifi className="h-4 w-4" /> Internet BAĞLI
-          </div>
-          <div className="flex items-center gap-1 text-green-400">
-            <Server className="h-4 w-4" /> Server BAĞLI
-          </div>
-          <div className="flex items-center gap-2 text-purple-300">
-            <UserCircle className="h-5 w-5" /> Oğuzhan A.
-            <Button variant="link" className="p-0 h-auto text-purple-300 hover:text-purple-100 text-xs">DEĞİŞTİR</Button>
-          </div>
+          {/* Removed Internet/Server status and User info */}
         </div>
       </header>
 
