@@ -8,8 +8,10 @@ import { CategoryManagementSettings } from '@/components/features/settings/categ
 import { MenuItemManagementSettings } from '@/components/features/settings/menu-item-management-settings';
 import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings';
 import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings';
-import { ThemeSettings } from '@/components/features/settings/theme-settings'; // New import
-import type { Table, MenuCategory, MenuItem, Modifier, DeliveryPlatform } from '@/types'; 
+import { ThemeSettings } from '@/components/features/settings/theme-settings';
+import { LanguageSettings } from '@/components/features/settings/language-settings'; // New import
+import type { Table, MenuCategory, MenuItem, Modifier, DeliveryPlatform, TranslationKey } from '@/types'; 
+import { useLanguage } from '@/hooks/use-language'; // New import
 
 // Mock data (ideally this would come from a global store or API in a real app)
 const mockTablesData: Table[] = [
@@ -51,24 +53,37 @@ const mockDeliveryPlatforms: DeliveryPlatform[] = [
 
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
+
+  const settingsTabs: { value: string; labelKey: TranslationKey }[] = [
+    { value: 'restaurant', labelKey: 'restaurant' },
+    { value: 'appearance', labelKey: 'appearance' },
+    { value: 'language', labelKey: 'language' },
+    { value: 'tables', labelKey: 'tables' },
+    { value: 'categories', labelKey: 'categories' },
+    { value: 'menu_items', labelKey: 'menu_items' },
+    { value: 'modifiers', labelKey: 'modifiers' },
+    { value: 'order_platforms', labelKey: 'order_platforms' },
+  ];
+
+
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-headline font-bold mb-8">Settings</h1>
+      <h1 className="text-3xl font-headline font-bold mb-8">{t('settings')}</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 mb-6"> {/* Adjusted grid-cols */}
-          <TabsTrigger value="restaurant">Restaurant</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger> {/* New Tab */}
-          <TabsTrigger value="tables">Tables</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="menu_items">Menu Items</TabsTrigger>
-          <TabsTrigger value="modifiers">Modifiers</TabsTrigger>
-          <TabsTrigger value="order_platforms">Order Platforms</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 mb-6">
+           {settingsTabs.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
+          ))}
         </TabsList>
         <TabsContent value="restaurant">
           <RestaurantSettings />
         </TabsContent>
-        <TabsContent value="appearance"> {/* New Tab Content */}
+        <TabsContent value="appearance">
           <ThemeSettings />
+        </TabsContent>
+        <TabsContent value="language"> {/* New Tab Content */}
+          <LanguageSettings />
         </TabsContent>
         <TabsContent value="tables">
           <TableManagementSettings initialTables={mockTablesData} />

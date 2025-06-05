@@ -1,62 +1,63 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Grid, ClipboardList, Route, ChefHat, Settings, BookOpenText, BarChart3 } from 'lucide-react'; // Added BarChart3
+import { LayoutDashboard, Grid, ClipboardList, Route, ChefHat, Settings, BookOpenText, BarChart3 } from 'lucide-react';
+import type { TranslationKey } from '@/types';
 
-export interface NavItem {
-  title: string;
+export interface NavItemDef {
+  key: TranslationKey; // Use TranslationKey for title
   href: string;
   icon: LucideIcon;
-  label?: string;
+  labelKey?: TranslationKey; // Optional label, also a TranslationKey
   disabled?: boolean;
 }
 
-export const navItems: NavItem[] = [
+export const navItemDefs: NavItemDef[] = [
   {
-    title: 'Dashboard',
+    key: 'dashboard',
     href: '/dashboard/overview',
     icon: LayoutDashboard,
-    label: 'Dashboard Overview',
+    labelKey: 'dashboard',
   },
   {
-    title: 'Tables',
+    key: 'tables',
     href: '/dashboard/tables',
     icon: Grid,
-    label: 'Table Layout',
+    labelKey: 'tables',
   },
   {
-    title: 'Menu',
+    key: 'menu',
     href: '/dashboard/menu',
     icon: BookOpenText,
-    label: 'Digital Menu',
+    labelKey: 'menu',
   },
   {
-    title: 'Orders',
+    key: 'orders',
     href: '/dashboard/orders',
     icon: ClipboardList,
-    label: 'Order History',
+    labelKey: 'orders',
   },
   {
-    title: 'Tracking',
+    key: 'tracking',
     href: '/dashboard/tracking',
     icon: Route,
-    label: 'Order Tracking',
+    labelKey: 'tracking',
   },
   {
-    title: 'KDS',
+    key: 'kds',
     href: '/dashboard/kds',
     icon: ChefHat,
-    label: 'Kitchen Display',
+    labelKey: 'kds',
   },
   {
-    title: 'Reports', // New Item
+    key: 'reports',
     href: '/dashboard/reports',
     icon: BarChart3,
-    label: 'Sales & Performance Reports',
+    labelKey: 'reports',
   },
   {
-    title: 'Settings',
+    key: 'settings',
     href: '/dashboard/settings',
     icon: Settings,
-    label: 'Application Settings',
+    labelKey: 'settings',
   },
 ];

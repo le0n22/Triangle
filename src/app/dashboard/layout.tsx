@@ -1,3 +1,6 @@
+
+"use client" // Required because we use useLanguage hook
+
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
@@ -14,13 +17,16 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/layout/logo';
-import { navItems } from '@/components/layout/sidebar-nav-items';
+import { navItemDefs } from '@/components/layout/sidebar-nav-items'; // Updated import
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Settings, UserCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { useLanguage } from '@/hooks/use-language'; // New import
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const { t } = useLanguage(); // Use the language hook
+
   return (
     <SidebarProvider defaultOpen>
       <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -30,17 +36,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <SidebarContent>
           <ScrollArea className="h-full">
             <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {navItemDefs.map((itemDef) => (
+                <SidebarMenuItem key={itemDef.key}>
                   <SidebarMenuButton
                     asChild
                     isActive={false} // Add logic for active state based on current path
-                    tooltip={{ children: item.label || item.title, side: 'right' }}
-                    disabled={item.disabled}
+                    tooltip={{ children: t(itemDef.labelKey || itemDef.key), side: 'right' }}
+                    disabled={itemDef.disabled}
                   >
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.title}</span>
+                    <Link href={itemDef.href}>
+                      <itemDef.icon />
+                      <span>{t(itemDef.key)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -48,7 +54,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </SidebarMenu>
           </ScrollArea>
         </SidebarContent>
-        {/* User Account Section at the bottom of the sidebar */}
         <div className="mt-auto p-2">
           <Separator className="my-2 bg-sidebar-border" />
           <DropdownMenu>
@@ -60,35 +65,31 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     <AvatarFallback>JD</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-medium text-sidebar-foreground truncate">My Account</span>
-                    {/* Optional: Add email or role here if desired */}
-                    {/* <span className="text-xs text-sidebar-foreground/70 truncate">user@example.com</span> */}
+                    <span className="text-sm font-medium text-sidebar-foreground truncate">{t('myAccount')}</span>
                   </div>
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="mb-2 w-56 bg-popover text-popover-foreground">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('myAccount')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <UserCircle className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+                <span>{t('profile')}</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                <span>{t('settings')}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Logout</DropdownMenuItem>
+              <DropdownMenuItem>{t('logout')}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </Sidebar>
       <SidebarInset>
-        {/* Minimal top bar for mobile sidebar trigger */}
         <div className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 backdrop-blur-sm px-6 md:hidden">
           <SidebarTrigger />
-          {/* Optional: Add page title or breadcrumbs here for mobile if needed */}
         </div>
         <main className="flex-1 p-6 bg-background">
           {children}

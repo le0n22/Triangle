@@ -128,3 +128,34 @@ export interface DeliveryPlatform {
   icon?: React.ElementType; // Optional: for displaying platform logo
 }
 
+export type Locale = 'en' | 'tr';
+
+export type TranslationKey =
+  | 'dashboard'
+  | 'tables'
+  | 'menu'
+  | 'orders'
+  | 'tracking'
+  | 'kds'
+  | 'reports'
+  | 'settings'
+  | 'language'
+  | 'selectLanguage'
+  | 'english'
+  | 'turkish'
+  | 'myAccount'
+  | 'profile'
+  | 'logout'
+  | 'restaurantSettings'
+  | 'appearanceSettings'
+  | 'tableManagementSettings'
+  | 'categoryManagementSettings'
+  | 'menuItemManagementSettings'
+  | 'modifierManagementSettings'
+  | 'orderPlatformSettings'
+  | 'restaurant'
+  | 'appearance'
+  | 'categories'
+  | 'menu_items'
+  | 'modifiers'
+  | 'order_platforms';
