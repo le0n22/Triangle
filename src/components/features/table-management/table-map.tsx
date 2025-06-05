@@ -30,7 +30,8 @@ export function TableMap({ tables }: TableMapProps) {
           </Button>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-5 auto-rows-max"> 
+        {/* Increased gap, 2xl variant, auto-rows-max for better flow with fixed card heights */}
         {tables.map((table) => (
           <TableCard key={table.id} table={table} />
         ))}

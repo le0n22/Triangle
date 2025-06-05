@@ -46,27 +46,27 @@ export function TableCard({ table }: TableCardProps) {
   return (
     <CardWrapper href={linkHref} passHref={CardWrapper === Link ? true : undefined}>
       <Card className={cn(
-        "hover:shadow-lg transition-shadow duration-200 cursor-pointer min-w-[180px] flex flex-col",
+        "hover:shadow-lg transition-shadow duration-200 cursor-pointer flex flex-col w-44 h-40", // Fixed width and height
         statusColors[table.status],
         (table.status === 'dirty' || table.status === 'reserved') && "cursor-not-allowed opacity-75"
       )}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-2xl font-headline font-bold">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
+          <CardTitle className="text-xl font-headline font-bold">
             Table {table.number}
           </CardTitle>
-          <Icon className={cn("h-6 w-6", statusColors[table.status] ? 'text-inherit' : 'text-muted-foreground')} />
+          <Icon className={cn("h-5 w-5", statusColors[table.status] ? 'text-inherit' : 'text-muted-foreground')} />
         </CardHeader>
-        <CardContent className="flex-grow flex flex-col justify-between">
+        <CardContent className="flex-grow flex flex-col justify-between px-4 pb-4 pt-0">
           <div>
             <Badge variant="outline" className={cn("text-xs", statusColors[table.status] ? 'text-inherit border-current' : '')}>
               {statusText[table.status]}
             </Badge>
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-1.5">
               Capacity: {table.capacity} guests
             </p>
           </div>
           {table.status === 'occupied' && table.currentOrderId && (
-            <p className="text-xs text-primary mt-2">Order ID: {table.currentOrderId.substring(0,8)}...</p>
+            <p className="text-xs text-primary mt-1.5">Order ID: {table.currentOrderId.substring(0,8)}...</p>
           )}
         </CardContent>
       </Card>
