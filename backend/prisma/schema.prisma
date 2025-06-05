@@ -1,226 +1,46 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  binaryTargets   = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
+}
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL") // Uses the DATABASE_URL from .env file
 }
 
-generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
-}
+// AUTHENTICATION (Placeholder for now)
+// model User {
+//   id        String   @id @default(cuid())
+//   email     String   @unique
+//   password  String   // Hashed password
+//   name      String?
+//   role      String   @default("user") // e.g., "admin", "staff", "user"
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+// }
 
+// CORE RESTAURANT MANAGEMENT
 model Table {
-  id                 String        @id @default(cuid())
-  name               String?
-  number             Int           @unique
-  status             TableStatus   @default(AVAILABLE)
-  capacity           Int
-  currentOrder       Order?        @relation("TableOrder", fields: [currentOrderId], references: [id], onDelete: SetNull)
-  currentOrderId     String?       @unique
-  currentOrderTotal  Float?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-}
+  id        String  @id @default(cuid())
+  number    Int     @unique
+  name      String? // Optional custom name, e.g., "Window Seat 1"
+  capacity  Int
+  status    TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
 
-model Order {
-  id             String        @id @default(cuid())
-  table          Table?        @relation("TableOrder") // Removed tableId and tableNumber from here to rely on the relation
-  items          OrderItem[]
-  status         OrderStatus   @default(OPEN)
-  subtotal       Float
-  taxRate        Float
-  taxAmount      Float
-  totalAmount    Float
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  payment        Payment[]
-  kot            KOT[]
-  externalOrders ExternalOrder[] @relation("OrderExternalOrders")
-}
+  // For quick display on table map if occupied
+  currentOrderId    String?
+  currentOrderTotal Float?
 
-model OrderItem {
-  id                String             @id @default(cuid())
-  order             Order              @relation(fields: [orderId], references: [id])
-  orderId           String
-  menuItem          MenuItem           @relation(fields: [menuItemId], references: [id])
-  menuItemId        String
-  menuItemName      String // Denormalized for convenience
-  quantity          Int
-  unitPrice         Float
-  totalPrice        Float // Calculated: quantity * (unitPrice + sum of modifier priceChanges)
-  specialRequests   String?
-  selectedModifiers OrderItemSelectedModifier[]
-
-  @@index([orderId])
-  @@index([menuItemId])
-}
-
-// Join table for OrderItem and Modifier (Many-to-Many for selected modifiers on an order item)
-model OrderItemSelectedModifier {
-  id          String   @id @default(cuid())
-  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-  orderItemId String
-  modifier    Modifier @relation(fields: [modifierId], references: [id])
-  modifierId  String
-  // Store details of the modifier at the time of order, in case modifier definitions change later
-  modifierName        String
-  modifierPriceChange Float
-
-  @@unique([orderItemId, modifierId]) // Ensures a modifier is not selected twice for the same order item
-  @@index([orderItemId])
-  @@index([modifierId])
-}
-
-model MenuItem {
-  id                 String             @id @default(cuid())
-  name               String             @unique
-  description        String?
-  price              Float
-  imageUrl           String?
-  dataAiHint         String?
-  category           MenuCategory       @relation(fields: [categoryId], references: [id])
-  categoryId         String
-  orderItems         OrderItem[]
-  availableModifiers MenuItemModifier[] // Link to available modifiers for this menu item
+  // Relations
+  orders Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([categoryId])
-}
-
-model MenuCategory {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  iconName  String?
-  menuItems MenuItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Join table for MenuItem and Modifier (Many-to-Many for available modifiers for a menu item)
-model MenuItemModifier {
-  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  menuItemId String
-  modifier   Modifier @relation(fields: [modifierId], references: [id], onDelete: Cascade)
-  modifierId String
-
-  @@id([menuItemId, modifierId])
-  @@index([menuItemId])
-  @@index([modifierId])
-}
-
-model Modifier {
-  id                      String                      @id @default(cuid())
-  name                    String                      @unique
-  priceChange             Float // Can be positive, negative, or zero
-  menuItems               MenuItemModifier[]          // Menu items this modifier is available for
-  selectedInOrderItems    OrderItemSelectedModifier[] // Order items where this modifier was selected
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model KOT {
-  id        String   @id @default(cuid())
-  order     Order    @relation(fields: [orderId], references: [id])
-  orderId   String   @unique // A KOT should belong to one order
-  // tableNumber is on the Order
-  // items (name, quantity, modifiers, specialRequests) are derived from OrderItems at generation time.
-  // For simplicity in DB, we might not store KOT items directly if they are always generated on-the-fly.
-  // If historical KOTs need to be preserved exactly as printed, then store them.
-  // For now, assuming KOT is generated and not stored as a complex object.
-  // kotItems  Json? // If we need to store the exact items. Example: [{ name: "Burger", qty: 1, mods: ["Extra Cheese"]}]
-  createdAt DateTime @default(now())
-
-  @@index([orderId])
-}
-
-model Payment {
-  id            String        @id @default(cuid())
-  order         Order         @relation(fields: [orderId], references: [id])
-  orderId       String
-  amount        Float
-  method        PaymentMethod
-  status        String // e.g., "SUCCESSFUL", "PENDING", "FAILED"
-  transactionId String?       @unique
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  @@index([orderId])
-}
-
-model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  hashedPassword String? // Optional if using social logins primarily
-  name           String?
-  role           UserRole        @default(STAFF)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  sessions       Session[]
-  // Add other user-specific fields like avatarUrl, preferences, etc.
-}
-
-model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  // deviceInfo String? // Store device info for security
-  // ipAddress  String?
-
-  @@index([userId])
-}
-
-// For external order tracking (Trendyol GO, Yemeksepeti etc.)
-model ExternalOrder {
-  id                      String              @id @default(cuid()) // Internal unique ID
-  platform                String // e.g., "Trendyol GO", "Yemeksepeti"
-  platformOrderId         String // The ID from the external platform
-  shortCode               String?             // Derived code for quick display
-  customerName            String
-  customerAddress         String
-  customerPhoneNumber     String?
-  itemsJson               Json? // Store ExternalOrderItem[] as JSON if not heavily queried, or use a related table
-  subtotal                Float
-  deliveryFee             Float
-  platformFee             Float?
-  totalAmount             Float // Amount paid by customer
-  restaurantPayout        Float? // Amount restaurant receives
-  status                  ExternalOrderStatus @default(PENDING_CONFIRMATION)
-  paymentServiceType      String? // e.g., "Card - Delivery"
-  platformIconUrl         String? // Or store as part of platform config
-  notes                   String?
-  placedAt                DateTime
-  estimatedDeliveryTime   DateTime?
-  deliveredAt             DateTime?
-  cancelledAt             DateTime?
-  cancellationReason      String?
-  order                   Order?              @relation("OrderExternalOrders", fields: [internalOrderId], references: [id])
-  internalOrderId         String?             @unique // Link to internal Order if applicable
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([platform, platformOrderId]) // Ensure unique orders per platform
-  @@index([platform])
   @@index([status])
-  @@index([placedAt])
-  @@index([internalOrderId])
-}
-
-model DeliveryPlatform {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  apiKey    String? // API Key for the platform
-  apiSecret String? // API Secret for the platform
-  isEnabled Boolean  @default(true)
-  iconUrl   String?  // URL to the platform's icon
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 enum TableStatus {
@@ -230,32 +50,185 @@ enum TableStatus {
   DIRTY
 }
 
+model MenuCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  iconName  String?  // For UI, e.g., Lucide icon name like "Soup" or "Utensils"
+  
+  items     MenuItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MenuItem {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  price         Float
+  imageUrl      String?   // URL to the item's image
+  dataAiHint    String?   // For placeholder image generation
+  
+  categoryId    String
+  category      MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  // Modifiers that can be applied to this item
+  // This defines the "template" of available modifiers
+  availableModifiers Modifier[] @relation("MenuItemAvailableModifiers")
+
+  // Order items this menu item is part of
+  orderItems    OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([name])
+}
+
+model ModifierGroup {
+  id          String @id @default(cuid())
+  name        String @unique // e.g., "Size", "Add-ons", "Crust Type"
+  description String?
+  // minSelection Int @default(0)
+  // maxSelection Int @default(1) // 0 means unlimited
+
+  modifiers   Modifier[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model Modifier {
+  id            String @id @default(cuid())
+  name          String // e.g., "Extra Cheese", "Large", "Thin Crust"
+  priceChange   Float  // e.g., 1.50 (for +$1.50), -0.50 (for -$0.50), 0 (no change)
+  
+  // To which menu items this modifier can be applied (optional, if not grouped)
+  menuItems     MenuItem[] @relation("MenuItemAvailableModifiers")
+
+  // If part of a modifier group
+  modifierGroupId String?
+  modifierGroup   ModifierGroup? @relation(fields: [modifierGroupId], references: [id], onDelete: SetNull)
+  
+  // Instances of this modifier being selected in orders
+  selectedInOrderItems OrderItemModifier[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+   @@index([modifierGroupId])
+}
+
+
+// ORDER MANAGEMENT
+model Order {
+  id          String    @id @default(cuid())
+  tableId     String
+  table       Table     @relation(fields: [tableId], references: [id], onDelete: Restrict) // Prevent deleting table if it has active orders
+  
+  tableNumber Int       // Denormalized for convenience in KDS/Receipts
+  
+  items       OrderItem[]
+  
+  status      OrderStatus @default(OPEN) // OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
+  
+  subtotal    Float     // Sum of all (item.unitPrice + modifierPrice) * quantity before tax
+  taxRate     Float     // e.g., 0.08 for 8%
+  taxAmount   Float     // subtotal * taxRate
+  totalAmount Float     // subtotal + taxAmount
+  
+  // paymentMethod PaymentMethod?
+  // paymentId     String?      // Reference to a payment record if applicable
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime? // When order was PAID or CANCELLED
+
+  @@index([tableId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id            String    @id @default(cuid())
+  orderId       String
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade) // If order is deleted, its items are also deleted.
+  
+  menuItemId    String
+  menuItem      MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Prevent deleting menu item if it's in an order
+  menuItemName  String    // Denormalized name at the time of order
+  
+  quantity      Int
+  unitPrice     Float     // Price of the menu item at the time of order (excluding modifiers)
+  
+  // Modifiers selected for this specific order item
+  selectedModifiers OrderItemModifier[]
+
+  specialRequests String? // Customer's special requests for this item
+  
+  totalPrice    Float     // (unitPrice + sum of selectedModifier.priceChange) * quantity
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([menuItemId])
+}
+
+// Join table for OrderItem and Modifier (Many-to-Many for selected modifiers on an order item)
+model OrderItemModifier {
+  id            String  @id @default(cuid())
+  orderItemId   String
+  orderItem     OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  
+  modifierId    String
+  modifier      Modifier @relation(fields: [modifierId], references: [id], onDelete: Restrict) // Prevent deleting modifier if used in orders
+  
+  // Store details at the time of order, in case modifier definition changes
+  modifierName  String 
+  priceChange   Float  
+
+  createdAt DateTime @default(now())
+
+  @@unique([orderItemId, modifierId]) // Ensure a modifier is only applied once per order item
+  @@index([orderItemId])
+  @@index([modifierId])
+}
+
+
 enum OrderStatus {
-  OPEN // Order created, items can be added/modified
-  IN_PROGRESS // Order sent to KDS, being prepared
-  DONE // Order prepared, ready for payment/delivery
-  PAID // Order paid
-  CANCELLED // Order cancelled
+  OPEN          // Order created, items being added, not yet sent to kitchen
+  IN_PROGRESS   // Order sent to kitchen, being prepared
+  DONE          // Food is ready, waiting for payment or delivery
+  PAID          // Payment completed
+  CANCELLED     // Order cancelled
 }
 
-enum PaymentMethod {
-  CASH
-  CARD
-  MOBILE
+// enum PaymentMethod {
+//   CASH
+//   CARD
+//   MOBILE
+//   ONLINE
+// }
+
+
+// Settings & Configuration (Simplified for now)
+model RestaurantSetting {
+  id        String @id @default(cuid())
+  key       String @unique // e.g., "restaurantName", "logoUrl", "currency"
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-enum UserRole {
-  ADMIN
-  MANAGER
-  STAFF
-}
-
-enum ExternalOrderStatus {
-  PENDING_CONFIRMATION
-  PREPARING
-  READY_FOR_PICKUP
-  ON_THE_WAY
-  DELIVERED
-  CANCELLED_BY_RESTAURANT
-  CANCELLED_BY_USER
+model DeliveryPlatform {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  apiKey    String
+  apiSecret String   // Should be stored encrypted in a real app or use a secrets manager
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
