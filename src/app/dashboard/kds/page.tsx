@@ -77,14 +77,14 @@ export default function KdsPage() {
         order.id === orderId ? { ...order, status: newStatus, updatedAt: new Date().toISOString() } : order
       ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Re-sort after update
     );
-    // In a real app, call an API here:
-    // await api.updateOrderStatus(orderId, newStatus);
-    // Then potentially re-fetch or rely on WebSocket updates.
     console.log(`Order ${orderId} status updated to ${newStatus}`);
   };
   
-  // Filter for KDS: OPEN and IN_PROGRESS orders. DONE orders are handled by buttons but might still be shown.
-  const kdsRelevantOrders = activeOrders; // For now, show all, including DONE
+  // Filter for KDS: OPEN, IN_PROGRESS, and DONE orders.
+  // CANCELLED and PAID orders are filtered out.
+  const kdsRelevantOrders = activeOrders.filter(
+    order => order.status === 'OPEN' || order.status === 'IN_PROGRESS' || order.status === 'DONE'
+  );
 
   return (
     <div className="container mx-auto py-6 px-2 md:px-4 h-[calc(100vh-var(--header-height,4rem))] flex flex-col">
