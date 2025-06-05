@@ -1,3 +1,4 @@
+
 import type { MenuCategory, Order, MenuItem, Modifier } from '@/types';
 import { OrderPanel } from '@/components/features/order-entry/order-panel';
 
@@ -35,32 +36,33 @@ async function getOrderForTable(tableId: string): Promise<Order | null> {
   // Simulate fetching existing order or creating a new one
   if (tableId === 't2') { // Assume table t2 has an existing order
     return {
-      id: 'ord456',
+      id: 'ord123', // Matches an ID in OrdersPage mock data
       tableId: 't2',
       tableNumber: 2,
       items: [
-        { 
+        {
           id: 'oi1',
-          menuItemId: 'item3', 
-          menuItemName: 'Grilled Salmon', 
-          quantity: 1, 
-          unitPrice: 22.00, 
-          selectedModifiers: [], 
+          menuItemId: 'item3',
+          menuItemName: 'Grilled Salmon',
+          quantity: 1,
+          unitPrice: 22.00,
+          selectedModifiers: [],
           totalPrice: 22.00,
-          specialRequests: 'Extra crispy skin'
+          specialRequests: 'Well done'
         },
+         { id: 'oi2', menuItemId: 'item5', menuItemName: 'Coca-Cola', quantity: 2, unitPrice: 3.00, selectedModifiers: [], totalPrice: 6.00, specialRequests: '' },
       ],
-      status: 'pending',
-      subtotal: 22.00,
+      status: 'OPEN', // Updated status
+      subtotal: 28.00, // Updated to reflect both items
       taxRate: 0.08,
-      taxAmount: 1.76,
-      totalAmount: 23.76,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      taxAmount: 2.24, // Updated
+      totalAmount: 30.24, // Updated
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      updatedAt: new Date(Date.now() - 1.5 * 60 * 60 * 1000).toISOString(),
     };
   }
   // For other tables, or if 'new' is part of the logic, return null to indicate a new order
-  return null; 
+  return null;
 }
 
 interface OrderPageProps {

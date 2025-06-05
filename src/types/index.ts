@@ -1,3 +1,4 @@
+
 export type TableStatus = 'available' | 'occupied' | 'reserved' | 'dirty';
 
 export interface Table {
@@ -28,15 +29,16 @@ export interface MenuItem {
 export interface OrderItem {
   id: string; // Unique ID for this line item in the order
   menuItemId: string;
-  menuItemName: string; 
+  menuItemName: string;
   quantity: number;
-  unitPrice: number; 
+  unitPrice: number;
   selectedModifiers: Modifier[];
   specialRequests?: string;
-  totalPrice: number; 
+  totalPrice: number;
 }
 
-export type OrderStatus = 'pending' | 'preparing' | 'served' | 'paid' | 'cancelled';
+// Updated OrderStatus
+export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'PAID' | 'CANCELLED';
 
 export interface Order {
   id: string;
@@ -56,11 +58,11 @@ export interface KOT {
   id: string;
   orderId: string;
   tableNumber: number;
-  items: { 
-    name: string; 
-    quantity: number; 
+  items: {
+    name: string;
+    quantity: number;
     modifiers?: string[]; // Names of selected modifiers
-    specialRequests?: string 
+    specialRequests?: string
   }[];
   createdAt: string; // ISO Date string
 }

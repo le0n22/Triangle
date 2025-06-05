@@ -1,14 +1,14 @@
 
 'use client';
 
-import type { Order, OrderItem, Modifier } from '@/types';
+import type { Order, OrderStatus } from '@/types';
 import { KdsOrderCard } from '@/components/features/kds/kds-order-card';
-import { RefreshCw, ChefHat } from 'lucide-react'; // Added ChefHat import
+import { RefreshCw, ChefHat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 
-// Mock data for KDS - typically 'pending' or 'preparing' orders
-// In a real app, this would be fetched and ideally updated in real-time (e.g., via WebSockets)
-const mockActiveOrders: Order[] = [
+// Mock data for KDS - using new statuses
+const initialMockActiveOrders: Order[] = [
    {
     id: 'ord456',
     tableId: 't6',
@@ -18,13 +18,13 @@ const mockActiveOrders: Order[] = [
       { id: 'oi4', menuItemId: 'item1', menuItemName: 'Spring Rolls', quantity: 1, unitPrice: 8.99, selectedModifiers: [], totalPrice: 8.99 },
       { id: 'oi9', menuItemId: 'item8', menuItemName: 'Coca-Cola', quantity: 3, unitPrice: 3.00, selectedModifiers: [], totalPrice: 9.00 },
     ],
-    status: 'preparing',
+    status: 'IN_PROGRESS',
     subtotal: 34.49,
     taxRate: 0.08,
     taxAmount: 2.76,
     totalAmount: 37.25,
     createdAt: new Date(Date.now() - 0.15 * 60 * 60 * 1000).toISOString(), // 9 mins ago
-    updatedAt: new Date(Date.now() - 0.05 * 60 * 60 * 1000).toISOString(), // 3 mins ago (marked preparing)
+    updatedAt: new Date(Date.now() - 0.05 * 60 * 60 * 1000).toISOString(), // 3 mins ago (marked IN_PROGRESS)
   },
   {
     id: 'ord789',
@@ -34,7 +34,7 @@ const mockActiveOrders: Order[] = [
       { id: 'oi5', menuItemId: 'item5', menuItemName: 'Chicken Pasta', quantity: 2, unitPrice: 18.50, selectedModifiers: [], totalPrice: 37.00, specialRequests: 'No garlic' },
       { id: 'oi10', menuItemId: 'item6', menuItemName: 'Orange Juice', quantity: 1, unitPrice: 5.00, selectedModifiers: [], totalPrice: 5.00 },
     ],
-    status: 'pending',
+    status: 'OPEN',
     subtotal: 42.00,
     taxRate: 0.08,
     taxAmount: 3.36,
@@ -50,7 +50,7 @@ const mockActiveOrders: Order[] = [
       { id: 'oi11', menuItemId: 'item3', menuItemName: 'Grilled Salmon', quantity: 1, unitPrice: 22.00, selectedModifiers: [], totalPrice: 22.00, specialRequests: 'Allergic to nuts, ensure no cross-contamination.' },
       { id: 'oi12', menuItemId: 'item2', menuItemName: 'Garlic Bread', quantity: 1, unitPrice: 6.50, selectedModifiers: [{id: 'mod2', name: 'No Onions', priceChange: 0.00}], totalPrice: 6.50 },
     ],
-    status: 'pending',
+    status: 'OPEN',
     subtotal: 28.50,
     taxRate: 0.08,
     taxAmount: 2.28,
@@ -62,14 +62,29 @@ const mockActiveOrders: Order[] = [
 
 
 export default function KdsPage() {
-  // In a real application, you'd fetch this data and handle state updates
-  const activeOrders = mockActiveOrders.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()); // Sort by oldest first
+  const [activeOrders, setActiveOrders] = useState<Order[]>(initialMockActiveOrders);
 
-  // const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-  //   console.log(`Updating order ${orderId} to ${newStatus}`);
-  //   // Here you would typically call an API to update the order status
-  //   // and then re-fetch or update the local state.
-  // };
+  useEffect(() => {
+    // Sort orders by oldest first whenever activeOrders change
+    setActiveOrders(prevOrders =>
+      [...prevOrders].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    );
+  }, []); // Initial sort
+
+  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
+    setActiveOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.id === orderId ? { ...order, status: newStatus, updatedAt: new Date().toISOString() } : order
+      ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Re-sort after update
+    );
+    // In a real app, call an API here:
+    // await api.updateOrderStatus(orderId, newStatus);
+    // Then potentially re-fetch or rely on WebSocket updates.
+    console.log(`Order ${orderId} status updated to ${newStatus}`);
+  };
+  
+  // Filter for KDS: OPEN and IN_PROGRESS orders. DONE orders are handled by buttons but might still be shown.
+  const kdsRelevantOrders = activeOrders; // For now, show all, including DONE
 
   return (
     <div className="container mx-auto py-6 px-2 md:px-4 h-[calc(100vh-var(--header-height,4rem))] flex flex-col">
@@ -79,15 +94,15 @@ export default function KdsPage() {
           <RefreshCw className="h-5 w-5" />
         </Button>
       </div>
-      
-      {activeOrders.length > 0 ? (
+
+      {kdsRelevantOrders.length > 0 ? (
         <div className="flex-grow overflow-y-auto pr-1">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-            {activeOrders.map((order) => (
-                <KdsOrderCard 
-                key={order.id} 
-                order={order} 
-                // onUpdateStatus={handleUpdateOrderStatus} 
+            {kdsRelevantOrders.map((order) => (
+                <KdsOrderCard
+                key={order.id}
+                order={order}
+                onUpdateStatus={handleUpdateOrderStatus}
                 />
             ))}
             </div>
@@ -102,4 +117,3 @@ export default function KdsPage() {
     </div>
   );
 }
-

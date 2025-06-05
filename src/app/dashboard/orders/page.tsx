@@ -1,5 +1,5 @@
 
-import type { Order, OrderItem, Modifier } from '@/types';
+import type { Order, OrderItem, Modifier, OrderStatus } from '@/types';
 import {
   Table,
   TableHeader,
@@ -23,7 +23,7 @@ const mockOrders: Order[] = [
       { id: 'oi1', menuItemId: 'item3', menuItemName: 'Grilled Salmon', quantity: 1, unitPrice: 22.00, selectedModifiers: [], totalPrice: 22.00, specialRequests: 'Well done' },
       { id: 'oi2', menuItemId: 'item8', menuItemName: 'Coca-Cola', quantity: 2, unitPrice: 3.00, selectedModifiers: [], totalPrice: 6.00 },
     ],
-    status: 'paid',
+    status: 'PAID',
     subtotal: 28.00,
     taxRate: 0.08,
     taxAmount: 2.24,
@@ -39,7 +39,7 @@ const mockOrders: Order[] = [
       { id: 'oi3', menuItemId: 'item4', menuItemName: 'Margherita Pizza', quantity: 1, unitPrice: 15.00, selectedModifiers: [{id: 'mod1', name: 'Extra Cheese', priceChange: 1.50}], totalPrice: 16.50 },
       { id: 'oi4', menuItemId: 'item1', menuItemName: 'Spring Rolls', quantity: 1, unitPrice: 8.99, selectedModifiers: [], totalPrice: 8.99 },
     ],
-    status: 'preparing',
+    status: 'IN_PROGRESS',
     subtotal: 25.49,
     taxRate: 0.08,
     taxAmount: 2.04,
@@ -54,7 +54,7 @@ const mockOrders: Order[] = [
     items: [
       { id: 'oi5', menuItemId: 'item5', menuItemName: 'Chicken Pasta', quantity: 2, unitPrice: 18.50, selectedModifiers: [], totalPrice: 37.00 },
     ],
-    status: 'pending',
+    status: 'OPEN',
     subtotal: 37.00,
     taxRate: 0.08,
     taxAmount: 2.96,
@@ -69,7 +69,7 @@ const mockOrders: Order[] = [
     items: [
       { id: 'oi6', menuItemId: 'item7', menuItemName: 'Tiramisu', quantity: 1, unitPrice: 8.50, selectedModifiers: [], totalPrice: 8.50 },
     ],
-    status: 'served',
+    status: 'DONE',
     subtotal: 8.50,
     taxRate: 0.08,
     taxAmount: 0.68,
@@ -85,7 +85,7 @@ const mockOrders: Order[] = [
       { id: 'oi7', menuItemId: 'item2', menuItemName: 'Garlic Bread', quantity: 1, unitPrice: 6.50, selectedModifiers: [], totalPrice: 6.50 },
       { id: 'oi8', menuItemId: 'item9', menuItemName: 'Fresh Orange Juice', quantity: 2, unitPrice: 5.00, selectedModifiers: [], totalPrice: 10.00 },
     ],
-    status: 'cancelled',
+    status: 'CANCELLED',
     subtotal: 16.50,
     taxRate: 0.08,
     taxAmount: 1.32,
@@ -95,17 +95,17 @@ const mockOrders: Order[] = [
   },
 ];
 
-const getStatusBadgeVariant = (status: OrderStatus): "default" | "secondary" | "destructive" | "outline" => {
+const getStatusBadgeVariant = (status: OrderStatus): "default" | "secondary" | "destructive" | "outline" | "accent" => {
   switch (status) {
-    case 'paid':
-      return 'default'; // Primary color (blue in this theme)
-    case 'preparing':
-      return 'secondary'; // Accent color (teal)
-    case 'served':
-      return 'outline'; // Muted foreground on card background
-    case 'pending':
-      return 'default'; // Use secondary for pending to distinguish from paid
-    case 'cancelled':
+    case 'OPEN':
+      return 'secondary'; // Cool Dark Gray for pending-like state
+    case 'IN_PROGRESS':
+      return 'default';   // Vibrant Electric Blue for active state
+    case 'DONE':
+      return 'outline';   // Card background with foreground text for completed pre-payment
+    case 'PAID':
+      return 'accent';    // Cool Teal for final success state
+    case 'CANCELLED':
       return 'destructive';
     default:
       return 'outline';
@@ -114,15 +114,15 @@ const getStatusBadgeVariant = (status: OrderStatus): "default" | "secondary" | "
 
 const getStatusBadgeTextClass = (status: OrderStatus): string => {
   switch (status) {
-    case 'paid':
-      return 'text-primary-foreground';
-    case 'preparing':
-      return 'text-accent-foreground'; // Changed from secondary-foreground
-    case 'served':
-      return 'text-foreground';
-    case 'pending':
+    case 'OPEN':
       return 'text-secondary-foreground';
-    case 'cancelled':
+    case 'IN_PROGRESS':
+      return 'text-primary-foreground';
+    case 'DONE':
+      return 'text-foreground'; // Default text on outline badge
+    case 'PAID':
+      return 'text-accent-foreground';
+    case 'CANCELLED':
       return 'text-destructive-foreground';
     default:
       return 'text-muted-foreground';
@@ -131,7 +131,7 @@ const getStatusBadgeTextClass = (status: OrderStatus): string => {
 
 
 export default function OrdersPage() {
-  const orders = mockOrders; // In a real app, fetch orders
+  const orders = mockOrders.sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); // Sort by newest first
 
   return (
     <div className="container mx-auto py-8">
@@ -157,7 +157,7 @@ export default function OrdersPage() {
                   <TableCell className="text-center">{order.tableNumber}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(order.status)} className={`${getStatusBadgeTextClass(order.status)} capitalize`}>
-                      {order.status}
+                      {order.status.replace('_', ' ')}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-center">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</TableCell>
