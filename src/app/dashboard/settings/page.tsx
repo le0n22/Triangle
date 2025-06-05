@@ -6,8 +6,9 @@ import { RestaurantSettings } from '@/components/features/settings/restaurant-se
 import { TableManagementSettings } from '@/components/features/settings/table-management-settings';
 import { CategoryManagementSettings } from '@/components/features/settings/category-management-settings';
 import { MenuItemManagementSettings } from '@/components/features/settings/menu-item-management-settings';
-import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings'; // New import
-import type { Table, MenuCategory, MenuItem, Modifier } from '@/types'; 
+import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings';
+import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings'; // New import
+import type { Table, MenuCategory, MenuItem, Modifier, DeliveryPlatform } from '@/types'; 
 
 // Mock data (ideally this would come from a global store or API in a real app)
 const mockTablesData: Table[] = [
@@ -41,18 +42,25 @@ const mockCategoriesData: MenuCategory[] = [
 
 const mockMenuItemsData: MenuItem[] = mockCategoriesData.flatMap(cat => cat.items);
 
+const mockDeliveryPlatforms: DeliveryPlatform[] = [
+  { id: 'dp1', name: 'Trendyol GO', apiKey: 'tg_test_key_123', apiSecret: 'tg_test_secret_xyz', isEnabled: true },
+  { id: 'dp2', name: 'Yemeksepeti', apiKey: 'ys_live_key_456', apiSecret: 'ys_live_secret_abc', isEnabled: true },
+  { id: 'dp3', name: 'Migros Yemek', apiKey: '', apiSecret: '', isEnabled: false },
+];
+
 
 export default function SettingsPage() {
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">Settings</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-6">
           <TabsTrigger value="restaurant">Restaurant</TabsTrigger>
           <TabsTrigger value="tables">Tables</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="menu_items">Menu Items</TabsTrigger>
           <TabsTrigger value="modifiers">Modifiers</TabsTrigger>
+          <TabsTrigger value="order_platforms">Order Platforms</TabsTrigger>
         </TabsList>
         <TabsContent value="restaurant">
           <RestaurantSettings />
@@ -72,6 +80,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="modifiers">
           <ModifierManagementSettings initialModifiers={mockModifiersData} />
+        </TabsContent>
+        <TabsContent value="order_platforms">
+          <OrderPlatformSettings initialPlatforms={mockDeliveryPlatforms} />
         </TabsContent>
       </Tabs>
     </div>

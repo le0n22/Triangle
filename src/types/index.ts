@@ -10,7 +10,7 @@ export interface Table {
 }
 
 export interface Modifier {
-  id: string;
+  id:string;
   name: string;
   priceChange: number; // Can be positive or negative
 }
@@ -75,3 +75,51 @@ export interface MenuCategory {
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'mobile';
+
+// For Order Tracking System
+export type ExternalOrderStatus = 
+  | 'PENDING_CONFIRMATION' 
+  | 'PREPARING' 
+  | 'READY_FOR_PICKUP' 
+  | 'ON_THE_WAY' 
+  | 'DELIVERED' 
+  | 'CANCELLED_BY_RESTAURANT'
+  | 'CANCELLED_BY_USER';
+
+export interface ExternalOrderItem {
+  id: string; // Could be platform's item ID or an internal one
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  notes?: string;
+  modifiers?: { name: string; price: number }[]; // Simplified modifiers
+}
+
+export interface ExternalOrder {
+  id: string; // Internal unique ID for this tracked order
+  platform: string; // e.g., "Trendyol GO", "Yemeksepeti"
+  platformOrderId: string; // The ID from the external platform
+  customerName: string;
+  customerAddress: string; // Simplified for now
+  customerPhoneNumber?: string;
+  items: ExternalOrderItem[];
+  subtotal: number;
+  deliveryFee: number;
+  platformFee?: number; // Optional fee charged by the platform
+  totalAmount: number; // Amount paid by customer
+  restaurantPayout?: number; // Amount restaurant receives
+  status: ExternalOrderStatus;
+  placedAt: string; // ISO Date string
+  estimatedDeliveryTime?: string; // ISO Date string
+  notes?: string; // Customer notes or special instructions
+}
+
+export interface DeliveryPlatform {
+  id: string;
+  name: string;
+  apiKey: string;
+  apiSecret: string;
+  isEnabled: boolean;
+  icon?: React.ElementType; // Optional: for displaying platform logo
+}
