@@ -1,0 +1,72 @@
+
+'use client';
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RestaurantSettings } from '@/components/features/settings/restaurant-settings';
+import { TableManagementSettings } from '@/components/features/settings/table-management-settings';
+import { CategoryManagementSettings } from '@/components/features/settings/category-management-settings';
+import { MenuItemManagementSettings } from '@/components/features/settings/menu-item-management-settings';
+import type { Table, MenuCategory, MenuItem, Modifier } from '@/types'; // Import types
+
+// Mock data (ideally this would come from a global store or API in a real app)
+const mockTablesData: Table[] = [
+  { id: 't1', number: 1, status: 'available', capacity: 4 },
+  { id: 't2', number: 2, status: 'occupied', capacity: 2, currentOrderId: 'ord123' },
+  { id: 't3', number: 3, status: 'reserved', capacity: 6 },
+];
+
+const mockModifiersData: Modifier[] = [
+  { id: 'mod1', name: 'Extra Cheese', priceChange: 1.50 },
+  { id: 'mod2', name: 'No Onions', priceChange: 0.00 },
+  { id: 'mod3', name: 'Spicy', priceChange: 0.50 },
+];
+
+const mockCategoriesData: MenuCategory[] = [
+  {
+    id: 'cat1', name: 'Appetizers', iconName: 'Soup', items: [
+      { id: 'item1', name: 'Spring Rolls', description: 'Crispy vegetable spring rolls served with sweet chili sauce.', price: 8.99, category: 'Appetizers', imageUrl: 'https://placehold.co/100x100.png', dataAiHint:'spring rolls', availableModifiers: [mockModifiersData[1]] },
+      { id: 'item2', name: 'Garlic Bread', description: 'Toasted baguette with garlic butter and herbs.', price: 6.50, category: 'Appetizers', imageUrl: 'https://placehold.co/100x100.png', dataAiHint:'garlic bread', availableModifiers: [mockModifiersData[0]] },
+    ]
+  },
+  {
+    id: 'cat2', name: 'Main Courses', iconName: 'UtensilsCrossed', items: [
+      { id: 'item3', name: 'Grilled Salmon', description: 'Fresh salmon fillet grilled to perfection, served with roasted vegetables.', price: 22.00, category: 'Main Courses', imageUrl: 'https://placehold.co/100x100.png', dataAiHint:'grilled salmon', availableModifiers: [mockModifiersData[2]] },
+      { id: 'item4', name: 'Margherita Pizza', description: 'Classic pizza with tomato, mozzarella, and basil.', price: 15.00, category: 'Main Courses', imageUrl: 'https://placehold.co/100x100.png', dataAiHint:'pizza food', availableModifiers: [mockModifiersData[0], mockModifiersData[2]] },
+    ]
+  },
+];
+
+const mockMenuItemsData: MenuItem[] = mockCategoriesData.flatMap(cat => cat.items);
+
+
+export default function SettingsPage() {
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-headline font-bold mb-8">Settings</h1>
+      <Tabs defaultValue="restaurant" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+          <TabsTrigger value="restaurant">Restaurant</TabsTrigger>
+          <TabsTrigger value="tables">Tables</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+          <TabsTrigger value="menu_items">Menu Items</TabsTrigger>
+        </TabsList>
+        <TabsContent value="restaurant">
+          <RestaurantSettings />
+        </TabsContent>
+        <TabsContent value="tables">
+          <TableManagementSettings initialTables={mockTablesData} />
+        </TabsContent>
+        <TabsContent value="categories">
+          <CategoryManagementSettings initialCategories={mockCategoriesData} />
+        </TabsContent>
+        <TabsContent value="menu_items">
+          <MenuItemManagementSettings 
+            initialMenuItems={mockMenuItemsData} 
+            categories={mockCategoriesData}
+            modifiers={mockModifiersData}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

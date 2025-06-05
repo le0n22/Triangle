@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ListOrdered, ShoppingCart, CreditCard, Printer, ClipboardList, ChefHat } from 'lucide-react';
+import { LayoutDashboard, ListOrdered, ShoppingCart, CreditCard, Printer, ClipboardList, ChefHat, Settings } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -34,6 +34,12 @@ export const navItems: NavItem[] = [
     href: '/dashboard/kds',
     icon: ChefHat,
     label: 'KDS',
+  },
+  {
+    title: 'Settings',
+    href: '/dashboard/settings',
+    icon: Settings,
+    label: 'Settings',
   },
   // These are placeholders for direct navigation if needed, but usually accessed contextually
   // {
