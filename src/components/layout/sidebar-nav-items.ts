@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ListOrdered, ShoppingCart, CreditCard, Printer, ClipboardList, ChefHat, Settings } from 'lucide-react';
+import { LayoutDashboard, Grid, ClipboardList, Route, ChefHat, Settings } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -12,22 +12,28 @@ export interface NavItem {
 
 export const navItems: NavItem[] = [
   {
-    title: 'Tables',
-    href: '/dashboard/tables',
+    title: 'Dashboard',
+    href: '/dashboard', // This redirects to /dashboard/tables by default
     icon: LayoutDashboard,
-    label: 'Tables',
+    label: 'Dashboard',
   },
   {
-    title: 'Menu',
-    href: '/dashboard/menu',
-    icon: ListOrdered,
-    label: 'Menu',
+    title: 'Tables',
+    href: '/dashboard/tables',
+    icon: Grid, // Changed icon for distinct "Tables" menu
+    label: 'Tables',
   },
   {
     title: 'Orders',
     href: '/dashboard/orders',
     icon: ClipboardList,
     label: 'Orders',
+  },
+  {
+    title: 'Tracking',
+    href: '/dashboard/tracking',
+    icon: Route,
+    label: 'Order Tracking',
   },
   {
     title: 'KDS',
@@ -41,26 +47,5 @@ export const navItems: NavItem[] = [
     icon: Settings,
     label: 'Settings',
   },
-  // These are placeholders for direct navigation if needed, but usually accessed contextually
-  // {
-  //   title: 'Order Entry',
-  //   href: '/dashboard/order/new', // Example: new order, usually context based from table
-  //   icon: ShoppingCart,
-  //   label: 'Order',
-  //   disabled: true, // Usually not a direct nav item
-  // },
-  // {
-  //   title: 'Payment',
-  //   href: '/dashboard/payment', // Needs an orderId
-  //   icon: CreditCard,
-  //   label: 'Payment',
-  //   disabled: true,
-  // },
-  // {
-  //   title: 'KOT',
-  //   href: '/dashboard/kot', // Needs an orderId
-  //   icon: Printer,
-  //   label: 'KOT',
-  //   disabled: true,
-  // },
 ];
+
