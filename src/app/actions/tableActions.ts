@@ -2,20 +2,23 @@
 'use server';
 
 import prisma from '@/lib/prisma';
-import type { Table, TableStatus } from '@/types';
+import type { Table as AppTable, TableStatus } from '@/types';
+import type { Table as PrismaTable } from '@prisma/client';
 
-// Helper function to map Prisma Table to our Table type
-function mapPrismaTableToAppTable(prismaTable: any): Table {
+// Helper function to map Prisma Table to our AppTable type
+function mapPrismaTableToAppTable(prismaTable: PrismaTable): AppTable {
   return {
-    ...prismaTable,
-    status: prismaTable.status as TableStatus,
-    currentOrderTotal: prismaTable.currentOrderTotal === null ? undefined : prismaTable.currentOrderTotal,
-    name: prismaTable.name === null ? undefined : prismaTable.name,
-    currentOrderId: prismaTable.currentOrderId === null ? undefined : prismaTable.currentOrderId,
+    id: prismaTable.id,
+    number: prismaTable.number,
+    capacity: prismaTable.capacity,
+    name: prismaTable.name ?? undefined,
+    status: prismaTable.status.toLowerCase() as TableStatus, // Ensure status is lowercase
+    currentOrderId: prismaTable.currentOrderId ?? undefined,
+    currentOrderTotal: prismaTable.currentOrderTotal ?? undefined,
   };
 }
 
-export async function getAllTables(): Promise<Table[]> {
+export async function getAllTables(): Promise<AppTable[]> {
   try {
     const tables = await prisma.table.findMany({
       orderBy: {
@@ -25,6 +28,7 @@ export async function getAllTables(): Promise<Table[]> {
     return tables.map(mapPrismaTableToAppTable);
   } catch (error) {
     console.error('Error fetching tables:', error);
+    // Consider returning a more specific error or re-throwing
     return [];
   }
 }
@@ -33,7 +37,7 @@ export async function createTableAction(data: {
   name?: string;
   number: number;
   capacity: number;
-}): Promise<Table | { error: string }> {
+}): Promise<AppTable | { error: string }> {
   try {
     if (data.number === null || data.number === undefined || data.capacity === null || data.capacity === undefined) {
       return { error: 'Table number and capacity are required.' };
@@ -52,7 +56,7 @@ export async function createTableAction(data: {
 
     const newTable = await prisma.table.create({
       data: {
-        name: data.name || null, // Ensure name is explicitly null if undefined/empty
+        name: data.name || null,
         number: data.number,
         capacity: data.capacity,
         status: 'AVAILABLE', // Prisma enum, ensure it's uppercase
@@ -61,18 +65,17 @@ export async function createTableAction(data: {
     return mapPrismaTableToAppTable(newTable);
   } catch (error) {
     console.error('Error creating table:', error);
-    // Check for unique constraint violation if not caught by above check (though it should be)
     if ((error as any).code === 'P2002' && (error as any).meta?.target?.includes('number')) {
         return { error: `Table with number ${data.number} already exists.` };
     }
-    return { error: 'Failed to create table. Please check server logs.' };
+    return { error: 'Failed to create table. Please check server logs for more details.' };
   }
 }
 
 export async function updateTableAction(
   id: string,
   data: Partial<{ name?: string; number: number; capacity: number; status: TableStatus }>
-): Promise<Table | { error: string }> {
+): Promise<AppTable | { error: string }> {
   try {
     if (data.number !== undefined && data.number <= 0) {
         return { error: 'Table number must be a positive value.' };
@@ -97,40 +100,41 @@ export async function updateTableAction(
     const updatedTable = await prisma.table.update({
       where: { id },
       data: {
-        name: data.name, // Prisma handles undefined correctly (no update)
+        name: data.name,
         number: data.number,
         capacity: data.capacity,
-        status: data.status ? data.status.toUpperCase() as any : undefined, // Map to uppercase for Prisma enum
+        // Ensure status is uppercase for Prisma enum
+        status: data.status ? (data.status.toUpperCase() as typeof PrismaTable['status']) : undefined,
       },
     });
     return mapPrismaTableToAppTable(updatedTable);
   } catch (error) {
     console.error('Error updating table:', error);
     if ((error as any).code === 'P2002' && (error as any).meta?.target?.includes('number')) {
+        // This specific error handling might be redundant due to the check above,
+        // but kept for safety in case of race conditions or other scenarios.
         return { error: `Another table with number ${data.number} already exists.`};
     }
-    return { error: 'Failed to update table. Please check server logs.' };
+    return { error: 'Failed to update table. Please check server logs for more details.' };
   }
 }
 
 export async function deleteTableAction(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     // Consider relations:
-    // - If a table has an active order, should deletion be prevented?
-    // For now, Prisma schema uses onDelete: SetNull for currentOrder, so it will be disassociated.
-    // Orders in the Order[] relation are not directly handled by onDelete here,
-    // you might need to archive or reassign them if it's a hard requirement.
-    const tableToDelete = await prisma.table.findUnique({
-        where: { id },
-        include: { currentOrder: true, orders: true } // Check if it has associated orders
-    });
-
-    if (tableToDelete?.currentOrderId || (tableToDelete?.orders && tableToDelete.orders.length > 0)) {
-        // Example: Prevent deletion if there are any orders associated.
-        // Adjust this logic based on your business rules.
-        // return { success: false, error: 'Cannot delete table with active or past orders. Please clear/reassign orders first.' };
-    }
-
+    // If a table has an active order, deletion might be prevented by business logic
+    // or orders could be archived/reassigned.
+    // Prisma schema uses onDelete: SetNull for currentOrder, so it will be disassociated.
+    // Orders in the Order[] relation are not directly handled by onDelete here.
+    
+    // Example check (can be expanded based on business rules):
+    // const tableToDelete = await prisma.table.findUnique({
+    //     where: { id },
+    //     include: { currentOrder: true, orders: { take: 1 } } // Check if it has any associated orders
+    // });
+    // if (tableToDelete?.currentOrderId || (tableToDelete?.orders && tableToDelete.orders.length > 0)) {
+    //     return { success: false, error: 'Cannot delete table with active or past orders. Please clear/reassign orders first.' };
+    // }
 
     await prisma.table.delete({
       where: { id },
@@ -138,15 +142,17 @@ export async function deleteTableAction(id: string): Promise<{ success: boolean;
     return { success: true };
   } catch (error) {
     console.error('Error deleting table:', error);
-    return { success: false, error: 'Failed to delete table. It might be in use or have related records.' };
+    // Prisma's P2025 error code indicates record not found, which is okay for delete.
+    // More specific error handling can be added if needed (e.g., foreign key constraints if onDelete behavior was different)
+    return { success: false, error: 'Failed to delete table. It might have related records or no longer exists.' };
   }
 }
 
-export async function updateTableStatusAction(tableId: string, status: TableStatus): Promise<Table | { error: string }> {
+export async function updateTableStatusAction(tableId: string, status: TableStatus): Promise<AppTable | { error: string }> {
   try {
     const updatedTable = await prisma.table.update({
       where: { id: tableId },
-      data: { status: status.toUpperCase() as any }, // Map to uppercase for Prisma enum
+      data: { status: status.toUpperCase() as typeof PrismaTable['status'] },
     });
      return mapPrismaTableToAppTable(updatedTable);
   } catch (error) {
@@ -155,17 +161,18 @@ export async function updateTableStatusAction(tableId: string, status: TableStat
   }
 }
 
-// This action is more complex as it involves order creation/linking.
-// It might be better handled within an "OrderService" or similar.
-// For now, it ensures the table status and order details are updated.
-export async function updateTableOrderDetailsAction(tableId: string, orderId: string | null, orderTotal: number | null): Promise<Table | { error: string }> {
+export async function updateTableOrderDetailsAction(
+    tableId: string, 
+    orderId: string | null, 
+    orderTotal: number | null
+): Promise<AppTable | { error: string }> {
   try {
     const updatedTable = await prisma.table.update({
       where: { id: tableId },
       data: {
         currentOrderId: orderId,
         currentOrderTotal: orderTotal,
-        status: orderId ? 'OCCUPIED' : 'AVAILABLE', // Prisma enum, ensure it's uppercase
+        status: orderId ? 'OCCUPIED' : 'AVAILABLE', // Set status based on order presence
       },
     });
     return mapPrismaTableToAppTable(updatedTable);
