@@ -17,7 +17,7 @@ interface OrderListPanelProps {
   onListChange: (list: 'incoming' | 'outgoing') => void;
   incomingCount: number;
   outgoingCount: number;
-  totalIncomingAmount: number;
+  // totalIncomingAmount prop is removed
 }
 
 export function OrderListPanel({
@@ -28,7 +28,6 @@ export function OrderListPanel({
   onListChange,
   incomingCount,
   outgoingCount,
-  totalIncomingAmount,
 }: OrderListPanelProps) {
 
   const handleNewOrder = () => {
@@ -70,18 +69,7 @@ export function OrderListPanel({
         )}
       </ScrollArea>
 
-      <div className="p-3 border-t border-border bg-accent/80 text-accent-foreground flex justify-between items-center rounded-bl-lg shrink-0">
-        <Button
-          onClick={handleNewOrder}
-          className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-md text-sm"
-        >
-          <PlusCircle className="mr-2 h-4 w-4" /> YENİ SİPARİŞ
-        </Button>
-        <div className="text-right">
-          <span className="text-xs block opacity-90">TOPLAM</span>
-          <span className="font-bold text-lg">₺{totalIncomingAmount.toFixed(2)}</span>
-        </div>
-      </div>
+      {/* Removed the bottom bar with "NEW ORDER" button and total amount */}
     </div>
   );
 }

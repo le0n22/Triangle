@@ -44,16 +44,16 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
     <Card className="h-full flex flex-col shadow-lg rounded-r-lg bg-card text-card-foreground overflow-hidden">
       <CardHeader className="p-4 border-b border-border shrink-0">
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-3">
-            <PlatformIcon className="w-10 h-10" />
-            <div>
-              <CardTitle className="text-lg font-semibold">
+          <div className="flex items-center gap-3 min-w-0"> {/* Added min-w-0 */}
+            <PlatformIcon className="w-10 h-10 shrink-0" />
+            <div className="min-w-0"> {/* Added min-w-0 */}
+              <CardTitle className="text-lg font-semibold truncate">
                 {order.shortCode} - {order.customerName}
               </CardTitle>
-              <CardDescription className="text-sm">{order.paymentServiceType}</CardDescription>
+              <CardDescription className="text-sm truncate">{order.paymentServiceType}</CardDescription>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleEditOrder} className="text-muted-foreground hover:text-primary">
+          <Button variant="ghost" size="icon" onClick={handleEditOrder} className="text-muted-foreground hover:text-primary shrink-0">
             <Edit3 className="h-5 w-5" />
             <span className="sr-only">Edit Order</span>
           </Button>
@@ -61,7 +61,7 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         <div className="mt-2 space-y-1 text-xs text-muted-foreground">
           {order.customerPhoneNumber && (
             <div className="flex items-center">
-              <Phone className="w-3 h-3 mr-1.5" /> {order.customerPhoneNumber}
+              <Phone className="w-3 h-3 mr-1.5 shrink-0" /> {order.customerPhoneNumber}
             </div>
           )}
           <div className="flex items-start">
@@ -87,8 +87,8 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           <ul className="space-y-1.5">
             {order.items.map((item) => (
               <li key={item.id} className="flex justify-between items-center text-sm pb-1 border-b border-border/50 last:border-b-0">
-                <span>{item.quantity}x {item.name}</span>
-                <span className="font-medium">₺{item.totalPrice.toFixed(2)}</span>
+                <span className="truncate pr-2">{item.quantity}x {item.name}</span>
+                <span className="font-medium whitespace-nowrap">₺{item.totalPrice.toFixed(2)}</span>
               </li>
             ))}
              {order.items.length === 0 && <p className="text-xs text-muted-foreground">No items in this order.</p>}
@@ -103,12 +103,7 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           </div>
         )}
       </CardContent>
-      <div className="p-4 border-t border-border text-right shrink-0">
-         <div className="flex justify-between items-center text-lg font-bold">
-            <span>Total:</span>
-            <span>₺{order.totalAmount.toFixed(2)}</span>
-          </div>
-      </div>
+      {/* Removed the bottom total amount display div */}
     </Card>
   );
 }

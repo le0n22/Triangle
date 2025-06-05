@@ -10,7 +10,7 @@ import {
   YemeksepetiIcon,
   GetirIcon,
 } from '@/components/features/order-tracking/horizontal/platform-icons';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns'; // Import format and parseISO
 
 // Enhanced mock data for horizontal view
 const initialMockExternalOrders: ExternalOrder[] = [
@@ -114,9 +114,7 @@ export default function HorizontalTrackingPage() {
 
   const ordersToDisplay = activeList === 'incoming' ? incomingOrders : outgoingOrders;
 
-  const totalIncomingAmount = useMemo(() => {
-    return incomingOrders.reduce((sum, order) => sum + order.totalAmount, 0);
-  }, [incomingOrders]);
+  // totalIncomingAmount calculation is removed
   
   const handleSelectOrder = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -126,9 +124,9 @@ export default function HorizontalTrackingPage() {
     <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
       {/* Main Content Area */}
       <main className="flex-grow flex flex-col p-4 overflow-hidden">
-        <div className="flex-grow flex gap-4 overflow-hidden"> {/* This div now handles the row layout and grows */}
+        <div className="flex-grow flex gap-4 overflow-hidden min-h-0"> {/* This div now handles the row layout and grows */}
           {/* Left Panel Wrapper */}
-          <div className="w-2/5 min-w-[400px] max-w-[600px] flex flex-col min-h-0">
+          <div className="w-2/5 min-w-[360px] max-w-[500px] flex flex-col min-h-0"> {/* Adjusted widths */}
             <OrderListPanel
               orders={ordersToDisplay}
               selectedOrderId={selectedOrderId}
@@ -137,7 +135,7 @@ export default function HorizontalTrackingPage() {
               onListChange={setActiveList}
               incomingCount={incomingOrders.length}
               outgoingCount={outgoingOrders.length}
-              totalIncomingAmount={totalIncomingAmount}
+              // totalIncomingAmount prop is removed
             />
           </div>
           {/* Right Panel Wrapper */}

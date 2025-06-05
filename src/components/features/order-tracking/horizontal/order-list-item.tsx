@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { ExternalOrder } from '@/types';
+import type { ExternalOrder, ExternalOrderStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -43,17 +43,17 @@ export function HorizontalOrderListItem({ order, isSelected, onSelect }: Horizon
     >
       <PlatformIcon className="w-8 h-8 mr-3 shrink-0" />
       <div className="flex-grow grid grid-cols-[auto_1fr_auto] items-center gap-x-2 text-sm">
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-0"> {/* Added min-w-0 for better truncation handling */}
           <span className="font-medium text-xs">{format(parseISO(order.placedAt), 'HH:mm')} {order.shortCode}</span>
           <span className="font-semibold truncate text-card-foreground">{order.customerName}</span>
-          <span className="text-xs text-muted-foreground">{order.paymentServiceType}</span>
+          <span className="text-xs text-muted-foreground truncate">{order.paymentServiceType}</span>
         </div>
 
-        <Badge variant="outline" className={cn("justify-self-end text-xs py-0.5 px-2 h-fit", statusConfig.className)}>
+        <Badge variant="outline" className={cn("justify-self-end text-xs py-0.5 px-2 h-fit whitespace-nowrap", statusConfig.className)}>
           {StatusIcon && <StatusIcon className="w-3 h-3 mr-1" />}
           {statusConfig.label}
         </Badge>
-        <span className="font-semibold text-right text-card-foreground">₺{order.totalAmount.toFixed(2)}</span>
+        {/* Removed the totalAmount span here */}
       </div>
     </div>
   );
