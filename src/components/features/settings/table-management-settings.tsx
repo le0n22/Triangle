@@ -22,7 +22,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'; // Removed AlertDialogTrigger as it's used with asChild
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +37,7 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getAllTables, createTableAction, updateTableAction, deleteTableAction } from '@/app/actions/tableActions';
+import { getAllTables, createTableAction, updateTableAction, deleteTableAction } from '@backend/actions/tableActions';
 
 export function TableManagementSettings() {
   const [tables, setTables] = useState<Table[]>([]);
@@ -88,7 +88,7 @@ export function TableManagementSettings() {
       toast({ title: 'Table Added', description: `Table ${result.number} has been added.` });
       setAddForm({ name: '', number: '', capacity: '' });
       setIsAddDialogOpen(false);
-      fetchTables(); // Re-fetch tables
+      fetchTables(); 
     }
   };
 
@@ -118,7 +118,7 @@ export function TableManagementSettings() {
       toast({ title: 'Table Updated', description: `Table ${result.number} has been updated.` });
       setIsEditDialogOpen(false);
       setEditingTable(null);
-      fetchTables(); // Re-fetch tables
+      fetchTables(); 
     }
   };
   
@@ -131,7 +131,7 @@ export function TableManagementSettings() {
     const result = await deleteTableAction(tableToDelete.id);
     if (result.success) {
       toast({ title: 'Table Deleted', description: `Table ${tableToDelete.number} has been deleted.` });
-      fetchTables(); // Re-fetch tables
+      fetchTables(); 
     } else {
       toast({ title: 'Error Deleting Table', description: result.error || 'Failed to delete table.', variant: 'destructive' });
     }
@@ -244,7 +244,6 @@ export function TableManagementSettings() {
         )}
       </CardContent>
 
-      {/* Edit Table Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
           <DialogHeader>
