@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Grid, ClipboardList, Route, ChefHat, Settings, BookOpenText } from 'lucide-react';
+import { LayoutDashboard, Grid, ClipboardList, Route, ChefHat, Settings, BookOpenText, BarChart3 } from 'lucide-react'; // Added BarChart3
 
 export interface NavItem {
   title: string;
@@ -13,7 +13,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   {
     title: 'Dashboard',
-    href: '/dashboard/overview', // Updated to point to the new overview page
+    href: '/dashboard/overview',
     icon: LayoutDashboard,
     label: 'Dashboard Overview',
   },
@@ -24,7 +24,7 @@ export const navItems: NavItem[] = [
     label: 'Table Layout',
   },
   {
-    title: 'Menu', // Added Menu Link to sidebar for consistency with quick menu
+    title: 'Menu',
     href: '/dashboard/menu',
     icon: BookOpenText,
     label: 'Digital Menu',
@@ -46,6 +46,12 @@ export const navItems: NavItem[] = [
     href: '/dashboard/kds',
     icon: ChefHat,
     label: 'Kitchen Display',
+  },
+  {
+    title: 'Reports', // New Item
+    href: '/dashboard/reports',
+    icon: BarChart3,
+    label: 'Sales & Performance Reports',
   },
   {
     title: 'Settings',
