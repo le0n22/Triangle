@@ -2,15 +2,16 @@
 'use client';
 
 import { QuickMenuItem } from './quick-menu-item';
-import { Grid, BookOpenText, ClipboardList, ChefHat, Settings, BarChart3 } from 'lucide-react'; // Removed TrendingUp, added BarChart3
+import { Grid, BookOpenText, ClipboardList, ChefHat, Settings, BarChart3, Route } from 'lucide-react'; // Added Route
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 const menuItems = [
   { title: 'Tables', href: '/dashboard/tables', Icon: Grid },
   { title: 'Digital Menu', href: '/dashboard/menu', Icon: BookOpenText },
   { title: 'Orders', href: '/dashboard/orders', Icon: ClipboardList },
+  { title: 'Tracking', href: '/dashboard/tracking', Icon: Route }, // New Item
   { title: 'KDS', href: '/dashboard/kds', Icon: ChefHat },
-  { title: 'Reports', href: '/dashboard/reports', Icon: BarChart3 }, // New Item
+  { title: 'Reports', href: '/dashboard/reports', Icon: BarChart3 },
   { title: 'Settings', href: '/dashboard/settings', Icon: Settings },
 ];
 
