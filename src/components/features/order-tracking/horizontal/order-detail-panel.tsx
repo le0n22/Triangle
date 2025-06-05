@@ -16,7 +16,7 @@ interface OrderDetailPanelProps {
 export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
   if (!order) {
     return (
-      <div className="h-full flex items-center justify-center bg-muted/30 text-muted-foreground rounded-r-lg p-6">
+      <div className="h-full flex flex-col items-center justify-center bg-muted/30 text-muted-foreground rounded-r-lg p-6">
         <Info className="w-10 h-10 mr-4" />
         <p className="text-lg">Select an order to view details.</p>
       </div>
@@ -42,13 +42,13 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
 
   return (
     <Card className="h-full flex flex-col shadow-lg rounded-r-lg bg-background text-foreground overflow-hidden">
-      <CardHeader className="p-4 border-b border-border">
+      <CardHeader className="p-4 border-b border-border shrink-0">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-3">
             <PlatformIcon className="w-10 h-10" />
             <div>
               <CardTitle className="text-lg font-semibold">
-                {format(parseISO(order.placedAt), 'HH:mm')} {order.shortCode} - {order.customerName}
+                {order.shortCode} - {order.customerName}
               </CardTitle>
               <CardDescription className="text-sm">{order.paymentServiceType}</CardDescription>
             </div>
@@ -103,7 +103,7 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
           </div>
         )}
       </CardContent>
-      <div className="p-4 border-t border-border text-right">
+      <div className="p-4 border-t border-border text-right shrink-0">
          <div className="flex justify-between items-center text-lg font-bold">
             <span>Total:</span>
             <span>₺{order.totalAmount.toFixed(2)}</span>

@@ -5,15 +5,13 @@ import { useState, useMemo } from 'react';
 import type { ExternalOrder } from '@/types';
 import { OrderListPanel } from '@/components/features/order-tracking/horizontal/order-list-panel';
 import { OrderDetailPanel } from '@/components/features/order-tracking/horizontal/order-detail-panel';
-import { Bell, Wifi, Server, UserCircle, ArrowLeft } from 'lucide-react';
+import { Bell, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import {
-  platformIconMap,
   TrendyolIcon,
   YemeksepetiIcon,
   GetirIcon,
-  GenericPlatformIcon
 } from '@/components/features/order-tracking/horizontal/platform-icons';
 import { format, parseISO } from 'date-fns';
 
@@ -122,20 +120,18 @@ export default function HorizontalTrackingPage() {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-foreground overflow-hidden">
+    <div className="h-screen w-full flex flex-col bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-foreground overflow-hidden">
       {/* Top Bar */}
-      <header className="h-16 flex items-center justify-between px-6 bg-black/30 backdrop-blur-sm shadow-md text-sm">
+      <header className="h-16 flex items-center justify-between px-6 bg-black/30 backdrop-blur-sm shadow-md text-sm shrink-0">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/tracking">
             <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           </Link>
-          {/* Removed "MENULUX Pos" and "TAKE AWAY" */}
         </div>
         <div className="flex items-center gap-4 text-xs">
           <Bell className="h-5 w-5 text-yellow-400" />
-          {/* Removed Internet/Server status and User info */}
         </div>
       </header>
 
@@ -153,7 +149,7 @@ export default function HorizontalTrackingPage() {
             totalIncomingAmount={totalIncomingAmount}
           />
         </div>
-        <div className="flex-grow">
+        <div className="flex-grow flex flex-col"> {/* Ensure this div can also flex its child */}
           <OrderDetailPanel order={selectedOrder} />
         </div>
       </main>
