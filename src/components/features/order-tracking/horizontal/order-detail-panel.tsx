@@ -70,7 +70,7 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-grow p-4 space-y-4 overflow-y-auto">
+      <CardContent className="flex-grow min-h-0 p-4 space-y-4 overflow-y-auto">
         <div className="grid grid-cols-2 gap-3">
           <Button onClick={handleApprove} className="bg-green-600 hover:bg-green-700 text-white w-full">
             <CheckCircle className="mr-2 h-4 w-4" /> Onayla

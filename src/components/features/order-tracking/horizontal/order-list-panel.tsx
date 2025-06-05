@@ -38,7 +38,7 @@ export function OrderListPanel({
 
   return (
     <div className="h-full flex flex-col bg-card text-card-foreground shadow-lg rounded-l-lg">
-      <div className="p-4 border-b border-border">
+      <div className="p-4 border-b border-border shrink-0">
         <Tabs value={activeList} onValueChange={(value) => onListChange(value as 'incoming' | 'outgoing')} className="w-full">
           <div className="flex justify-between items-center">
             <TabsList className="grid grid-cols-2 w-auto">
@@ -53,7 +53,7 @@ export function OrderListPanel({
         </Tabs>
       </div>
 
-      <ScrollArea className="flex-grow">
+      <ScrollArea className="flex-grow min-h-0">
         {orders.length > 0 ? (
           orders.map((order) => (
             <HorizontalOrderListItem
@@ -70,7 +70,7 @@ export function OrderListPanel({
         )}
       </ScrollArea>
 
-      <div className="p-3 border-t border-border bg-accent/80 text-accent-foreground flex justify-between items-center rounded-bl-lg">
+      <div className="p-3 border-t border-border bg-accent/80 text-accent-foreground flex justify-between items-center rounded-bl-lg shrink-0">
         <Button
           onClick={handleNewOrder}
           className="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-md text-sm"
