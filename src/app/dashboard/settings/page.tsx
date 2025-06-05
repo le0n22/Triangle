@@ -6,7 +6,8 @@ import { RestaurantSettings } from '@/components/features/settings/restaurant-se
 import { TableManagementSettings } from '@/components/features/settings/table-management-settings';
 import { CategoryManagementSettings } from '@/components/features/settings/category-management-settings';
 import { MenuItemManagementSettings } from '@/components/features/settings/menu-item-management-settings';
-import type { Table, MenuCategory, MenuItem, Modifier } from '@/types'; // Import types
+import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings'; // New import
+import type { Table, MenuCategory, MenuItem, Modifier } from '@/types'; 
 
 // Mock data (ideally this would come from a global store or API in a real app)
 const mockTablesData: Table[] = [
@@ -19,6 +20,8 @@ const mockModifiersData: Modifier[] = [
   { id: 'mod1', name: 'Extra Cheese', priceChange: 1.50 },
   { id: 'mod2', name: 'No Onions', priceChange: 0.00 },
   { id: 'mod3', name: 'Spicy', priceChange: 0.50 },
+  { id: 'mod4', name: 'Large Size', priceChange: 2.00 },
+  { id: 'mod5', name: 'Gluten-Free Base', priceChange: 2.50 },
 ];
 
 const mockCategoriesData: MenuCategory[] = [
@@ -31,7 +34,7 @@ const mockCategoriesData: MenuCategory[] = [
   {
     id: 'cat2', name: 'Main Courses', iconName: 'UtensilsCrossed', items: [
       { id: 'item3', name: 'Grilled Salmon', description: 'Fresh salmon fillet grilled to perfection, served with roasted vegetables.', price: 22.00, category: 'Main Courses', imageUrl: 'https://placehold.co/100x100.png', dataAiHint:'grilled salmon', availableModifiers: [mockModifiersData[2]] },
-      { id: 'item4', name: 'Margherita Pizza', description: 'Classic pizza with tomato, mozzarella, and basil.', price: 15.00, category: 'Main Courses', imageUrl: 'https://placehold.co/100x100.png', dataAiHint:'pizza food', availableModifiers: [mockModifiersData[0], mockModifiersData[2]] },
+      { id: 'item4', name: 'Margherita Pizza', description: 'Classic pizza with tomato, mozzarella, and basil.', price: 15.00, category: 'Main Courses', imageUrl: 'https://placehold.co/100x100.png', dataAiHint:'pizza food', availableModifiers: [mockModifiersData[0], mockModifiersData[2], mockModifiersData[4]] },
     ]
   },
 ];
@@ -44,11 +47,12 @@ export default function SettingsPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">Settings</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-6">
           <TabsTrigger value="restaurant">Restaurant</TabsTrigger>
           <TabsTrigger value="tables">Tables</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="menu_items">Menu Items</TabsTrigger>
+          <TabsTrigger value="modifiers">Modifiers</TabsTrigger>
         </TabsList>
         <TabsContent value="restaurant">
           <RestaurantSettings />
@@ -65,6 +69,9 @@ export default function SettingsPage() {
             categories={mockCategoriesData}
             modifiers={mockModifiersData}
           />
+        </TabsContent>
+        <TabsContent value="modifiers">
+          <ModifierManagementSettings initialModifiers={mockModifiersData} />
         </TabsContent>
       </Tabs>
     </div>
