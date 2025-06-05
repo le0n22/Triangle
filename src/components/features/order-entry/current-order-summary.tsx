@@ -5,8 +5,21 @@ import type { Order, OrderItem, Modifier } from '@/types';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Edit3, PlusCircle, MinusCircle, Printer, CreditCard, ChevronLeft } from 'lucide-react';
+import { 
+  Trash2, 
+  Edit3, 
+  PlusCircle, 
+  MinusCircle, 
+  Printer, 
+  CreditCard, 
+  ChevronLeft,
+  SplitSquareHorizontal, // Icon for Split Bill
+  Percent, // Icon for Discount
+  ArrowRightLeft, // Icon for Transfer Table
+  Ban // Icon for Cancel Order
+} from 'lucide-react';
 import Link from 'next/link'; // For "Back to Tables"
+import { useToast } from '@/hooks/use-toast'; // For feedback
 
 interface CurrentOrderSummaryProps {
   order: Order | null;
@@ -25,8 +38,44 @@ export function CurrentOrderSummary({
   onConfirmOrder,
   onGoToPayment
 }: CurrentOrderSummaryProps) {
+  const { toast } = useToast();
 
-  if (!order) { // Simplified check, as OrderPanel initializes an order
+  const handleSplitBill = () => {
+    if (!order || order.items.length === 0) return;
+    console.log('Action: Split Bill for order', order.id);
+    toast({ title: 'Split Bill', description: 'Functionality to split the bill would be here.' });
+  };
+
+  const handlePrintBill = () => {
+    if (!order || order.items.length === 0) return;
+    console.log('Action: Print Bill for order', order.id);
+    toast({ title: 'Printing Bill...', description: 'Preparing bill for printing.' });
+    // In a real scenario, you might format a bill component for printing
+    window.print(); 
+  };
+
+  const handleApplyDiscount = () => {
+    if (!order || order.items.length === 0) return;
+    console.log('Action: Apply Discount for order', order.id);
+    toast({ title: 'Apply Discount', description: 'Discount modal or controls would appear here.' });
+  };
+
+  const handleTransferTable = () => {
+    if (!order) return;
+    console.log('Action: Transfer Table for order', order.id);
+    toast({ title: 'Transfer Table', description: `Initiating transfer for table ${order.tableNumber}.` });
+  };
+
+  const handleCancelOrder = () => {
+    if (!order) return;
+    console.log('Action: Cancel Order', order.id);
+    // Add logic to confirm cancellation, update order status, etc.
+    toast({ title: 'Order Cancelled', description: `Order ${order.id} has been cancelled.`, variant: 'destructive' });
+    // Potentially navigate away or clear order items after confirmation
+  };
+
+
+  if (!order) { 
     return (
       <div className="p-6 text-center text-muted-foreground h-full flex flex-col justify-center items-center">
         <ShoppingCartIcon className="w-16 h-16 mb-4 text-gray-400" />
@@ -35,7 +84,9 @@ export function CurrentOrderSummary({
     );
   }
   
-  if (order.items.length === 0) {
+  const noItems = order.items.length === 0;
+
+  if (noItems) {
     return (
       <div className="flex flex-col h-full bg-card text-card-foreground p-4">
         <div className="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground p-6">
@@ -124,6 +175,26 @@ export function CurrentOrderSummary({
           <span>${order.totalAmount.toFixed(2)}</span>
         </div>
       </div>
+
+      {/* New Action Buttons */}
+      <div className="my-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <Button variant="outline" onClick={handleSplitBill} disabled={noItems}>
+          <SplitSquareHorizontal className="mr-2 h-4 w-4" /> Split Bill
+        </Button>
+        <Button variant="outline" onClick={handlePrintBill} disabled={noItems}>
+          <Printer className="mr-2 h-4 w-4" /> Print Bill
+        </Button>
+        <Button variant="outline" onClick={handleApplyDiscount} disabled={noItems}>
+          <Percent className="mr-2 h-4 w-4" /> Discount
+        </Button>
+        <Button variant="outline" onClick={handleTransferTable} disabled={noItems}>
+          <ArrowRightLeft className="mr-2 h-4 w-4" /> Transfer
+        </Button>
+        <Button variant="destructive-outline" onClick={handleCancelOrder} disabled={noItems} className="col-span-2 sm:col-span-1 border-destructive text-destructive hover:bg-destructive/10">
+          <Ban className="mr-2 h-4 w-4" /> Cancel Order
+        </Button>
+      </div>
+      
       <div className="mt-auto space-y-3 pt-4 border-t border-border">
             <Link href="/dashboard/tables" passHref>
                 <Button variant="outline" size="lg" className="w-full">
@@ -134,7 +205,7 @@ export function CurrentOrderSummary({
                 onClick={onConfirmOrder} 
                 size="lg" 
                 className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                disabled={order.items.length === 0}
+                disabled={noItems}
             >
                 <Printer className="mr-2 h-5 w-5" /> Confirm Order & Print KOT
             </Button>
@@ -142,7 +213,7 @@ export function CurrentOrderSummary({
                 onClick={onGoToPayment} 
                 size="lg" 
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                disabled={order.items.length === 0}
+                disabled={noItems}
             >
                 <CreditCard className="mr-2 h-5 w-5" /> Proceed to Payment
             </Button>
@@ -172,3 +243,4 @@ function ShoppingCartIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   )
 }
+
