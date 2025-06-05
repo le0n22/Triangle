@@ -1,25 +1,61 @@
+
 'use client';
 
 import type { Order, OrderItem, Modifier } from '@/types';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Edit3, PlusCircle, MinusCircle } from 'lucide-react';
+import { Trash2, Edit3, PlusCircle, MinusCircle, Printer, CreditCard, ChevronLeft } from 'lucide-react';
+import Link from 'next/link'; // For "Back to Tables"
 
 interface CurrentOrderSummaryProps {
   order: Order | null;
   onUpdateItemQuantity: (itemId: string, newQuantity: number) => void;
   onRemoveItem: (itemId: string) => void;
-  onEditItemModifiers: (item: OrderItem) => void; // To open modifier modal
+  onEditItemModifiers: (item: OrderItem) => void;
+  onConfirmOrder: () => void;
+  onGoToPayment: () => void;
 }
 
-export function CurrentOrderSummary({ order, onUpdateItemQuantity, onRemoveItem, onEditItemModifiers }: CurrentOrderSummaryProps) {
-  if (!order || order.items.length === 0) {
+export function CurrentOrderSummary({ 
+  order, 
+  onUpdateItemQuantity, 
+  onRemoveItem, 
+  onEditItemModifiers,
+  onConfirmOrder,
+  onGoToPayment
+}: CurrentOrderSummaryProps) {
+
+  if (!order) { // Simplified check, as OrderPanel initializes an order
     return (
       <div className="p-6 text-center text-muted-foreground h-full flex flex-col justify-center items-center">
         <ShoppingCartIcon className="w-16 h-16 mb-4 text-gray-400" />
-        <p className="text-lg">No items in the current order.</p>
-        <p className="text-sm">Select items from the menu to get started.</p>
+        <p className="text-lg">Loading order...</p>
+      </div>
+    );
+  }
+  
+  if (order.items.length === 0) {
+    return (
+      <div className="flex flex-col h-full bg-card text-card-foreground p-4">
+        <div className="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground p-6">
+          <ShoppingCartIcon className="w-16 h-16 mb-4 text-gray-400" />
+          <p className="text-lg">No items in the current order.</p>
+          <p className="text-sm">Select items from the menu to get started.</p>
+        </div>
+        <div className="mt-auto space-y-3 pt-4 border-t border-border">
+            <Link href="/dashboard/tables" passHref>
+                <Button variant="outline" size="lg" className="w-full">
+                    <ChevronLeft className="mr-2 h-5 w-5" /> Back to Tables
+                </Button>
+            </Link>
+            <Button onClick={onConfirmOrder} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled>
+                <Printer className="mr-2 h-5 w-5" /> Confirm Order & Print KOT
+            </Button>
+            <Button onClick={onGoToPayment} size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" disabled>
+                <CreditCard className="mr-2 h-5 w-5" /> Proceed to Payment
+            </Button>
+        </div>
       </div>
     );
   }
@@ -74,7 +110,7 @@ export function CurrentOrderSummary({ order, onUpdateItemQuantity, onRemoveItem,
         </ul>
       </ScrollArea>
       <Separator className="my-3 bg-border/50" />
-      <div className="space-y-1 text-sm">
+      <div className="space-y-1 text-sm mb-4">
         <div className="flex justify-between">
           <span>Subtotal:</span>
           <span>${order.subtotal.toFixed(2)}</span>
@@ -88,6 +124,29 @@ export function CurrentOrderSummary({ order, onUpdateItemQuantity, onRemoveItem,
           <span>${order.totalAmount.toFixed(2)}</span>
         </div>
       </div>
+      <div className="mt-auto space-y-3 pt-4 border-t border-border">
+            <Link href="/dashboard/tables" passHref>
+                <Button variant="outline" size="lg" className="w-full">
+                    <ChevronLeft className="mr-2 h-5 w-5" /> Back to Tables
+                </Button>
+            </Link>
+            <Button 
+                onClick={onConfirmOrder} 
+                size="lg" 
+                className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                disabled={order.items.length === 0}
+            >
+                <Printer className="mr-2 h-5 w-5" /> Confirm Order & Print KOT
+            </Button>
+            <Button 
+                onClick={onGoToPayment} 
+                size="lg" 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={order.items.length === 0}
+            >
+                <CreditCard className="mr-2 h-5 w-5" /> Proceed to Payment
+            </Button>
+        </div>
     </div>
   );
 }
