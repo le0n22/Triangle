@@ -10,7 +10,7 @@ import {
   YemeksepetiIcon,
   GetirIcon,
 } from '@/components/features/order-tracking/horizontal/platform-icons';
-import { format, parseISO } from 'date-fns'; // Import format and parseISO
+import { format, parseISO } from 'date-fns';
 
 // Enhanced mock data for horizontal view
 const initialMockExternalOrders: ExternalOrder[] = [
@@ -113,8 +113,6 @@ export default function HorizontalTrackingPage() {
   }, [orders]);
 
   const ordersToDisplay = activeList === 'incoming' ? incomingOrders : outgoingOrders;
-
-  // totalIncomingAmount calculation is removed
   
   const handleSelectOrder = (orderId: string) => {
     setSelectedOrderId(orderId);
@@ -122,26 +120,23 @@ export default function HorizontalTrackingPage() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
-      {/* Main Content Area */}
-      <main className="flex-grow flex flex-col p-4 overflow-hidden">
-        <div className="flex-grow flex gap-4 overflow-hidden min-h-0"> {/* This div now handles the row layout and grows */}
-          {/* Left Panel Wrapper */}
-          <div className="w-2/5 min-w-[360px] max-w-[500px] flex flex-col min-h-0"> {/* Adjusted widths */}
-            <OrderListPanel
-              orders={ordersToDisplay}
-              selectedOrderId={selectedOrderId}
-              onSelectOrder={handleSelectOrder}
-              activeList={activeList}
-              onListChange={setActiveList}
-              incomingCount={incomingOrders.length}
-              outgoingCount={outgoingOrders.length}
-              // totalIncomingAmount prop is removed
-            />
-          </div>
-          {/* Right Panel Wrapper */}
-          <div className="flex-grow flex flex-col min-h-0">
-            <OrderDetailPanel order={selectedOrder} />
-          </div>
+      {/* Main Content Area - now directly lays out the columns */}
+      <main className="flex-1 flex flex-row gap-4 p-4 overflow-hidden"> {/* flex-1 makes main take available space, overflow-hidden prevents its content from scrolling page */}
+        {/* Left Panel Wrapper */}
+        <div className="w-2/5 min-w-[360px] max-w-[500px] flex flex-col min-h-0"> {/* min-h-0 allows shrinking */}
+          <OrderListPanel
+            orders={ordersToDisplay}
+            selectedOrderId={selectedOrderId}
+            onSelectOrder={handleSelectOrder}
+            activeList={activeList}
+            onListChange={setActiveList}
+            incomingCount={incomingOrders.length}
+            outgoingCount={outgoingOrders.length}
+          />
+        </div>
+        {/* Right Panel Wrapper */}
+        <div className="flex-grow flex flex-col min-h-0"> {/* flex-grow takes remaining width, min-h-0 allows shrinking */}
+          <OrderDetailPanel order={selectedOrder} />
         </div>
       </main>
     </div>
