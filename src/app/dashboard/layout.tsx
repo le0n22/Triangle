@@ -20,12 +20,20 @@ import { Logo } from '@/components/layout/logo';
 import { navItemDefs } from '@/components/layout/sidebar-nav-items'; // Updated import
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Settings, UserCircle } from 'lucide-react';
+import { Settings, UserCircle, LogOut } from 'lucide-react'; // Added LogOut icon
 import { Separator } from '@/components/ui/separator';
 import { useLanguage } from '@/hooks/use-language'; // New import
+import { useRouter } from 'next/navigation'; // For logout redirection
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { t } = useLanguage(); // Use the language hook
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // In a real app, you would clear auth tokens/session here
+    console.log('User logged out');
+    router.push('/auth/login');
+  };
 
   return (
     <SidebarProvider defaultOpen>
@@ -61,7 +69,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Button variant="ghost" className="w-full justify-start p-3 h-auto text-left">
                 <div className="flex items-center w-full">
                   <Avatar className="h-9 w-9 mr-3">
-                    <AvatarImage src="https://placehold.co/40x40.png" alt="User avatar" data-ai-hint="person user" />
+                    <AvatarImage src="https://placehold.co/40x40.png" alt="User avatar" data-ai-hint="person user"/>
                     <AvatarFallback>JD</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col overflow-hidden">
@@ -82,7 +90,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 <span>{t('settings')}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>{t('logout')}</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>{t('logout')}</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
