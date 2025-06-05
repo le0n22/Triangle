@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { CircleCheck, CalendarClock, Trash2, UsersRound, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import React from 'react'; // Import React for cloneElement
 
 interface TableCardProps {
   table: Table;
@@ -38,35 +39,28 @@ const statusText: Record<TableStatus, string> = {
 export function TableCard({ table, position, onTableDragStart }: TableCardProps) {
   const Icon = statusIcons[table.status] || Utensils;
 
+  const handleDragStartInternal = (e: React.DragEvent<HTMLDivElement>) => {
+    onTableDragStart(e, table.id);
+  };
+
   const linkHref = table.status === 'available' || table.status === 'occupied'
     ? `/dashboard/order/${table.id}`
     : '#';
-
+  
   const isClickable = table.status !== 'dirty' && table.status !== 'reserved';
   
-  const handleDragStartInternal = (e: React.DragEvent<HTMLDivElement>) => {
-    onTableDragStart(e, table.id);
-    // Optional: Use a custom drag image or hide the default one
-    // const img = new Image();
-    // img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='; // Transparent pixel
-    // e.dataTransfer.setDragImage(img, 0, 0);
-  };
-
-  const cardContent = (
+  // Define the core card structure once. It should not have absolute positioning itself
+  // as that will be handled by its wrapper (Link or direct clone).
+  const cardItself = (
     <Card
       draggable={true}
       onDragStart={handleDragStartInternal}
-      style={{
-        position: 'absolute',
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        cursor: 'grab',
-      }}
       className={cn(
-        "hover:shadow-lg transition-all duration-200 flex flex-col w-44 h-40",
-        statusColors[table.status],
-        !isClickable && "opacity-75" // No separate cursor-not-allowed for D&D item
+        "hover:shadow-lg transition-all duration-200 flex flex-col w-44 h-40", // Fixed size
+        statusColors[table.status]
+        // Opacity will be handled by the wrapper or cloneElement logic
       )}
+      style={{ cursor: 'grab' }} // The card is always grabbable
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
         <CardTitle className="text-xl font-headline font-bold">
@@ -91,23 +85,35 @@ export function TableCard({ table, position, onTableDragStart }: TableCardProps)
   );
 
   if (isClickable) {
-    // Wrap with Link, but Link itself is not draggable. The Card inside is.
-    // Clicks on the Card will navigate, drags will move.
+    // Link component will be absolutely positioned.
+    // cardItself is a child and will fill the Link area.
     return (
-      <Link href={linkHref} passHref legacyBehavior>
-        {/* We need an intermediate element for Link with legacyBehavior if Card is function component without direct ref forwarding for `<a>` */}
-        <div style={{position: 'absolute', left: `${position.x}px`, top: `${position.y}px`}} draggable={false}> 
-           {/* This div is just for Link positioning, card inside is the draggable and visual element */}
-           {/* The card itself will be absolutely positioned by its own style prop now, but Link also needs to "be" there. */}
-           {/* Let's simplify: The Card component will handle its own position. Link needs to not interfere with D&D. */}
-           {/* Let's make the card itself handle the Link behavior only if not dragging */}
-           {cardContent} 
-        </div>
+      <Link
+        href={linkHref}
+        draggable={false} // Prevent the Link itself from being dragged
+        style={{
+          position: 'absolute',
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          width: '176px', // Corresponds to w-44
+          height: '160px', // Corresponds to h-40
+          cursor: 'pointer', // Link is clickable
+        }}
+      >
+        {cardItself}
       </Link>
     );
   }
 
-  // For non-clickable states, just render the cardContent directly.
-  // It's already styled for absolute positioning and D&D.
-  return cardContent;
+  // Not clickable: The Card itself is the root and needs absolute positioning and dimming.
+  // We clone cardItself to add these specific styles for this case.
+  return React.cloneElement(cardItself, {
+    style: {
+      ...cardItself.props.style, // Keep existing styles like cursor: 'grab'
+      position: 'absolute',
+      left: `${position.x}px`,
+      top: `${position.y}px`,
+      opacity: 0.75, // Dim non-clickable cards
+    }
+  });
 }
