@@ -1,5 +1,6 @@
+
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ListOrdered, ShoppingCart, CreditCard, Printer } from 'lucide-react';
+import { LayoutDashboard, ListOrdered, ShoppingCart, CreditCard, Printer, ClipboardList, ChefHat } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -21,6 +22,18 @@ export const navItems: NavItem[] = [
     href: '/dashboard/menu',
     icon: ListOrdered,
     label: 'Menu',
+  },
+  {
+    title: 'Orders',
+    href: '/dashboard/orders',
+    icon: ClipboardList,
+    label: 'Orders',
+  },
+  {
+    title: 'KDS',
+    href: '/dashboard/kds',
+    icon: ChefHat,
+    label: 'KDS',
   },
   // These are placeholders for direct navigation if needed, but usually accessed contextually
   // {
