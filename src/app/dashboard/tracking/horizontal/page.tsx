@@ -15,7 +15,7 @@ import {
   GetirIcon,
   GenericPlatformIcon
 } from '@/components/features/order-tracking/horizontal/platform-icons';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 // Enhanced mock data for horizontal view
 const initialMockExternalOrders: ExternalOrder[] = [
