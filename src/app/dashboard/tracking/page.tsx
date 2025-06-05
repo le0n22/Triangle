@@ -6,8 +6,9 @@ import type { ExternalOrder, ExternalOrderStatus } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrackingOrderCard } from '@/components/features/order-tracking/tracking-order-card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Filter, ListOrdered, Truck } from 'lucide-react';
+import { RefreshCw, Filter, ListOrdered, Truck, LayoutGrid } from 'lucide-react'; // Added LayoutGrid
 import { ScrollArea } from '@/components/ui/scroll-area';
+import Link from 'next/link'; // Added Link
 
 const mockExternalOrders: ExternalOrder[] = [
   {
@@ -27,6 +28,8 @@ const mockExternalOrders: ExternalOrder[] = [
     status: 'PENDING_CONFIRMATION',
     placedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 mins ago
     notes: 'Please ring the bell twice.',
+    shortCode: 'P-1',
+    paymentServiceType: 'Card - Delivery',
   },
   {
     id: 'ext-ord-2',
@@ -43,6 +46,8 @@ const mockExternalOrders: ExternalOrder[] = [
     totalAmount: 31.00,
     status: 'PREPARING',
     placedAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(), // 15 mins ago
+    shortCode: 'P-2',
+    paymentServiceType: 'Nakit - Paket Servis',
   },
   {
     id: 'ext-ord-3',
@@ -59,6 +64,8 @@ const mockExternalOrders: ExternalOrder[] = [
     status: 'ON_THE_WAY',
     estimatedDeliveryTime: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     placedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 mins ago
+    shortCode: 'P-3',
+    paymentServiceType: 'Ticket - Delivery',
   },
   {
     id: 'ext-ord-4',
@@ -74,6 +81,8 @@ const mockExternalOrders: ExternalOrder[] = [
     totalAmount: 29.97,
     status: 'DELIVERED',
     placedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    shortCode: 'P-4',
+    paymentServiceType: 'Card - Delivery',
   },
 ];
 
@@ -89,19 +98,16 @@ export default function OrderTrackingPage() {
         order.id === orderId ? { ...order, status: newStatus } : order
       )
     );
-    // In a real app, this would also call an API to update the platform
     console.log(`Order ${orderId} status updated to ${newStatus} on platform ${orders.find(o=>o.id === orderId)?.platform}`);
   };
 
   const refreshOrders = () => {
-    // Simulate fetching new orders or refreshing current ones
     console.log('Refreshing orders...');
-    // For now, just re-set mock data or potentially shuffle/add new ones
-    setOrders([...mockExternalOrders.sort(() => Math.random() - 0.5)]); // Example refresh
+    setOrders([...mockExternalOrders.sort(() => Math.random() - 0.5)]);
   };
-  
-  const filteredOrders = activeTab === 'all-orders' 
-    ? orders 
+
+  const filteredOrders = activeTab === 'all-orders'
+    ? orders
     : orders.filter(order => order.platform.toLowerCase().replace(' ', '-') === activeTab);
 
   return (
@@ -115,6 +121,11 @@ export default function OrderTrackingPage() {
           <Button variant="outline">
             <Filter className="mr-2 h-4 w-4" /> Filter
           </Button>
+          <Link href="/dashboard/tracking/horizontal" passHref>
+            <Button variant="outline">
+              <LayoutGrid className="mr-2 h-4 w-4" /> Horizontal View
+            </Button>
+          </Link>
           <Button variant="outline" onClick={refreshOrders}>
             <RefreshCw className="mr-2 h-4 w-4" /> Refresh
           </Button>
@@ -128,13 +139,12 @@ export default function OrderTrackingPage() {
           </TabsTrigger>
           {platforms.map(platform => (
             <TabsTrigger key={platform.toLowerCase().replace(' ', '-')} value={platform.toLowerCase().replace(' ', '-')}>
-              {/* Consider adding platform icons here later */}
               {platform}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <ScrollArea className="flex-grow pr-1 -mr-1"> {/* For scrolling order cards */}
+        <ScrollArea className="flex-grow pr-1 -mr-1">
           <TabsContent value="all-orders" className="mt-0">
             {filteredOrders.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

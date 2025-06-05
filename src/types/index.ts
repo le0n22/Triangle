@@ -1,4 +1,5 @@
 
+
 export type TableStatus = 'available' | 'occupied' | 'reserved' | 'dirty';
 
 export interface Table {
@@ -77,12 +78,12 @@ export interface MenuCategory {
 export type PaymentMethod = 'cash' | 'card' | 'mobile';
 
 // For Order Tracking System
-export type ExternalOrderStatus = 
-  | 'PENDING_CONFIRMATION' 
-  | 'PREPARING' 
-  | 'READY_FOR_PICKUP' 
-  | 'ON_THE_WAY' 
-  | 'DELIVERED' 
+export type ExternalOrderStatus =
+  | 'PENDING_CONFIRMATION'
+  | 'PREPARING'
+  | 'READY_FOR_PICKUP'
+  | 'ON_THE_WAY'
+  | 'DELIVERED'
   | 'CANCELLED_BY_RESTAURANT'
   | 'CANCELLED_BY_USER';
 
@@ -113,6 +114,9 @@ export interface ExternalOrder {
   placedAt: string; // ISO Date string
   estimatedDeliveryTime?: string; // ISO Date string
   notes?: string; // Customer notes or special instructions
+  paymentServiceType?: string; // e.g., "Card - Delivery", "Nakit - Paket Servis"
+  shortCode?: string; // e.g., "P-9" / platform order ID fragment
+  platformIcon?: React.ElementType; // Component for platform icon
 }
 
 export interface DeliveryPlatform {
@@ -123,3 +127,4 @@ export interface DeliveryPlatform {
   isEnabled: boolean;
   icon?: React.ElementType; // Optional: for displaying platform logo
 }
+
