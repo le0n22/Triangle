@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Table } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogDescription,
   DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -23,12 +22,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+} from '@/components/ui/alert-dialog'; // Removed AlertDialogTrigger as it's used with asChild
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit2, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import {
   Table as ShadcnTable,
   TableHeader,
@@ -39,13 +37,11 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getAllTables, createTableAction, updateTableAction, deleteTableAction } from '@/app/actions/tableActions';
 
-interface TableManagementSettingsProps {
-  initialTables: Table[];
-}
-
-export function TableManagementSettings({ initialTables }: TableManagementSettingsProps) {
-  const [tables, setTables] = useState<Table[]>(initialTables.sort((a,b) => a.number - b.number));
+export function TableManagementSettings() {
+  const [tables, setTables] = useState<Table[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
@@ -56,22 +52,44 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
 
   const { toast } = useToast();
 
-  const handleAddTable = () => {
+  const fetchTables = async () => {
+    setIsLoading(true);
+    try {
+      const dbTables = await getAllTables();
+      setTables(dbTables.sort((a, b) => a.number - b.number));
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to fetch tables.', variant: 'destructive' });
+      console.error("Failed to fetch tables:", error);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTables();
+  }, []);
+
+  const handleAddTable = async () => {
     if (!addForm.number || !addForm.capacity) {
       toast({ title: 'Error', description: 'Table number and capacity are required.', variant: 'destructive' });
       return;
     }
-    const newTable: Table = {
-      id: `t-${Date.now()}`,
-      name: addForm.name || undefined,
-      number: parseInt(addForm.number, 10),
-      capacity: parseInt(addForm.capacity, 10),
-      status: 'available',
-    };
-    setTables(prev => [...prev, newTable].sort((a,b) => a.number - b.number));
-    toast({ title: 'Table Added', description: `Table ${newTable.number} ${newTable.name ? `(${newTable.name})` : ''} has been added.` });
-    setAddForm({ name: '', number: '', capacity: '' });
-    setIsAddDialogOpen(false);
+    const number = parseInt(addForm.number, 10);
+    const capacity = parseInt(addForm.capacity, 10);
+
+    if (isNaN(number) || isNaN(capacity) || number <= 0 || capacity <= 0) {
+      toast({ title: 'Error', description: 'Table number and capacity must be positive numbers.', variant: 'destructive' });
+      return;
+    }
+
+    const result = await createTableAction({ name: addForm.name || undefined, number, capacity });
+    if ('error' in result) {
+      toast({ title: 'Error Adding Table', description: result.error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Table Added', description: `Table ${result.number} has been added.` });
+      setAddForm({ name: '', number: '', capacity: '' });
+      setIsAddDialogOpen(false);
+      fetchTables(); // Re-fetch tables
+    }
   };
 
   const openEditDialog = (table: Table) => {
@@ -80,31 +98,43 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateTable = () => {
+  const handleUpdateTable = async () => {
     if (!editForm.number || !editForm.capacity || !editingTable) {
       toast({ title: 'Error', description: 'Table number and capacity are required.', variant: 'destructive' });
       return;
     }
-    const updatedTable: Table = {
-      ...editingTable,
-      name: editForm.name || undefined,
-      number: parseInt(editForm.number, 10),
-      capacity: parseInt(editForm.capacity, 10),
-    };
-    setTables(prev => prev.map(t => t.id === editingTable.id ? updatedTable : t).sort((a,b) => a.number - b.number));
-    toast({ title: 'Table Updated', description: `Table ${updatedTable.number} ${updatedTable.name ? `(${updatedTable.name})` : ''} has been updated.` });
-    setIsEditDialogOpen(false);
-    setEditingTable(null);
+    const number = parseInt(editForm.number, 10);
+    const capacity = parseInt(editForm.capacity, 10);
+
+    if (isNaN(number) || isNaN(capacity) || number <= 0 || capacity <= 0) {
+      toast({ title: 'Error', description: 'Table number and capacity must be positive numbers.', variant: 'destructive' });
+      return;
+    }
+    
+    const result = await updateTableAction(editingTable.id, { name: editForm.name || undefined, number, capacity });
+    if ('error' in result) {
+      toast({ title: 'Error Updating Table', description: result.error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Table Updated', description: `Table ${result.number} has been updated.` });
+      setIsEditDialogOpen(false);
+      setEditingTable(null);
+      fetchTables(); // Re-fetch tables
+    }
   };
   
   const confirmDeleteTable = (table: Table) => {
     setTableToDelete(table);
   };
 
-  const handleDeleteTable = () => {
+  const handleDeleteTable = async () => {
     if (!tableToDelete) return;
-    setTables(prev => prev.filter(t => t.id !== tableToDelete.id));
-    toast({ title: 'Table Deleted', description: `Table ${tableToDelete.number} has been deleted.` });
+    const result = await deleteTableAction(tableToDelete.id);
+    if (result.success) {
+      toast({ title: 'Table Deleted', description: `Table ${tableToDelete.number} has been deleted.` });
+      fetchTables(); // Re-fetch tables
+    } else {
+      toast({ title: 'Error Deleting Table', description: result.error || 'Failed to delete table.', variant: 'destructive' });
+    }
     setTableToDelete(null); 
   };
 
@@ -113,90 +143,105 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
       <CardHeader className="flex flex-row justify-between items-center">
         <div>
           <CardTitle className="font-headline">Table Management</CardTitle>
-          <CardDescription>Add, edit, or remove restaurant tables.</CardDescription>
+          <CardDescription>Add, edit, or remove restaurant tables from the database.</CardDescription>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Table
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
-            <DialogHeader>
-              <DialogTitle>Add New Table</DialogTitle>
-              <DialogDescription>Enter the details for the new table.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="addTableName" className="text-right">Name (Optional)</Label>
-                <Input id="addTableName" value={addForm.name} onChange={(e) => setAddForm({...addForm, name: e.target.value})} className="col-span-3" placeholder="e.g., Window Seat"/>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchTables} disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Table
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
+              <DialogHeader>
+                <DialogTitle>Add New Table</DialogTitle>
+                <DialogDescription>Enter the details for the new table.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addTableName" className="text-right">Name (Optional)</Label>
+                  <Input id="addTableName" value={addForm.name} onChange={(e) => setAddForm({...addForm, name: e.target.value})} className="col-span-3" placeholder="e.g., Window Seat"/>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addTableNumber" className="text-right">Number*</Label>
+                  <Input id="addTableNumber" type="number" value={addForm.number} onChange={(e) => setAddForm({...addForm, number: e.target.value})} className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="addTableCapacity" className="text-right">Capacity*</Label>
+                  <Input id="addTableCapacity" type="number" value={addForm.capacity} onChange={(e) => setAddForm({...addForm, capacity: e.target.value})} className="col-span-3" />
+                </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="addTableNumber" className="text-right">Number</Label>
-                <Input id="addTableNumber" type="number" value={addForm.number} onChange={(e) => setAddForm({...addForm, number: e.target.value})} className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="addTableCapacity" className="text-right">Capacity</Label>
-                <Input id="addTableCapacity" type="number" value={addForm.capacity} onChange={(e) => setAddForm({...addForm, capacity: e.target.value})} className="col-span-3" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddTable} className="bg-primary hover:bg-primary/90 text-primary-foreground">Add Table</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddTable} className="bg-primary hover:bg-primary/90 text-primary-foreground">Add Table</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent>
-        <ShadcnTable>
-          <TableCaption>A list of your restaurant tables.</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Number</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Capacity</TableHead>
-              <TableHead className="text-right w-[150px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {tables.map((table) => (
-              <TableRow key={table.id}>
-                <TableCell className="font-medium">{table.number}</TableCell>
-                <TableCell>{table.name || '-'}</TableCell>
-                <TableCell>{table.capacity}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => openEditDialog(table)} className="mr-2">
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog open={!!tableToDelete && tableToDelete.id === table.id} onOpenChange={(isOpen) => !isOpen && setTableToDelete(null)}>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={() => confirmDeleteTable(table)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete table {tableToDelete?.number} {tableToDelete?.name ? `(${tableToDelete.name})` : ''}.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setTableToDelete(null)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteTable} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </TableCell>
-              </TableRow>
-            ))}
-            {tables.length === 0 && (
+        {isLoading ? (
+          <div className="text-center py-10">
+            <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
+            <p className="mt-2 text-muted-foreground">Loading tables...</p>
+          </div>
+        ) : (
+          <ShadcnTable>
+            <TableCaption>A list of your restaurant tables from the database.</TableCaption>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">No tables configured.</TableCell>
+                <TableHead className="w-[100px]">Number</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Capacity</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right w-[150px]">Actions</TableHead>
               </TableRow>
-            )}
-          </TableBody>
-        </ShadcnTable>
+            </TableHeader>
+            <TableBody>
+              {tables.map((table) => (
+                <TableRow key={table.id}>
+                  <TableCell className="font-medium">{table.number}</TableCell>
+                  <TableCell>{table.name || '-'}</TableCell>
+                  <TableCell>{table.capacity}</TableCell>
+                  <TableCell><span className="capitalize">{table.status.toLowerCase()}</span></TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(table)} className="mr-2">
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                    <AlertDialog open={!!tableToDelete && tableToDelete.id === table.id} onOpenChange={(isOpen) => !isOpen && setTableToDelete(null)}>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteTable(table)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete table {tableToDelete?.number} {tableToDelete?.name ? `(${tableToDelete.name})` : ''}.
+                            Any active orders on this table might cause issues if not handled.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setTableToDelete(null)}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDeleteTable} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {tables.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-6">No tables found in the database. Add some!</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </ShadcnTable>
+        )}
       </CardContent>
 
       {/* Edit Table Dialog */}
@@ -212,11 +257,11 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
                 <Input id="editTableName" value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} className="col-span-3" placeholder="e.g., Window Seat"/>
               </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editTableNumber" className="text-right">Number</Label>
+              <Label htmlFor="editTableNumber" className="text-right">Number*</Label>
               <Input id="editTableNumber" type="number" value={editForm.number} onChange={(e) => setEditForm({...editForm, number: e.target.value})} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editTableCapacity" className="text-right">Capacity</Label>
+              <Label htmlFor="editTableCapacity" className="text-right">Capacity*</Label>
               <Input id="editTableCapacity" type="number" value={editForm.capacity} onChange={(e) => setEditForm({...editForm, capacity: e.target.value})} className="col-span-3" />
             </div>
           </div>
@@ -229,5 +274,3 @@ export function TableManagementSettings({ initialTables }: TableManagementSettin
     </Card>
   );
 }
-
-    
