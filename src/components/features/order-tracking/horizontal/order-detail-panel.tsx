@@ -83,10 +83,10 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
         <Separator />
 
         <div>
-          <h4 className="font-semibold mb-2 text-sm">Order Items:</h4>
-          <ul className="space-y-1.5">
+          <h4 className="font-semibold mb-1 text-sm">Order Items:</h4>
+          <ul className="space-y-1">
             {order.items.map((item) => (
-              <li key={item.id} className="flex justify-between items-center text-sm pb-1 border-b border-border/50 last:border-b-0">
+              <li key={item.id} className="flex justify-between items-center text-xs pb-0.5 border-b border-border/50 last:border-b-0">
                 <span className="truncate pr-2">{item.quantity}x {item.name}</span>
                 <span className="font-medium whitespace-nowrap">₺{item.totalPrice.toFixed(2)}</span>
               </li>
