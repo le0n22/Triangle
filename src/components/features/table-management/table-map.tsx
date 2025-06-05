@@ -16,26 +16,78 @@ interface Position {
   y: number;
 }
 
+const TABLE_POSITIONS_STORAGE_KEY = 'orderflow-table-positions';
+
 export function TableMap({ tables }: TableMapProps) {
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [draggedTableInfo, setDraggedTableInfo] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
   const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const initialPositions: Record<string, Position> = {};
-    tables.forEach((table, index) => {
-      // Stagger initial positions slightly
-      initialPositions[table.id] = {
-        x: 20 + (index % 5) * 190, // card width (176) + gap (14)
-        y: 20 + Math.floor(index / 5) * 180, // card height (160) + gap (20)
-      };
+    let loadedPositions: Record<string, Position> = {};
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(TABLE_POSITIONS_STORAGE_KEY);
+      if (saved) {
+        try {
+          loadedPositions = JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to parse table positions from localStorage", e);
+          loadedPositions = {}; // Fallback to empty if parsing fails
+        }
+      }
+    }
+
+    const newPositions: Record<string, Position> = { ...loadedPositions };
+    let defaultPositionIndex = 0;
+    const existingPositionsCount = Object.keys(loadedPositions).length;
+    const maxTablesPerRow = 5; 
+    const cardWidthWithGap = 190; // card width (176) + gap (14)
+    const cardHeightWithGap = 180; // card height (160) + gap (20)
+    const initialOffsetX = 20;
+    const initialOffsetY = 20;
+
+    tables.forEach((table) => {
+      if (!newPositions[table.id]) {
+        const baseIndex = existingPositionsCount + defaultPositionIndex;
+        newPositions[table.id] = {
+          x: initialOffsetX + (baseIndex % maxTablesPerRow) * cardWidthWithGap,
+          y: initialOffsetY + Math.floor(baseIndex / maxTablesPerRow) * cardHeightWithGap,
+        };
+        defaultPositionIndex++;
+      }
     });
-    setPositions(initialPositions);
+    
+    // Ensure all current tables are in the positions state
+    // Remove positions for tables that no longer exist
+    const finalPositions: Record<string, Position> = {};
+    tables.forEach(table => {
+      if (newPositions[table.id]) {
+        finalPositions[table.id] = newPositions[table.id];
+      }
+    });
+
+
+    if (tables.length > 0) {
+        setPositions(finalPositions);
+    } else {
+        setPositions({}); 
+    }
+
   }, [tables]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && Object.keys(positions).length > 0) {
+      // Only save if there are positions to save, to avoid clearing on initial empty state
+      localStorage.setItem(TABLE_POSITIONS_STORAGE_KEY, JSON.stringify(positions));
+    } else if (typeof window !== 'undefined' && tables.length === 0 && Object.keys(positions).length === 0) {
+      // If there are no tables and no positions, explicitly clear localStorage
+      localStorage.removeItem(TABLE_POSITIONS_STORAGE_KEY);
+    }
+  }, [positions, tables.length]);
+
 
   const handleTableDragStart = useCallback((e: React.DragEvent<HTMLDivElement>, tableId: string) => {
     e.dataTransfer.setData('tableId', tableId);
-    // Calculate offset from the top-left of the DRAGGED ELEMENT (the card)
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
@@ -44,7 +96,7 @@ export function TableMap({ tables }: TableMapProps) {
   }, []);
 
   const handleDragOverWindow = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault(); 
     e.dataTransfer.dropEffect = "move";
   }, []);
 
@@ -59,25 +111,14 @@ export function TableMap({ tables }: TableMapProps) {
 
     const containerRect = containerRef.getBoundingClientRect();
     
-    // Calculate new position relative to the container
     let newX = e.clientX - containerRect.left - draggedTableInfo.offsetX;
     let newY = e.clientY - containerRect.top - draggedTableInfo.offsetY;
 
-    // Optional: Boundary checks to keep cards within the visible area of the container
-    // Card dimensions: w-44 (176px), h-40 (160px)
     const cardWidth = 176;
     const cardHeight = 160;
 
-    // Ensure card stays within bounds, accounting for scroll if overflow is auto
-    // For simplicity here, we'll clip to 0,0 minimum. Max bounds depend on scroll.
-    newX = Math.max(0, newX);
-    newY = Math.max(0, newY);
-    
-    // If container can scroll, max bounds are tricky without knowing content size vs viewport.
-    // For now, let's assume we don't want to drag outside initial container rect width/height.
-    // This might need adjustment if the container is meant to be larger than viewport and scrollable.
-    // newX = Math.min(newX, containerRect.width - cardWidth - (2*24)); // 24 is p-6
-    // newY = Math.min(newY, containerRect.height - cardHeight - (2*24));
+    newX = Math.max(0, Math.min(newX, containerRect.width - cardWidth));
+    newY = Math.max(0, Math.min(newY, containerRect.height - cardHeight));
 
 
     setPositions(prev => ({
@@ -88,13 +129,25 @@ export function TableMap({ tables }: TableMapProps) {
   }, [draggedTableInfo, containerRef]);
 
 
-  if (!tables || tables.length === 0) {
+  if (!tables || tables.length === 0 && Object.keys(positions).length === 0) {
     return (
-      <div className="text-center py-10">
-        <p className="text-xl text-muted-foreground">No tables configured.</p>
-        <Button className="mt-4">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Table
-        </Button>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+            <h2 className="text-3xl font-headline font-semibold">Table Layout</h2>
+            <div className="flex gap-2">
+            <Button variant="outline">
+                <Filter className="mr-2 h-4 w-4" /> Filter
+            </Button>
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Table
+            </Button>
+            </div>
+        </div>
+        <div
+            className="bg-card/60 backdrop-blur-md shadow-2xl rounded-lg border border-white/10 p-6 relative min-h-[calc(100vh-18rem)] overflow-auto flex items-center justify-center"
+        >
+            <p className="text-xl text-muted-foreground">No tables configured.</p>
+        </div>
       </div>
     );
   }
@@ -113,7 +166,6 @@ export function TableMap({ tables }: TableMapProps) {
         </div>
       </div>
       
-      {/* Glassy Window Container */}
       <div
         ref={setContainerRef}
         className="bg-card/60 backdrop-blur-md shadow-2xl rounded-lg border border-white/10 p-6 relative min-h-[calc(100vh-18rem)] overflow-auto"
@@ -121,7 +173,7 @@ export function TableMap({ tables }: TableMapProps) {
         onDrop={handleDropInWindow}
       >
         {tables.map((table) => {
-          const position = positions[table.id] || { x: 0, y: 0 };
+          const position = positions[table.id] || { x: 20, y: 20 }; // Default if somehow not set
           return (
             <TableCard
               key={table.id}
@@ -131,9 +183,9 @@ export function TableMap({ tables }: TableMapProps) {
             />
           );
         })}
-         {tables.length === 0 && (
+         {tables.length > 0 && Object.keys(positions).length === 0 && (
           <p className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            Drag tables here to arrange them.
+            Loading table positions...
           </p>
         )}
       </div>
