@@ -1,7 +1,9 @@
 
+'use client';
+
 import type { Order, OrderItem, Modifier } from '@/types';
 import { KdsOrderCard } from '@/components/features/kds/kds-order-card';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ChefHat } from 'lucide-react'; // Added ChefHat import
 import { Button } from '@/components/ui/button';
 
 // Mock data for KDS - typically 'pending' or 'preparing' orders
