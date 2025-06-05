@@ -10,9 +10,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Alegreya', 'serif'],
-        headline: ['Alegreya', 'serif'],
-        code: ['monospace'], // Default monospace, can be changed if needed
+        body: ['Inter', 'sans-serif'],
+        headline: ['Inter', 'sans-serif'], // Using Inter for headlines as well for minimalism
+        code: ['monospace'], 
       },
       colors: {
         background: 'hsl(var(--background))',
