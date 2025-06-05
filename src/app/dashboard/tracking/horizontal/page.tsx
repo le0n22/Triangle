@@ -5,13 +5,12 @@ import { useState, useMemo, useEffect } from 'react';
 import type { ExternalOrder } from '@/types';
 import { OrderListPanel } from '@/components/features/order-tracking/horizontal/order-list-panel';
 import { OrderDetailPanel } from '@/components/features/order-tracking/horizontal/order-detail-panel';
-// Icons like Bell and ArrowLeft are removed as the header is removed
 import {
   TrendyolIcon,
   YemeksepetiIcon,
   GetirIcon,
 } from '@/components/features/order-tracking/horizontal/platform-icons';
-import { format, parseISO } from 'date-fns'; // parseISO was missing
+import { format, parseISO } from 'date-fns';
 
 // Enhanced mock data for horizontal view
 const initialMockExternalOrders: ExternalOrder[] = [
@@ -125,29 +124,28 @@ export default function HorizontalTrackingPage() {
 
   return (
     <div className="h-screen w-full flex flex-col bg-background text-foreground overflow-hidden">
-      {/* Top Bar Removed */}
-
       {/* Main Content Area */}
-      <main className="flex-grow flex p-4 gap-4 overflow-hidden">
-        {/* Left Panel Wrapper */}
-        <div className="w-2/5 min-w-[400px] max-w-[600px] flex flex-col min-h-0">
-          <OrderListPanel
-            orders={ordersToDisplay}
-            selectedOrderId={selectedOrderId}
-            onSelectOrder={handleSelectOrder}
-            activeList={activeList}
-            onListChange={setActiveList}
-            incomingCount={incomingOrders.length}
-            outgoingCount={outgoingOrders.length}
-            totalIncomingAmount={totalIncomingAmount}
-          />
-        </div>
-        {/* Right Panel Wrapper */}
-        <div className="flex-grow flex flex-col min-h-0">
-          <OrderDetailPanel order={selectedOrder} />
+      <main className="flex-grow flex flex-col p-4 overflow-hidden">
+        <div className="flex-grow flex gap-4 overflow-hidden"> {/* This div now handles the row layout and grows */}
+          {/* Left Panel Wrapper */}
+          <div className="w-2/5 min-w-[400px] max-w-[600px] flex flex-col min-h-0">
+            <OrderListPanel
+              orders={ordersToDisplay}
+              selectedOrderId={selectedOrderId}
+              onSelectOrder={handleSelectOrder}
+              activeList={activeList}
+              onListChange={setActiveList}
+              incomingCount={incomingOrders.length}
+              outgoingCount={outgoingOrders.length}
+              totalIncomingAmount={totalIncomingAmount}
+            />
+          </div>
+          {/* Right Panel Wrapper */}
+          <div className="flex-grow flex flex-col min-h-0">
+            <OrderDetailPanel order={selectedOrder} />
+          </div>
         </div>
       </main>
     </div>
   );
 }
-
