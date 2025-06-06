@@ -1,32 +1,27 @@
 
-import type { MenuCategory, Order, MenuItem, Modifier } from '@/types';
+import type { MenuCategory, Order as AppOrder } from '@/types';
 import { OrderPanel } from '@/components/features/order-entry/order-panel';
 import { getAllCategoriesAction, type AppMenuCategory as BackendMenuCategory } from '@backend/actions/categoryActions';
 import { getAllMenuItemsAction, type AppMenuItem as BackendMenuItem } from '@backend/actions/menuItemActions';
+import { getOpenOrderByTableIdAction } from '@backend/actions/orderActions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { Terminal, Inbox } from 'lucide-react';
 
-// Helper function to transform backend data to frontend MenuCategory structure
 async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: string }> {
-  console.log("DEBUG: order/[tableId]/page.tsx - getMenuDataForOrderPanel called");
   const categoriesResult = await getAllCategoriesAction();
   const menuItemsResult = await getAllMenuItemsAction();
 
   if ('error' in categoriesResult) {
-    console.error("DEBUG: order/[tableId]/page.tsx - Error fetching categories:", categoriesResult.error);
     return { error: `Failed to load categories: ${categoriesResult.error}` };
   }
   if ('error' in menuItemsResult) {
-    console.error("DEBUG: order/[tableId]/page.tsx - Error fetching menu items:", menuItemsResult.error);
     return { error: `Failed to load menu items: ${menuItemsResult.error}` };
   }
 
   const dbCategories = categoriesResult as BackendMenuCategory[];
   const dbMenuItems = menuItemsResult as BackendMenuItem[];
-  console.log(`DEBUG: order/[tableId]/page.tsx - DB Categories: ${dbCategories.length}, DB Menu Items: ${dbMenuItems.length}`);
 
-  // 1. Map all dbMenuItems to frontend MenuItem structure
-  const allFrontendMenuItems: MenuItem[] = dbMenuItems.map(dbItem => {
+  const allFrontendMenuItems: MenuCategory['items'][0][] = dbMenuItems.map(dbItem => {
     const categoryForThisItem = dbCategories.find(cat => cat.id === dbItem.categoryId);
     return {
       id: dbItem.id,
@@ -44,15 +39,13 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
     };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
-  // 2. Create the "All" category
   const allItemsCategory: MenuCategory = {
     id: 'all-items-pseudo-category-id',
     name: 'All',
-    iconName: 'List', // Though MenuItemSelector doesn't use icons, good for consistency
+    iconName: 'List',
     items: allFrontendMenuItems,
   };
 
-  // 3. Map DB categories and their specific items
   const mappedDbCategories: MenuCategory[] = dbCategories.map(dbCategory => {
     const itemsForThisCategory = dbMenuItems
       .filter(dbItem => dbItem.categoryId === dbCategory.id)
@@ -82,9 +75,7 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
     };
   }).sort((a,b) => a.name.localeCompare(b.name));
   
-  // 4. Prepend "All" category
   const finalMenuCategories = [allItemsCategory, ...mappedDbCategories];
-  console.log("DEBUG: order/[tableId]/page.tsx - Final categories structure:", finalMenuCategories.map(c => ({ id: c.id, name: c.name, itemCount: c.items.length })));
   return finalMenuCategories;
 }
 
@@ -96,33 +87,54 @@ interface OrderPageProps {
 
 export default async function OrderPage({ params }: OrderPageProps) {
   const { tableId } = params;
-  // For now, initialOrder is null. Actual order fetching can be added later.
-  const initialOrder = null; 
-  const menuData = await getMenuDataForOrderPanel();
 
-  if ('error' in menuData) {
+  const menuDataResult = await getMenuDataForOrderPanel();
+  const initialOrderResult = await getOpenOrderByTableIdAction(tableId);
+
+  let initialOrder: AppOrder | null = null;
+  if (initialOrderResult && 'error' in initialOrderResult) {
+    console.error(`Error fetching open order for table ${tableId}:`, initialOrderResult.error);
+    // Potentially show a toast or a small error message, but don't block rendering the order panel
+  } else if (initialOrderResult) {
+    initialOrder = initialOrderResult;
+  }
+
+  if ('error' in menuDataResult) {
     return (
       <div className="container mx-auto py-10">
         <Alert variant="destructive">
           <Terminal className="h-4 w-4" />
           <AlertTitle>Error Loading Menu Data</AlertTitle>
-          <AlertDescription>{menuData.error}</AlertDescription>
+          <AlertDescription>{menuDataResult.error}</AlertDescription>
         </Alert>
       </div>
     );
   }
   
-  if (menuData.length === 0 || (menuData.length === 1 && menuData[0].id === 'all-items-pseudo-category-id' && menuData[0].items.length === 0)) {
-    console.log("DEBUG: order/[tableId]/page.tsx - No menu data (categories/items) found to pass to OrderPanel.");
-    // OrderPanel should handle empty menuCategories gracefully.
-    // Passing empty array ensures OrderPanel / MenuItemSelector can show "no items" message.
+  const menuCategories = menuDataResult;
+
+  if (menuCategories.length === 0 || (menuCategories.length === 1 && menuCategories[0].id === 'all-items-pseudo-category-id' && menuCategories[0].items.length === 0)) {
+     return (
+      <div className="container mx-auto py-10 h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] flex flex-col justify-center items-center">
+        <Inbox className="w-24 h-24 text-muted-foreground mb-6" />
+        <h1 className="text-3xl font-headline font-bold text-foreground mb-2">Menu is Empty</h1>
+        <p className="text-muted-foreground text-lg">Cannot take orders without menu items.</p>
+        <p className="text-sm text-muted-foreground">Please add categories and menu items in the settings page.</p>
+      </div>
+    );
   }
 
   return (
-    <OrderPanel tableId={tableId} initialOrder={initialOrder} menuCategories={menuData} />
+    <OrderPanel 
+        tableIdParam={tableId} 
+        initialOrder={initialOrder} 
+        menuCategories={menuCategories} 
+    />
   );
 }
 
 export async function generateStaticParams() {
+  // In a dynamic app with many tables, this might fetch all table IDs.
+  // For now, returning an empty array means Next.js will generate pages on demand.
   return [];
 }
