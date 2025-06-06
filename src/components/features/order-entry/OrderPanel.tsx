@@ -113,7 +113,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   }, []);
 
   const handleSelectItem = (menuItem: MenuItem, selectedModifiers: Modifier[] = []) => {
-    if (!currentOrder || currentOrder.status === 'PAID' || currentOrder.status === 'CANCELLED') return;
+    if (!currentOrder || currentOrder.status === 'PAID' || currentOrder.status === 'CANCELLED' || isSaving) return;
     const existingItemIndex = currentOrder.items.findIndex(
       (item) => item.menuItemId === menuItem.id &&
                  areModifierArraysEqual(item.selectedModifiers, selectedModifiers) &&
@@ -154,7 +154,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   };
 
   const handleUpdateItemQuantity = (orderItemId: string, newQuantity: number) => {
-    if (!currentOrder || currentOrder.status === 'PAID' || currentOrder.status === 'CANCELLED') return;
+    if (!currentOrder || currentOrder.status === 'PAID' || currentOrder.status === 'CANCELLED' || isSaving) return;
     let updatedItems;
     if (newQuantity <= 0) {
       const itemToUpdate = currentOrder.items.find(item => item.id === orderItemId);
@@ -174,7 +174,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   };
 
   const handleRemoveItem = (orderItemId: string) => {
-    if (!currentOrder || currentOrder.status === 'PAID' || currentOrder.status === 'CANCELLED') return;
+    if (!currentOrder || currentOrder.status === 'PAID' || currentOrder.status === 'CANCELLED' || isSaving) return;
     const itemToRemove = currentOrder.items.find(i => i.id === orderItemId);
     if (!itemToRemove) return;
     let updatedItems;
@@ -190,7 +190,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   };
 
   const handleEditItemModifiers = (itemToEdit: OrderItem) => {
-    if (currentOrder?.status === 'PAID' || currentOrder?.status === 'CANCELLED') return;
+    if (currentOrder?.status === 'PAID' || currentOrder?.status === 'CANCELLED' || isSaving) return;
     const menuItemDetails = menuCategories.flatMap(c => c.items).find(mi => mi.id === itemToEdit.menuItemId);
     if (menuItemDetails) {
       setEditingOrderItem({ ...itemToEdit, menuItemName: menuItemDetails.name });
@@ -201,7 +201,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   };
 
   const handleApplyModifiers = (appliedModifiers: Modifier[], specialRequests?: string) => {
-    if (!currentOrder || !editingOrderItem) return;
+    if (!currentOrder || !editingOrderItem || isSaving) return;
     const updatedItems = currentOrder.items.map(item => {
       if (item.id === editingOrderItem.id) {
         const updatedItemBase = { ...item, selectedModifiers: appliedModifiers, specialRequests: specialRequests || item.specialRequests };
@@ -221,7 +221,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   };
 
   const handleConfirmOrder = async () => {
-    if (!currentOrder) return;
+    if (!currentOrder || isSaving) return;
     const activeItemsForBackend = currentOrder.items.filter(item => item.quantity > 0);
     if (activeItemsForBackend.length === 0 && (!initialOrderSnapshot || initialOrderSnapshot.items.every(item => currentOrder.items.find(ci => ci.id === item.id)?.quantity === 0))) {
         toast({ title: "Cannot confirm empty or fully removed order", variant: "destructive" });
@@ -296,7 +296,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   };
 
   const handleGoToPayment = async () => {
-    if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0) {
+    if (!currentOrder || isSaving || currentOrder.items.filter(i => i.quantity > 0).length === 0) {
       toast({ title: "Cannot proceed to payment for empty order", variant: "destructive" }); return;
     }
     if (currentOrder.id.startsWith('temp-ord-')) {
@@ -324,7 +324,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   };
 
   const handleCancelOrder = async () => {
-    if (!currentOrder) return;
+    if (!currentOrder || isSaving) return;
     setIsSaving(true);
     if (currentOrder.id.startsWith('temp-ord-')) {
       const tableNumberMatch = tableIdParam.match(/\d+/);
@@ -367,12 +367,15 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     );
   }
   
-
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] bg-background text-foreground">
       {/* Left Column: Menu Item Selector */}
       <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full border-r border-border">
-        <MenuItemSelector categories={menuCategories} onSelectItem={handleSelectItem} />
+        <MenuItemSelector 
+          categories={menuCategories} 
+          onSelectItem={handleSelectItem}
+          isSaving={isSaving} 
+        />
       </div>
 
       {/* Middle Column: Current Order Summary */}
@@ -417,6 +420,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           menuItem={menuCategories.flatMap(c => c.items).find(mi => mi.id === editingOrderItem.menuItemId)!}
           currentSelectedOrderItem={editingOrderItem}
           onApplyModifiers={handleApplyModifiers}
+          isSaving={isSaving}
         />
       )}
     </div>

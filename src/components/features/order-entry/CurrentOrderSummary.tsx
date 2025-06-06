@@ -14,10 +14,9 @@ interface CurrentOrderSummaryProps {
   onUpdateItemQuantity: (itemId: string, newQuantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onEditItemModifiers: (item: OrderItem) => void;
-  isSaving: boolean;
+  isSaving: boolean; // To disable interactions while saving
 }
 
-// Helper function to compare modifier arrays by their IDs and count
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
   if (!arr1 && !arr2) return true;
   if (!arr1 || !arr2) return false;
@@ -33,7 +32,7 @@ export function CurrentOrderSummary({
   onUpdateItemQuantity,
   onRemoveItem,
   onEditItemModifiers,
-  isSaving
+  isSaving 
 }: CurrentOrderSummaryProps) {
   if (!order) {
     return (
@@ -50,7 +49,7 @@ export function CurrentOrderSummary({
 
   const formatModifiers = (modifiers: Modifier[]) => {
     if (!modifiers || modifiers.length === 0) return null;
-    return modifiers.map(m => `${m.name}${m.priceChange !== 0 ? ` (${m.priceChange > 0 ? '+' : '-'}$${Math.abs(m.priceChange).toFixed(2)})` : ''}`).join(', ');
+    return modifiers.map(m => \`\${m.name}\${m.priceChange !== 0 ? \` (\${m.priceChange > 0 ? '+' : '-'}$\${Math.abs(m.priceChange).toFixed(2)})\` : ''}\`).join(', ');
   };
 
   return (
@@ -71,31 +70,24 @@ export function CurrentOrderSummary({
           <ul className="space-y-3">
             {order.items.map((item) => {
               if (item.quantity === 0 && !item.id.startsWith('item-')) {
-                // This item was persisted and now marked for deletion (quantity 0)
-                // We might still want to show it differently or not at all depending on UI preference
-                // For now, if it's persisted and quantity is 0, it's effectively removed for display here.
                 return null; 
               }
               if (item.quantity === 0 && item.id.startsWith('item-')) {
-                // This was a new client-side item and its quantity became 0, so don't render.
                 return null;
               }
 
               const initialItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === item.id);
               let itemState: 'new' | 'modified' | 'unchanged' = 'unchanged';
 
-              if (!initialItem && item.id.startsWith('item-')) { // Item is purely client-side new
+              if (!initialItem && item.id.startsWith('item-')) {
                 itemState = 'new';
-              } else if (initialItem && ( // Item was persisted and has changes
+              } else if (initialItem && (
                 item.quantity !== initialItem.quantity ||
                 item.specialRequests !== initialItem.specialRequests ||
                 !areModifierArraysEqual(item.selectedModifiers, initialItem.selectedModifiers)
               )) {
                 itemState = 'modified';
               } else if (!initialItem && !item.id.startsWith('item-')) { 
-                // This case implies a persisted item that wasn't in the initial snapshot (shouldn't happen if snapshot is from DB load)
-                // or an item that was added, saved, and then the page reloaded without initialOrder reflecting it yet.
-                // For safety, treat as 'new' if it has quantity.
                  if (item.quantity > 0) itemState = 'new';
               }
               
@@ -112,7 +104,7 @@ export function CurrentOrderSummary({
                     <div>
                       <p className="font-semibold text-sm">{item.menuItemName}</p>
                       <p className="text-xs text-muted-foreground">
-                        ${item.unitPrice.toFixed(2)} x {item.quantity} = ${item.totalPrice.toFixed(2)}
+                        $\${item.unitPrice.toFixed(2)} x {item.quantity} = $\${item.totalPrice.toFixed(2)}
                       </p>
                       {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                         <p className="text-xs text-primary mt-1">
@@ -158,21 +150,21 @@ export function CurrentOrderSummary({
           <div className="space-y-1 text-sm mb-4">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>${order.subtotal.toFixed(2)}</span>
+              <span>$\${order.subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Tax ({(order.taxRate * 100).toFixed(0)}%):</span>
-              <span>${order.taxAmount.toFixed(2)}</span>
+              <span>$\${order.taxAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-bold text-base text-primary">
               <span>Total:</span>
-              <span>${order.totalAmount.toFixed(2)}</span>
+              <span>$\${order.totalAmount.toFixed(2)}</span>
             </div>
           </div>
         </>
       )}
       
-      {/* Action buttons are now removed from here and will be in OrderActionSidebar */}
+      {/* All action buttons have been moved to OrderActionSidebar */}
       
       {isOrderClosed && (
         <p className="text-center text-muted-foreground py-4 mt-auto border-t border-border">

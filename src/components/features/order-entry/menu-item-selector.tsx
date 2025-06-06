@@ -5,7 +5,7 @@ import type { MenuCategory, MenuItem, Modifier } from '@/types';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Search, Inbox } from 'lucide-react'; // Added Inbox
+import { PlusCircle, Search, Inbox } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useMemo, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -13,55 +13,43 @@ import { cn } from '@/lib/utils';
 interface MenuItemSelectorProps {
   categories: MenuCategory[];
   onSelectItem: (item: MenuItem, modifiers: Modifier[]) => void;
+  isSaving: boolean; // Added to disable selection during save
 }
 
-export function MenuItemSelector({ categories: initialCategories, onSelectItem }: MenuItemSelectorProps) {
+export function MenuItemSelector({ categories: initialCategories, onSelectItem, isSaving }: MenuItemSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  console.log(`MenuItemSelector: Rendered. Received initialCategories count: ${initialCategories?.length}`);
-  // console.log(`MenuItemSelector: Received initialCategories DATA:`, JSON.stringify(initialCategories, null, 2));
-
-
   useEffect(() => {
-    console.log(`MenuItemSelector: useEffect for selectedCategoryId - initialCategories count: ${initialCategories?.length}, current selectedCategoryId: ${selectedCategoryId}`);
     if (initialCategories && initialCategories.length > 0) {
       const firstCategoryId = initialCategories[0].id;
-      // If no category is selected OR if the currently selected category is no longer in the list
       if (!selectedCategoryId || !initialCategories.find(cat => cat.id === selectedCategoryId)) {
-        console.log(`MenuItemSelector: Setting selectedCategoryId to first category: ${firstCategoryId}`);
         setSelectedCategoryId(firstCategoryId);
-      } else {
-        console.log(`MenuItemSelector: Current selection ${selectedCategoryId} is valid or already set.`);
       }
-    } else { // initialCategories is empty or null/undefined
-      if (selectedCategoryId !== null) { // Only update if it's not already null to avoid loop if initialCategories is always empty
-        console.log(`MenuItemSelector: No/empty categories, setting selectedCategoryId to null.`);
+    } else {
+      if (selectedCategoryId !== null) {
         setSelectedCategoryId(null);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCategories]); // Only run when initialCategories reference changes. SelectedCategoryId is managed internally.
+  }, [initialCategories]); 
 
   const handleItemClick = (item: MenuItem) => {
-    onSelectItem(item, []); // Modifiers will be handled by ModifierModal in OrderPanel
+    if (isSaving) return; // Prevent adding items while saving
+    onSelectItem(item, []); 
   };
 
   const selectedCategory = useMemo(() => {
     if (!selectedCategoryId || !initialCategories) return null;
-    const category = initialCategories.find(cat => cat.id === selectedCategoryId);
-    // console.log(`MenuItemSelector: selectedCategory memo. ID: ${selectedCategoryId}, Found:`, category?.name);
-    return category || null;
+    return initialCategories.find(cat => cat.id === selectedCategoryId) || null;
   }, [selectedCategoryId, initialCategories]);
 
   const filteredItems = useMemo(() => {
     if (!selectedCategory) return [];
-    const items = selectedCategory.items.filter(item =>
+    return selectedCategory.items.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-    // console.log(`MenuItemSelector: filteredItems memo. Count: ${items.length} for category ${selectedCategory.name}`);
-    return items;
   }, [selectedCategory, searchTerm]);
 
   return (
@@ -73,7 +61,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem }
           className="pl-10 bg-background"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          disabled={!selectedCategory || (initialCategories && initialCategories.length === 0)}
+          disabled={!selectedCategory || (initialCategories && initialCategories.length === 0) || isSaving}
         />
       </div>
 
@@ -87,9 +75,11 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem }
                   variant="ghost"
                   className={cn(
                     "w-full justify-start text-left h-auto py-2 px-2.5 text-xs md:text-sm",
-                    selectedCategoryId === category.id && "bg-accent text-accent-foreground"
+                    selectedCategoryId === category.id && "bg-accent text-accent-foreground",
+                    isSaving && "opacity-50 cursor-not-allowed"
                   )}
-                  onClick={() => setSelectedCategoryId(category.id)}
+                  onClick={() => { if (!isSaving) setSelectedCategoryId(category.id); }}
+                  disabled={isSaving}
                 >
                   {category.name}
                 </Button>
@@ -111,11 +101,15 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem }
                   {filteredItems.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center p-2 rounded-md hover:bg-accent/10 cursor-pointer transition-colors group border border-transparent hover:border-accent/50"
+                      className={cn(
+                        "flex items-center p-2 rounded-md hover:bg-accent/10 cursor-pointer transition-colors group border border-transparent hover:border-accent/50",
+                        isSaving && "opacity-50 cursor-not-allowed hover:bg-transparent hover:border-transparent"
+                      )}
                       onClick={() => handleItemClick(item)}
                       role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && handleItemClick(item)}
+                      tabIndex={isSaving ? -1 : 0}
+                      onKeyDown={(e) => !isSaving && e.key === 'Enter' && handleItemClick(item)}
+                      aria-disabled={isSaving}
                     >
                       {item.imageUrl && (
                         <div className="relative w-12 h-12 md:w-14 md:h-14 mr-2.5 rounded-md overflow-hidden shrink-0">
@@ -125,9 +119,9 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem }
                       <div className="flex-grow min-w-0">
                         <h4 className="font-semibold text-sm truncate">{item.name}</h4>
                         <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-                        <p className="text-xs md:text-sm font-medium text-primary">${item.price.toFixed(2)}</p>
+                        <p className="text-xs md:text-sm font-medium text-primary">$\${item.price.toFixed(2)}</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity ml-2 h-7 w-7 shrink-0">
+                      <Button variant="ghost" size="icon" className={cn("opacity-0 group-hover:opacity-100 transition-opacity ml-2 h-7 w-7 shrink-0", isSaving && "hidden")}>
                         <PlusCircle className="h-4 w-4 text-primary" />
                       </Button>
                     </div>
