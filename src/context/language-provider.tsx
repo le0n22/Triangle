@@ -17,7 +17,8 @@ interface LanguageProviderState {
   t: (key: TranslationKey) => string;
 }
 
-const translations: Record<Locale, Record<TranslationKey, string>> = {
+// Export translations so it can be used for initial render matching server render
+export const translations: Record<Locale, Record<TranslationKey, string>> = {
   en: {
     dashboard: 'Dashboard',
     tables: 'Tables',
@@ -81,9 +82,9 @@ const translations: Record<Locale, Record<TranslationKey, string>> = {
 };
 
 const initialState: LanguageProviderState = {
-  locale: 'en',
+  locale: 'en', // This is the key: server and initial client render will use this default
   setLocale: () => null,
-  t: (key: TranslationKey) => translations.en[key] || key,
+  t: (key: TranslationKey) => translations.en[key] || key.toString(), // Default t function
 };
 
 export const LanguageContext = createContext<LanguageProviderState>(initialState);
@@ -95,7 +96,8 @@ export function LanguageProvider({
 }: LanguageProviderProps) {
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem(storageKey) as Locale) || defaultLocale;
+      const storedLocale = localStorage.getItem(storageKey) as Locale;
+      return storedLocale && translations[storedLocale] ? storedLocale : defaultLocale;
     }
     return defaultLocale;
   });
@@ -106,11 +108,13 @@ export function LanguageProvider({
     }
   }, [locale]);
 
-  const setLocale = (newLocale: Locale) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(storageKey, newLocale);
+  const setLocaleHandler = (newLocale: Locale) => {
+    if (translations[newLocale]) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, newLocale);
+      }
+      setLocaleState(newLocale);
     }
-    setLocaleState(newLocale);
   };
 
   const t = useCallback((key: TranslationKey): string => {
@@ -118,7 +122,7 @@ export function LanguageProvider({
   }, [locale]);
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={{ locale, setLocale: setLocaleHandler, t }}>
       {children}
     </LanguageContext.Provider>
   );

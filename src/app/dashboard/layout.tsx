@@ -3,6 +3,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import * as React from 'react'; // Import React for useState, useEffect
 import {
   SidebarProvider,
   Sidebar,
@@ -17,22 +18,33 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/layout/logo';
-import { navItemDefs } from '@/components/layout/sidebar-nav-items'; // Updated import
+import { navItemDefs } from '@/components/layout/sidebar-nav-items';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Settings, UserCircle, LogOut } from 'lucide-react'; // Added LogOut icon
+import { Settings, UserCircle, LogOut } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { useLanguage } from '@/hooks/use-language'; // New import
-import { useRouter } from 'next/navigation'; // For logout redirection
+import { useLanguage } from '@/hooks/use-language';
+import { useRouter } from 'next/navigation';
+import { translations } from '@/context/language-provider'; // Import for default translations
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { t } = useLanguage(); // Use the language hook
+  const { t } = useLanguage();
   const router = useRouter();
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleLogout = () => {
-    // In a real app, you would clear auth tokens/session here
     console.log('User logged out');
     router.push('/auth/login');
+  };
+
+  // Helper function to get translation or fallback to English for initial render
+  const getSafeTranslation = (key: any) => { // Using 'any' for key because itemDef.labelKey can be undefined
+    if (!key) return ''; // Handle undefined key gracefully
+    return isClient ? t(key) : (translations.en[key as TranslationKey] || key.toString());
   };
 
   return (
@@ -49,12 +61,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <SidebarMenuButton
                     asChild
                     isActive={false} // Add logic for active state based on current path
-                    tooltip={{ children: t(itemDef.labelKey || itemDef.key), side: 'right' }}
+                    tooltip={{ children: getSafeTranslation(itemDef.labelKey || itemDef.key), side: 'right' }}
                     disabled={itemDef.disabled}
                   >
                     <Link href={itemDef.href}>
                       <itemDef.icon />
-                      <span>{t(itemDef.key)}</span>
+                      <span>{getSafeTranslation(itemDef.key)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -73,26 +85,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     <AvatarFallback>JD</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-medium text-sidebar-foreground truncate">{t('myAccount')}</span>
+                    <span className="text-sm font-medium text-sidebar-foreground truncate">{getSafeTranslation('myAccount')}</span>
                   </div>
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="top" className="mb-2 w-56 bg-popover text-popover-foreground">
-              <DropdownMenuLabel>{t('myAccount')}</DropdownMenuLabel>
+              <DropdownMenuLabel>{getSafeTranslation('myAccount')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <UserCircle className="mr-2 h-4 w-4" />
-                <span>{t('profile')}</span>
+                <span>{getSafeTranslation('profile')}</span>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
-                <span>{t('settings')}</span>
+                <span>{getSafeTranslation('settings')}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>{t('logout')}</span>
+                <span>{getSafeTranslation('logout')}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
