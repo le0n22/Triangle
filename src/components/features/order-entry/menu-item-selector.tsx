@@ -65,8 +65,8 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
         />
       </div>
 
-      <div className="flex flex-1 min-h-0 gap-3">
-        <ScrollArea className="w-1/3 pr-1"> {/* Kategori sütunu için sağda ince bir ayırıcı olabilir */}
+      <div className="flex flex-1 min-h-0"> {/* Removed gap-3 */}
+        <ScrollArea className="w-1/3 pr-3 border-r border-border/50"> {/* Added pr-3 and border-r */}
           <nav className="flex flex-col gap-2">
             {initialCategories && initialCategories.length > 0 ? (
               initialCategories.map((category) => (
@@ -93,7 +93,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
           </nav>
         </ScrollArea>
 
-        <ScrollArea className="w-2/3 pl-1"> 
+        <ScrollArea className="w-2/3 pl-3">  {/* Changed pl-1 to pl-3 */}
           {selectedCategory ? (
             <section id={`order-panel-items-${selectedCategory.id}`}>
               {filteredItems.length > 0 ? (
@@ -102,7 +102,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
                     <div
                       key={item.id}
                       className={cn(
-                        "flex items-center p-2 rounded-md hover:bg-accent/10 cursor-pointer transition-colors group border border-primary/60", // Renkli çerçeve eklendi
+                        "flex items-center p-2 rounded-md hover:bg-accent/10 cursor-pointer transition-colors group border border-primary/60",
                         isSaving && "opacity-50 cursor-not-allowed hover:bg-transparent hover:border-transparent"
                       )}
                       onClick={() => handleItemClick(item)}
@@ -152,5 +152,4 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
   );
 }
     
-
     
