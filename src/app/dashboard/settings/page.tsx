@@ -70,7 +70,7 @@ export default function SettingsPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">{t('settings')}</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 mb-6"> {/* Adjusted grid-cols for 7 items */}
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 mb-6">
            {settingsTabs.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
           ))}
@@ -79,16 +79,20 @@ export default function SettingsPage() {
           <RestaurantSettings />
         </TabsContent>
         <TabsContent value="appearance">
-          <div className="space-y-8">
-            <ThemeSettings />
-            <LanguageSettings />
+          <div className="flex flex-col md:flex-row md:space-x-8 md:space-y-0 space-y-8">
+            <div className="flex-1 min-w-0"> {/* Added min-w-0 to prevent content overflow */}
+              <ThemeSettings />
+            </div>
+            <div className="flex-1 min-w-0"> {/* Added min-w-0 to prevent content overflow */}
+              <LanguageSettings />
+            </div>
           </div>
         </TabsContent>
         <TabsContent value="tables">
-          <TableManagementSettings initialTables={mockTablesData} />
+          <TableManagementSettings />
         </TabsContent>
         <TabsContent value="categories">
-          <CategoryManagementSettings initialCategories={mockCategoriesData} />
+          <CategoryManagementSettings />
         </TabsContent>
         <TabsContent value="menu_items">
           <MenuItemManagementSettings 
@@ -98,7 +102,7 @@ export default function SettingsPage() {
           />
         </TabsContent>
         <TabsContent value="modifiers">
-          <ModifierManagementSettings initialModifiers={mockModifiersData} />
+          <ModifierManagementSettings />
         </TabsContent>
         <TabsContent value="order_platforms">
           <OrderPlatformSettings initialPlatforms={mockDeliveryPlatforms} />
@@ -107,3 +111,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
