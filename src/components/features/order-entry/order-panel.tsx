@@ -56,8 +56,6 @@ interface QueryDeltaItem {
   st: 'new' | 'modified' | 'deleted';
 }
 
-const testVisibility = true; // H1 etiketinin görünürlüğünü kontrol etmek için
-
 export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: OrderPanelProps) {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [initialOrderSnapshot, setInitialOrderSnapshot] = useState<Order | null>(null);
@@ -371,13 +369,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] bg-background text-foreground relative">
-      {testVisibility && (
-        <h1 className="absolute top-10 left-1/2 -translate-x-1/2 bg-red-500 text-white p-2 text-lg z-50 rounded">
-          ORDER PANEL TEST VISIBLE - File: order-panel.tsx
-        </h1>
-      )}
-      {/* Left Column: Menu Item Selector */}
-      <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full border-r border-border">
+      {/* Left Column: Menu Item Selector - Wider */}
+      <div className="w-full md:w-2/5 lg:w-1/2 xl:w-2/5 h-1/2 md:h-full border-r border-border">
         <MenuItemSelector
           categories={menuCategories}
           onSelectItem={handleSelectItem}
@@ -385,7 +378,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         />
       </div>
 
-      {/* Middle Column: Current Order Summary */}
+      {/* Middle Column: Current Order Summary - Narrower */}
       <div className="w-full md:flex-grow h-1/2 md:h-full">
         {currentOrder ? (
           <CurrentOrderSummary
@@ -404,8 +397,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         )}
       </div>
 
-      {/* Right Column: Action Sidebar */}
-      <div className="w-full md:w-56 lg:w-60 md:flex-none h-auto md:h-full order-last md:order-none">
+      {/* Right Column: Action Sidebar - Fixed Width */}
+      <div className="w-full md:w-48 lg:w-52 md:flex-none h-auto md:h-full order-last md:order-none">
          <OrderActionSidebar
             order={currentOrder}
             isSaving={isSaving}

@@ -59,23 +59,23 @@ export function OrderActionSidebar({
   const allItemsQuantityZero = order && order.items.every(item => item.quantity === 0);
   const effectiveNoItemsForActions = noItemsCurrentlyInOrder || (isOrderPersisted && allItemsQuantityZero);
 
-  const actionButtons: ActionButtonConfig[] = [
+  const generalActionButtons: ActionButtonConfig[] = [
     { label: 'Split Bill', icon: SplitSquareHorizontal, onClick: onSplitBill, isDisabled: (o, s) => effectiveNoItemsForActions || s || !!isOrderClosed, variant: 'outline' },
     { label: 'Print Bill', icon: Printer, onClick: onPrintBill, isDisabled: (o, s) => effectiveNoItemsForActions || s || !!isOrderClosed, variant: 'outline' },
     { label: 'Discount', icon: Percent, onClick: onApplyDiscount, isDisabled: (o, s) => effectiveNoItemsForActions || s || !!isOrderClosed, variant: 'outline' },
-    { label: 'Transfer', icon: ArrowRightLeft, onClick: onTransferTable, isDisabled: (o, s) => s || !!isOrderClosed, variant: 'outline' }, // Transfer might be allowed on empty persisted order
+    { label: 'Transfer', icon: ArrowRightLeft, onClick: onTransferTable, isDisabled: (o, s) => s || !!isOrderClosed, variant: 'outline' },
     { label: 'Cancel Order', icon: Ban, onClick: onCancelOrder, isDisabled: (o, s) => s || !!isOrderClosed, variant: 'destructive-outline', showSpinner: true },
-    { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, isDisabled: (o, s) => s, variant: 'outline' },
   ];
-
-  const mainActionButtons: ActionButtonConfig[] = [
+  
+  const navigationAndPrimaryActions: ActionButtonConfig[] = [
+     { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, isDisabled: (o, s) => s, variant: 'outline', className: "h-14 text-sm" },
      { 
       label: isOrderPersisted ? 'Update & KOT' : 'Confirm & KOT', 
       icon: Save, 
       onClick: onConfirmOrder, 
       isDisabled: (o, s) => effectiveNoItemsForActions || s || !!isOrderClosed, 
-      variant: 'default', // Primary button style
-      className: "bg-primary hover:bg-primary/90 text-primary-foreground",
+      variant: 'default',
+      className: "bg-primary hover:bg-primary/90 text-primary-foreground h-14 text-sm",
       showSpinner: true 
     },
     { 
@@ -83,8 +83,8 @@ export function OrderActionSidebar({
       icon: CreditCard, 
       onClick: onGoToPayment, 
       isDisabled: (o, s) => effectiveNoItemsForActions || s || !isOrderPersisted || !!isOrderClosed, 
-      variant: 'success', // Custom variant or direct styling for green
-      className: "bg-green-600 hover:bg-green-700 text-white",
+      variant: 'success', 
+      className: "bg-accent hover:bg-accent/90 text-accent-foreground h-14 text-sm", // Updated to use accent colors from theme
       showSpinner: true 
     },
   ];
@@ -102,34 +102,34 @@ export function OrderActionSidebar({
   return (
     <div className="w-full h-full flex flex-col border-l border-border bg-card text-card-foreground p-2 space-y-1.5">
       <ScrollArea className="flex-grow">
-        <div className="grid grid-cols-2 gap-1.5">
-          {actionButtons.map((btn) => (
+        <div className="space-y-1.5"> {/* Single column layout */}
+          {generalActionButtons.map((btn) => (
             <Button
               key={btn.label}
               variant={btn.variant || 'outline'}
               onClick={btn.onClick}
               disabled={btn.isDisabled(order, isSaving)}
               className={cn(
-                "h-20 w-full flex flex-col items-center justify-center p-1 text-xs leading-tight",
+                "w-full flex flex-col items-center justify-center p-1 text-xs leading-tight h-auto py-2.5 px-3", // Compact style
                 btn.className
               )}
             >
-              {isSaving && btn.showSpinner ? <Loader2 className="h-5 w-5 animate-spin mb-1" /> : <btn.icon className="h-5 w-5 mb-1" />}
-              <span className="text-center">{btn.label}</span>
+              {isSaving && btn.showSpinner ? <Loader2 className="h-5 w-5 animate-spin mb-0.5" /> : <btn.icon className="h-5 w-5 mb-0.5" />}
+              <span className="text-center text-[10px]">{btn.label}</span>
             </Button>
           ))}
         </div>
       </ScrollArea>
       <div className="pt-1.5 mt-auto space-y-1.5 border-t border-border">
-        {mainActionButtons.map((btn) => (
+        {navigationAndPrimaryActions.map((btn) => (
            <Button
               key={btn.label}
-              variant={btn.variant === 'success' ? 'default' : (btn.variant || 'default')} // Map success to default for Button, style with className
+              variant={btn.variant === 'success' ? 'default' : (btn.variant || 'default')}
               onClick={btn.onClick}
               disabled={btn.isDisabled(order, isSaving)}
               className={cn(
-                "w-full h-14 text-sm",
-                btn.className // Apply custom styles for green button etc.
+                "w-full", // Default height and text size from buttonVariants
+                btn.className 
               )}
             >
               {isSaving && btn.showSpinner ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <btn.icon className="mr-2 h-5 w-5" />}

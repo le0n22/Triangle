@@ -2,7 +2,14 @@
 'use client';
 
 import type { MenuItem, Modifier, OrderItem } from '@/types';
-// Intentionally not importing Dialog components for this diagnostic step
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -45,7 +52,7 @@ export function ModifierModal({
   }, [isOpen, menuItem, currentSelectedOrderItem]);
 
 
-  if (!menuItem || !isOpen) return null; // Return null if not open to avoid rendering a broken layout
+  if (!menuItem) return null;
 
   const handleToggleModifier = (modifierId: string) => {
     if (isSaving) return;
@@ -59,15 +66,13 @@ export function ModifierModal({
     onClose();
   };
 
-  // DIAGNOSTIC: Replacing Dialog components with divs
-  // This will not function as a modal but is intended to check if the build error changes.
   return (
-    <div data-comment="Simulating Dialog root, visibility controlled by isOpen prop in parent">
-      <div className="sm:max-w-md bg-card text-card-foreground p-6 border shadow-lg fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg" data-comment="Simulating DialogContent">
-        <div data-comment="Simulating DialogHeader">
-          <div className="text-lg font-semibold leading-none tracking-tight font-headline" data-comment="Simulating DialogTitle">Customize {menuItem.name}</div>
-          <div className="text-sm text-muted-foreground" data-comment="Simulating DialogDescription">Select modifiers and add any special requests.</div>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md bg-card text-card-foreground">
+        <DialogHeader>
+          <DialogTitle className="font-headline">Customize {menuItem.name}</DialogTitle>
+          <DialogDescription>Select modifiers and add any special requests.</DialogDescription>
+        </DialogHeader>
         <div className="grid gap-4 py-4">
           {menuItem.availableModifiers && menuItem.availableModifiers.length > 0 ? (
             <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
@@ -84,7 +89,7 @@ export function ModifierModal({
                     {modifier.name}
                     </Label>
                     <span className="text-sm text-muted-foreground">
-                      {modifier.priceChange !== 0 && ` (${modifier.priceChange > 0 ? '+' : '-'} $${Math.abs(modifier.priceChange).toFixed(2)})`}
+                       {modifier.priceChange !== 0 && ` (${modifier.priceChange > 0 ? '+' : '-'} $${Math.abs(modifier.priceChange).toFixed(2)})`}
                     </span>
                 </div>
                 ))}
@@ -105,14 +110,14 @@ export function ModifierModal({
             />
           </div>
         </div>
-        <div data-comment="Simulating DialogFooter" className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+        <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
           <Button onClick={handleApply} className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isSaving}>
             {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Apply Changes
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
