@@ -26,9 +26,10 @@ interface OrderPanelProps {
   menuCategories: MenuCategory[];
 }
 
+// Helper to compare modifier arrays by their IDs and count
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
-  if (!arr1 && !arr2) return true;
-  if (!arr1 || !arr2) return false;
+  if (!arr1 && !arr2) return true; // Both null/undefined
+  if (!arr1 || !arr2) return false; // One is null/undefined
   if (arr1.length !== arr2.length) return false;
   const ids1 = arr1.map(m => m.id).sort();
   const ids2 = arr2.map(m => m.id).sort();
@@ -48,12 +49,12 @@ const calculateOrderTotals = (items: OrderItem[], taxRate: number = 0.08): Pick<
 };
 
 interface QueryDeltaItem {
-  n: string;
-  q: number;
-  oq?: number;
-  m?: string[];
-  s?: string;
-  st: 'new' | 'modified' | 'deleted';
+  n: string; // menuItemName
+  q: number; // quantity (current quantity)
+  oq?: number; // oldQuantity (if changed)
+  m?: string[]; // selectedModifiers (formatted string list)
+  s?: string; // specialRequests
+  st: 'new' | 'modified' | 'deleted'; // status of the item in delta
 }
 
 export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: OrderPanelProps) {
@@ -272,12 +273,15 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           setIsSaving(false); return;
         }
         const createOrderData: CreateOrderInput = { tableId: currentOrder.tableId, items: orderItemsInput, ...finalTotals };
+        console.log("--- OrderPanel: Creating new order with data: ---", JSON.stringify(createOrderData, null, 2));
         result = await createOrderAction(createOrderData);
       } else {
+        console.log(`--- OrderPanel: Updating existing order ${currentOrder.id} with items: ---`, JSON.stringify(orderItemsInput, null, 2));
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, finalTotals);
       }
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
+        console.error("--- OrderPanel: Error saving order from backend: ---", result.error);
       } else {
         setCurrentOrder(result);
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(result)));
@@ -292,7 +296,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         router.push(`/dashboard/kot/${result.id}${queryString}`);
       }
     } catch (e: any) {
-      toast({ title: "Error", description: e.message || "An unexpected error occurred.", variant: "destructive" });
+      toast({ title: "Error", description: e.message || "An unexpected error occurred while saving the order.", variant: "destructive" });
+      console.error("--- OrderPanel: Unexpected error: ---", e);
     } finally {
       setIsSaving(false);
     }
@@ -303,7 +308,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       toast({ title: "Cannot proceed to payment for empty order", variant: "destructive" }); return;
     }
     if (currentOrder.id.startsWith('temp-ord-')) {
-      toast({ title: "Order Not Saved", description: "Please confirm the order first.", variant: "destructive" }); return;
+      toast({ title: "Order Not Saved", description: "Please confirm the order first before proceeding to payment.", variant: "destructive" }); return;
     }
     setIsSaving(true);
     try {
@@ -332,7 +337,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     if (currentOrder.id.startsWith('temp-ord-')) {
       const tableNumberMatch = tableIdParam.match(/\d+/);
       let tableNumber = 0;
-      if (tableIdParam.startsWith('t') && tableNumberMatch) tableNumber = parseInt(tableNumberMatch[0], 10);
+       if (tableIdParam.startsWith('t') && tableNumberMatch) tableNumber = parseInt(tableNumberMatch[0], 10);
       setCurrentOrder({
         id: `temp-ord-${Date.now()}`, tableId: tableIdParam, tableNumber: tableNumber, items: [],
         status: 'OPEN', subtotal: 0, taxRate: 0.08, taxAmount: 0, totalAmount: 0,
@@ -347,16 +352,17 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       } else {
         setCurrentOrder(result);
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(result)));
-        toast({ title: "Order Cancelled", variant: "destructive" });
+        toast({ title: "Order Cancelled", description: `Order ${result.id.substring(0,8)} has been cancelled.`, variant: "destructive" });
         router.push('/dashboard/tables');
       }
     }
     setIsSaving(false);
   };
 
+  // Stub functions for sidebar actions
   const handleBackToTables = () => { if (isSaving) return; router.push('/dashboard/tables'); };
   const handleSplitBill = () => { if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0 || isSaving) return; toast({ title: 'Split Bill', description: 'Not Implemented.' }); };
-  const handlePrintBill = () => { if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0 || isSaving) return; toast({ title: 'Print Bill', description: 'Not Implemented.' }); };
+  const handlePrintBill = () => { if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0 || isSaving) return; toast({ title: 'Print Bill', description: 'Not Implemented.' }); }; // Placeholder
   const handleApplyDiscount = () => { if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0 || isSaving) return; toast({ title: 'Apply Discount', description: 'Not Implemented.' }); };
   const handleTransferTable = () => { if (!currentOrder || isSaving) return; toast({ title: 'Transfer Table', description: 'Not Implemented.' }); };
 
@@ -372,9 +378,12 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] bg-background text-foreground">
+      {/* Left Column: Menu Item Selector */}
       <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full">
         <MenuItemSelector categories={menuCategories} onSelectItem={handleSelectItem} />
       </div>
+
+      {/* Middle Column: Current Order Summary */}
       <div className="w-full md:flex-grow h-1/2 md:h-full">
         {currentOrder ? (
           <CurrentOrderSummary
@@ -392,6 +401,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           </div>
         )}
       </div>
+      
+      {/* Right Column: Action Sidebar */}
       <div className="w-full md:w-56 lg:w-60 md:flex-none h-auto md:h-full order-last md:order-none">
          <OrderActionSidebar
             order={currentOrder}

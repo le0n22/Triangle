@@ -54,13 +54,15 @@ export function OrderActionSidebar({
   const isOrderPersisted = order.id && !order.id.startsWith('temp-ord-');
   const isOrderClosed = order.status === 'PAID' || order.status === 'CANCELLED';
   const allItemsQuantityZero = order.items.every(item => item.quantity === 0);
+  // Disable actions if there are effectively no items to act upon, or if order is closed/saving
+  const baseActionDisabled = effectiveNoItemsForActions || isSaving || isOrderClosed;
   const effectiveNoItemsForActions = noItemsCurrentlyInOrder || (isOrderPersisted && allItemsQuantityZero);
 
 
   const actionButtons = [
-    { label: 'Split Bill', icon: SplitSquareHorizontal, onClick: onSplitBill, disabled: effectiveNoItemsForActions || isSaving || isOrderClosed, variant: 'outline' as const },
-    { label: 'Print Bill', icon: Printer, onClick: onPrintBill, disabled: effectiveNoItemsForActions || isSaving || isOrderClosed, variant: 'outline' as const },
-    { label: 'Discount', icon: Percent, onClick: onApplyDiscount, disabled: effectiveNoItemsForActions || isSaving || isOrderClosed, variant: 'outline' as const },
+    { label: 'Split Bill', icon: SplitSquareHorizontal, onClick: onSplitBill, disabled: baseActionDisabled, variant: 'outline' as const },
+    { label: 'Print Bill', icon: Printer, onClick: onPrintBill, disabled: baseActionDisabled, variant: 'outline' as const },
+    { label: 'Discount', icon: Percent, onClick: onApplyDiscount, disabled: baseActionDisabled, variant: 'outline' as const },
     { label: 'Transfer Table', icon: ArrowRightLeft, onClick: onTransferTable, disabled: isSaving || isOrderClosed, variant: 'outline' as const },
     { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, disabled: isSaving, variant: 'outline' as const },
     { 

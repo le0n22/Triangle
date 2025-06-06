@@ -17,6 +17,7 @@ interface CurrentOrderSummaryProps {
   isSaving: boolean;
 }
 
+// Helper function to compare modifier arrays by their IDs and count
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
   if (!arr1 && !arr2) return true;
   if (!arr1 || !arr2) return false;
@@ -69,9 +70,15 @@ export function CurrentOrderSummary({
         ) : (
           <ul className="space-y-3">
             {order.items.map((item) => {
+              // Filter out items that were persisted but now have 0 quantity before they are rendered
+              // Client-side new items with 0 quantity are already filtered out in updateOrderAndRecalculate
               if (item.quantity === 0 && !item.id.startsWith('item-')) {
+                // This is a persisted item whose quantity was reduced to 0.
+                // It's kept in currentOrder for delta calculation but shouldn't be displayed.
                 return null;
               }
+              // New items (id starts with 'item-') with quantity 0 should already be filtered out by `updateOrderAndRecalculate`.
+              // But as a safeguard, or if they were added and immediately set to 0 before any recalculation that filters:
               if (item.quantity === 0 && item.id.startsWith('item-')) {
                 return null;
               }
@@ -79,7 +86,7 @@ export function CurrentOrderSummary({
               const initialItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === item.id);
               let itemState: 'new' | 'modified' | 'unchanged' = 'unchanged';
 
-              if (!initialItem && item.id.startsWith('item-')) {
+              if (!initialItem && item.id.startsWith('item-')) { // Truly new client-side item
                 itemState = 'new';
               } else if (initialItem && (
                 item.quantity !== initialItem.quantity ||
@@ -87,10 +94,13 @@ export function CurrentOrderSummary({
                 !areModifierArraysEqual(item.selectedModifiers, initialItem.selectedModifiers)
               )) {
                 itemState = 'modified';
-              } else if (!initialItem && !item.id.startsWith('item-')) {
-                itemState = 'new';
+              } else if (!initialItem && !item.id.startsWith('item-')) { 
+                // This case means the item.id is NOT a client-side ID (e.g. it came from initialOrder)
+                // but it's not found in initialOrderSnapshot. This could happen if initialOrderSnapshot
+                // was reset or out of sync. For UI, treat as new if quantity > 0.
+                 if (item.quantity > 0) itemState = 'new';
               }
-
+              
               const itemClasses = cn(
                 "p-3 rounded-md border transition-all duration-300 ease-in-out",
                 itemState === 'new' && "bg-blue-500/10 border-blue-500/40 ring-1 ring-blue-500/60 shadow-md",
@@ -164,6 +174,7 @@ export function CurrentOrderSummary({
         </>
       )}
       
+      {/* Action buttons are now moved to OrderActionSidebar */}
       {isOrderClosed && (
         <p className="text-center text-muted-foreground py-4 mt-auto border-t border-border">
           This order is {order.status.toLowerCase()}. No further actions can be taken.
