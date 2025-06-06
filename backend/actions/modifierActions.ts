@@ -18,7 +18,7 @@ function mapPrismaModifierToAppModifier(prismaModifier: PrismaModifier): AppModi
   return {
     id: prismaModifier.id,
     name: prismaModifier.name,
-    priceChange: prismaModifier.priceChange,
+    priceChange: prismaModifier.priceChange.toNumber(), // Ensure conversion to number
     createdAt: prismaModifier.createdAt,
     updatedAt: prismaModifier.updatedAt,
   };
@@ -62,7 +62,7 @@ export async function createModifierAction(data: {
     const newModifier = await prisma.modifier.create({
       data: {
         name: data.name,
-        priceChange: data.priceChange,
+        priceChange: data.priceChange, // Prisma handles number to Decimal conversion
       },
     });
     const result = mapPrismaModifierToAppModifier(newModifier);
@@ -105,7 +105,7 @@ export async function updateModifierAction(
       where: { id },
       data: {
         name: data.name,
-        priceChange: data.priceChange,
+        priceChange: data.priceChange, // Prisma handles number to Decimal conversion
       },
     });
     const result = mapPrismaModifierToAppModifier(updatedModifier);
