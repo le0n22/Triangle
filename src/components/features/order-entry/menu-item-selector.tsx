@@ -72,16 +72,16 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
               initialCategories.map((category) => (
                 <Button
                   key={category.id}
-                  variant="ghost"
+                  variant="outline"
                   className={cn(
-                    "w-full justify-start text-left h-auto py-2 px-2.5 text-xs md:text-sm",
+                    "w-full flex flex-col items-center justify-center h-auto py-2 px-2 text-xs leading-tight", // Updated styles
                     selectedCategoryId === category.id && "bg-accent text-accent-foreground",
                     isSaving && "opacity-50 cursor-not-allowed"
                   )}
                   onClick={() => { if (!isSaving) setSelectedCategoryId(category.id); }}
                   disabled={isSaving}
                 >
-                  {category.name}
+                  <span className="text-center">{category.name}</span>
                 </Button>
               ))
             ) : (
