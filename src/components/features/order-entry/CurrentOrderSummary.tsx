@@ -5,34 +5,15 @@ import type { Order, OrderItem, Modifier } from '@/types';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Trash2, 
-  Edit3, 
-  PlusCircle, 
-  MinusCircle, 
-  Printer, 
-  CreditCard, 
-  ChevronLeft,
-  SplitSquareHorizontal,
-  Percent,
-  ArrowRightLeft,
-  Ban,
-  Loader2,
-  Save // Confirm/Update KOT için Save ikonu
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Trash2, Edit3, PlusCircle, MinusCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CurrentOrderSummaryProps {
   order: Order | null;
-  initialOrderSnapshot?: Order | null;
+  initialOrderSnapshot?: Order | null; 
   onUpdateItemQuantity: (itemId: string, newQuantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onEditItemModifiers: (item: OrderItem) => void;
-  onConfirmOrder: () => Promise<void>;
-  onGoToPayment: () => Promise<void>;
-  onCancelOrder: () => Promise<void>;
-  onBackToTables: () => void; 
   isSaving: boolean;
 }
 
@@ -45,41 +26,15 @@ const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => 
   return ids1.every((id, index) => id === ids2[index]);
 };
 
-export function CurrentOrderSummary({ 
-  order, 
+export function CurrentOrderSummary({
+  order,
   initialOrderSnapshot,
-  onUpdateItemQuantity, 
-  onRemoveItem, 
+  onUpdateItemQuantity,
+  onRemoveItem,
   onEditItemModifiers,
-  onConfirmOrder,
-  onGoToPayment,
-  onCancelOrder,
-  onBackToTables,
   isSaving
 }: CurrentOrderSummaryProps) {
-  const { toast } = useToast();
-
-  const handleSplitBill = () => {
-    if (!order || order.items.filter(i => i.quantity > 0).length === 0 || isSaving || isOrderClosed) return;
-    toast({ title: 'Split Bill', description: 'Functionality to split bill (Not Implemented).' });
-  };
-
-  const handlePrintBill = () => {
-    if (!order || order.items.filter(i => i.quantity > 0).length === 0 || isSaving || isOrderClosed) return;
-    toast({ title: 'Print Bill', description: 'Printing bill... (Not Implemented).' });
-  };
-
-  const handleApplyDiscount = () => {
-    if (!order || order.items.filter(i => i.quantity > 0).length === 0 || isSaving || isOrderClosed) return;
-    toast({ title: 'Apply Discount', description: 'Discount controls... (Not Implemented).' });
-  };
-
-  const handleTransferTable = () => {
-    if (!order || isSaving || isOrderClosed) return;
-    toast({ title: 'Transfer Table', description: 'Transfer table... (Not Implemented).' });
-  };
-
-  if (!order) { 
+  if (!order) {
     return (
       <div className="p-6 text-center text-muted-foreground h-full flex flex-col justify-center items-center">
         <Loader2 className="w-16 h-16 mb-4 text-primary animate-spin" />
@@ -87,13 +42,10 @@ export function CurrentOrderSummary({
       </div>
     );
   }
-  
+
   const noItemsCurrentlyInOrder = order.items.filter(item => item.quantity > 0).length === 0;
   const isOrderPersisted = order.id && !order.id.startsWith('temp-ord-');
   const isOrderClosed = order.status === 'PAID' || order.status === 'CANCELLED';
-  
-  const allItemsQuantityZero = order.items.every(item => item.quantity === 0);
-  const effectiveNoItemsForActions = noItemsCurrentlyInOrder || (isOrderPersisted && allItemsQuantityZero);
 
   const formatModifiers = (modifiers: Modifier[]) => {
     if (!modifiers || modifiers.length === 0) return null;
@@ -103,173 +55,125 @@ export function CurrentOrderSummary({
   return (
     <div className="flex flex-col h-full bg-card text-card-foreground p-4">
       <h3 className="text-xl font-headline font-semibold mb-4">
-        Current Order (Table {order.tableNumber})
+        Order for Table {order.tableNumber}
         {isOrderPersisted && !isOrderClosed && <span className="ml-2 text-xs font-normal text-green-500">(Saved)</span>}
         {isOrderClosed && <span className="ml-2 text-xs font-normal text-destructive uppercase">({order.status})</span>}
       </h3>
       <ScrollArea className="flex-grow mb-4 pr-2">
         {noItemsCurrentlyInOrder ? (
-            <div className="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground p-6">
-                <ShoppingCartIcon className="w-16 h-16 mb-4 text-gray-400" />
-                <p className="text-lg">No items in the current order.</p>
-                <p className="text-sm">Select items from the menu to get started.</p>
-            </div>
+          <div className="flex-grow flex flex-col justify-center items-center text-center text-muted-foreground p-6">
+            <ShoppingCartIcon className="w-16 h-16 mb-4 text-gray-400" />
+            <p className="text-lg">No items in the current order.</p>
+            <p className="text-sm">Select items from the menu to get started.</p>
+          </div>
         ) : (
-            <ul className="space-y-3">
+          <ul className="space-y-3">
             {order.items.map((item) => {
-                if (item.quantity === 0 && !item.id.startsWith('item-')) { 
-                    return null;
-                }
-                if (item.quantity === 0 && item.id.startsWith('item-')) { 
-                    return null;
-                }
+              if (item.quantity === 0 && !item.id.startsWith('item-')) {
+                return null;
+              }
+              if (item.quantity === 0 && item.id.startsWith('item-')) {
+                return null;
+              }
 
-                const initialItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === item.id);
-                let itemState: 'new' | 'modified' | 'unchanged' = 'unchanged';
+              const initialItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === item.id);
+              let itemState: 'new' | 'modified' | 'unchanged' = 'unchanged';
 
-                if (!initialItem && item.id.startsWith('item-')) { 
-                    itemState = 'new';
-                } else if (initialItem && (
-                    item.quantity !== initialItem.quantity ||
-                    item.specialRequests !== initialItem.specialRequests ||
-                    !areModifierArraysEqual(item.selectedModifiers, initialItem.selectedModifiers)
-                )) {
-                    itemState = 'modified';
-                } else if (!initialItem && !item.id.startsWith('item-')) { 
-                    itemState = 'new'; 
-                }
-                
-                const itemClasses = cn(
-                    "p-3 rounded-md border transition-all duration-300 ease-in-out",
-                    itemState === 'new' && "bg-blue-500/10 border-blue-500/40 ring-1 ring-blue-500/60 shadow-md",
-                    itemState === 'modified' && "bg-yellow-500/10 border-yellow-500/40 ring-1 ring-yellow-500/60 shadow-md",
-                    itemState === 'unchanged' && "bg-background/50 border-border opacity-80 hover:opacity-100"
-                );
+              if (!initialItem && item.id.startsWith('item-')) {
+                itemState = 'new';
+              } else if (initialItem && (
+                item.quantity !== initialItem.quantity ||
+                item.specialRequests !== initialItem.specialRequests ||
+                !areModifierArraysEqual(item.selectedModifiers, initialItem.selectedModifiers)
+              )) {
+                itemState = 'modified';
+              } else if (!initialItem && !item.id.startsWith('item-')) {
+                itemState = 'new';
+              }
 
-                return (
-                    <li key={item.id} className={itemClasses}>
-                    <div className="flex justify-between items-start">
-                        <div>
-                        <p className="font-semibold text-sm">{item.menuItemName}</p>
-                        <p className="text-xs text-muted-foreground">
-                            ${item.unitPrice.toFixed(2)} x {item.quantity} = ${item.totalPrice.toFixed(2)}
+              const itemClasses = cn(
+                "p-3 rounded-md border transition-all duration-300 ease-in-out",
+                itemState === 'new' && "bg-blue-500/10 border-blue-500/40 ring-1 ring-blue-500/60 shadow-md",
+                itemState === 'modified' && "bg-yellow-500/10 border-yellow-500/40 ring-1 ring-yellow-500/60 shadow-md",
+                itemState === 'unchanged' && "bg-background/50 border-border opacity-80 hover:opacity-100"
+              );
+
+              return (
+                <li key={item.id} className={itemClasses}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-semibold text-sm">{item.menuItemName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        ${item.unitPrice.toFixed(2)} x {item.quantity} = ${item.totalPrice.toFixed(2)}
+                      </p>
+                      {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                        <p className="text-xs text-primary mt-1">
+                          Modifiers: {formatModifiers(item.selectedModifiers)}
                         </p>
-                        {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                            <p className="text-xs text-primary mt-1">
-                            Modifiers: {formatModifiers(item.selectedModifiers)}
-                            </p>
-                        )}
-                        {item.specialRequests && (
-                            <p className="text-xs text-accent mt-1">Requests: {item.specialRequests}</p>
-                        )}
-                        </div>
-                        {!isOrderClosed && (
-                            <div className="flex items-center gap-1 shrink-0">
-                            <Button variant="ghost" size="icon" onClick={() => onEditItemModifiers(item)} className="h-7 w-7" disabled={isSaving}>
-                                <Edit3 className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.id)} className="h-7 w-7" disabled={isSaving}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                            </div>
-                        )}
+                      )}
+                      {item.specialRequests && (
+                        <p className="text-xs text-accent mt-1">Requests: {item.specialRequests}</p>
+                      )}
                     </div>
                     {!isOrderClosed && (
-                        <div className="flex items-center gap-2 mt-2">
-                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, Math.max(0, item.quantity - 1))} disabled={isSaving || (item.quantity === 1 && item.id.startsWith('item-')) }>
-                            <MinusCircle className="h-4 w-4" />
-                            </Button>
-                            <span className="text-sm w-6 text-center">{item.quantity}</span>
-                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, item.quantity + 1)} disabled={isSaving}>
-                            <PlusCircle className="h-4 w-4" />
-                            </Button>
-                        </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => onEditItemModifiers(item)} className="h-7 w-7" disabled={isSaving}>
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.id)} className="h-7 w-7" disabled={isSaving}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
                     )}
-                    </li>
-                );
+                  </div>
+                  {!isOrderClosed && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, Math.max(0, item.quantity - 1))} disabled={isSaving || (item.quantity === 1 && item.id.startsWith('item-'))}>
+                        <MinusCircle className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm w-6 text-center">{item.quantity}</span>
+                      <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, item.quantity + 1)} disabled={isSaving}>
+                        <PlusCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              );
             })}
-            </ul>
+          </ul>
         )}
       </ScrollArea>
-      
+
       {!noItemsCurrentlyInOrder && (
         <>
-            <Separator className="my-3 bg-border/50" />
-            <div className="space-y-1 text-sm mb-4">
-                <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>${order.subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                <span>Tax ({ (order.taxRate * 100).toFixed(0) }%):</span>
-                <span>${order.taxAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between font-bold text-base text-primary">
-                <span>Total:</span>
-                <span>${order.totalAmount.toFixed(2)}</span>
-                </div>
+          <Separator className="my-3 bg-border/50" />
+          <div className="space-y-1 text-sm mb-4">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>${order.subtotal.toFixed(2)}</span>
             </div>
+            <div className="flex justify-between">
+              <span>Tax ({(order.taxRate * 100).toFixed(0)}%):</span>
+              <span>${order.taxAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-base text-primary">
+              <span>Total:</span>
+              <span>${order.totalAmount.toFixed(2)}</span>
+            </div>
+          </div>
         </>
       )}
       
-      <div className="mt-auto pt-4 border-t border-border space-y-3">
-        {!isOrderClosed && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {[
-                    { label: 'Split Bill', icon: SplitSquareHorizontal, onClick: handleSplitBill, disabled: effectiveNoItemsForActions || isSaving },
-                    { label: 'Print Bill', icon: Printer, onClick: handlePrintBill, disabled: effectiveNoItemsForActions || isSaving },
-                    { label: 'Discount', icon: Percent, onClick: handleApplyDiscount, disabled: effectiveNoItemsForActions || isSaving },
-                    { label: 'Transfer', icon: ArrowRightLeft, onClick: handleTransferTable, disabled: isSaving }, // Transfer might be allowed for empty saved orders
-                    { label: 'Cancel Order', icon: isSaving && !order.id.startsWith('temp-ord-') ? Loader2 : Ban, onClick: onCancelOrder, disabled: isSaving && !order.id.startsWith('temp-ord-'), className: (isSaving && order.id.startsWith('temp-ord-')) ? "text-muted-foreground" : "text-destructive border-destructive hover:bg-destructive/10", iconClassName: (isSaving && order.id.startsWith('temp-ord-')) ? "animate-spin" : "text-destructive" },
-                    { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, disabled: isSaving }
-                ].map(btn => (
-                    <Button 
-                        key={btn.label}
-                        variant="outline" 
-                        onClick={btn.onClick} 
-                        disabled={btn.disabled} 
-                        className={cn("h-16 flex flex-col items-center justify-center p-1 text-xs", btn.className)}
-                    >
-                        <btn.icon className={cn("h-5 w-5 mb-0.5", btn.iconClassName)} />
-                        {btn.label}
-                    </Button>
-                ))}
-            </div>
-        )}
-
-        {!isOrderClosed && (
-            <div className="space-y-2 pt-2">
-                 <Button 
-                    onClick={onConfirmOrder} 
-                    size="lg" 
-                    className="w-full h-14 bg-accent hover:bg-accent/90 text-accent-foreground"
-                    disabled={effectiveNoItemsForActions || isSaving}
-                >
-                    {isSaving && order.id.startsWith('temp-ord-') ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />} 
-                    {isOrderPersisted ? 'Update & KOT' : 'Confirm & KOT'}
-                </Button>
-                <Button 
-                    onClick={onGoToPayment} 
-                    size="lg" 
-                    className="w-full h-14 bg-green-600 hover:bg-green-700 text-white"
-                    disabled={effectiveNoItemsForActions || isSaving || !isOrderPersisted}
-                >
-                    {isSaving && isOrderPersisted ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />} 
-                    Proceed to Payment
-                </Button>
-            </div>
-        )}
-        {isOrderClosed && (
-            <p className="text-center text-muted-foreground py-2">
-                This order is {order.status.toLowerCase()}. No further actions can be taken.
-            </p>
-        )}
-         {noItemsCurrentlyInOrder && !isOrderClosed && (
-             <p className="text-center text-muted-foreground py-2">
-                Add items to the order to enable actions.
-            </p>
-        )}
-      </div>
+      {isOrderClosed && (
+        <p className="text-center text-muted-foreground py-4 mt-auto border-t border-border">
+          This order is {order.status.toLowerCase()}. No further actions can be taken.
+        </p>
+      )}
+      {noItemsCurrentlyInOrder && !isOrderClosed && (
+        <p className="text-center text-muted-foreground py-4 mt-auto border-t border-border">
+          Add items to the order to enable actions.
+        </p>
+      )}
     </div>
   );
 }
@@ -292,7 +196,5 @@ function ShoppingCartIcon(props: React.SVGProps<SVGSVGElement>) {
       <circle cx="19" cy="21" r="1" />
       <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.16" />
     </svg>
-  )
+  );
 }
-
-  
