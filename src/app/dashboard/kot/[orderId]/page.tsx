@@ -9,10 +9,30 @@ interface KotPageProps {
   params: {
     orderId: string;
   };
+  searchParams: { // For receiving delta KOT items
+    delta?: string;
+  };
 }
 
-// Helper function to format selected modifiers for KOT
-function formatKotModifiers(modifiers: FrontendOrderItem['selectedModifiers']): string[] | undefined {
+interface QueryDeltaItem {
+  n: string; // menuItemName
+  q: number; // quantity (current quantity)
+  oq?: number; // oldQuantity (if changed)
+  m?: string[]; // selectedModifiers (formatted string list)
+  s?: string; // specialRequests
+  st: 'new' | 'modified' | 'deleted'; // status of the item in delta
+}
+
+// Helper function to format selected modifiers for KOT (from QueryDeltaItem)
+function formatDeltaModifiersForKot(modifiers: QueryDeltaItem['m']): string[] | undefined {
+    if (!modifiers || modifiers.length === 0) {
+        return undefined;
+    }
+    return modifiers; // Already formatted strings
+}
+
+// Helper function to format selected modifiers for KOT (from AppOrderItem)
+function formatAppOrderModifiersForKot(modifiers: FrontendOrderItem['selectedModifiers']): string[] | undefined {
     if (!modifiers || modifiers.length === 0) {
         return undefined;
     }
@@ -26,11 +46,29 @@ function formatKotModifiers(modifiers: FrontendOrderItem['selectedModifiers']): 
 }
 
 
-export default async function KotPage({ params }: KotPageProps) {
+export default async function KotPage({ params, searchParams }: KotPageProps) {
   console.log(`--- KOT PAGE: KotPage Server Component EXECUTION START ---`);
   
   const orderIdFromParams = params?.orderId; 
   console.log(`--- KOT PAGE: Extracted orderIdFromParams: >>${orderIdFromParams}<< ---`);
+
+  const deltaQueryParam = searchParams?.delta;
+  console.log(`--- KOT PAGE: Received searchParams.delta: >>${deltaQueryParam}<< ---`);
+
+  let deltaKOTItems: QueryDeltaItem[] | null = null;
+  if (deltaQueryParam) {
+    try {
+      const parsedDelta = JSON.parse(decodeURIComponent(deltaQueryParam));
+      if (Array.isArray(parsedDelta) && parsedDelta.length > 0) {
+        deltaKOTItems = parsedDelta as QueryDeltaItem[];
+        console.log(`--- KOT PAGE: Parsed deltaKOTItems: ---`, JSON.stringify(deltaKOTItems, null, 2));
+      } else {
+        console.log(`--- KOT PAGE: Parsed delta is empty or not an array. Delta:`, parsedDelta);
+      }
+    } catch (error) {
+      console.error(`--- KOT PAGE: Error parsing delta query param:`, error);
+    }
+  }
 
   if (!orderIdFromParams || typeof orderIdFromParams !== 'string' || orderIdFromParams.trim() === "") {
     console.error(`--- KOT PAGE: Invalid or missing orderId in params. orderIdFromParams: >>${orderIdFromParams}<< ---`);
@@ -65,7 +103,7 @@ export default async function KotPage({ params }: KotPageProps) {
     );
   }
 
-  if (appOrderResult === null) { // Explicitly checking for null if order not found by action
+  if (appOrderResult === null) { 
     console.error(`--- KOT PAGE: Order with ID >>${orderIdFromParams}<< not found by getAppOrderByIdAction (returned null). ---`);
      return (
       <div className="container mx-auto py-10 text-center">
@@ -79,17 +117,39 @@ export default async function KotPage({ params }: KotPageProps) {
   }
 
   const appOrder = appOrderResult as AppOrder;
+  let kotItemsForView: KOT['items'];
+
+  if (deltaKOTItems && deltaKOTItems.length > 0) {
+    console.log(`--- KOT PAGE: Using DELTA items for KOT. Delta items count: ${deltaKOTItems.length} ---`);
+    kotItemsForView = deltaKOTItems.map(item => {
+        let namePrefix = "";
+        if (item.st === 'new') namePrefix = "(NEW) ";
+        else if (item.st === 'modified') namePrefix = `(MODIFIED ${item.oq} -> ${item.q}) `;
+        else if (item.st === 'deleted') namePrefix = `(DELETED ${item.oq}x) `;
+        
+        return {
+            name: `${namePrefix}${item.n}`,
+            quantity: item.q, // Show current quantity, even if 0 for deleted
+            modifiers: formatDeltaModifiersForKot(item.m),
+            specialRequests: item.s || undefined,
+        };
+    });
+  } else {
+    console.log(`--- KOT PAGE: No valid delta items found, using FULL order items for KOT. ---`);
+    kotItemsForView = appOrder.items.map(item => ({
+      name: item.menuItemName,
+      quantity: item.quantity,
+      modifiers: formatAppOrderModifiersForKot(item.selectedModifiers),
+      specialRequests: item.specialRequests || undefined,
+    }));
+  }
+
 
   const kotData: KOT = {
     id: `kot-${appOrder.id.substring(0,8)}-${new Date(appOrder.createdAt).getTime().toString().slice(-5)}`,
     orderId: appOrder.id,
     tableNumber: appOrder.tableNumber,
-    items: appOrder.items.map(item => ({
-      name: item.menuItemName,
-      quantity: item.quantity,
-      modifiers: formatKotModifiers(item.selectedModifiers),
-      specialRequests: item.specialRequests || undefined,
-    })),
+    items: kotItemsForView,
     createdAt: appOrder.createdAt.toString(), 
   };
   
@@ -103,4 +163,3 @@ export default async function KotPage({ params }: KotPageProps) {
     </div>
   );
 }
-

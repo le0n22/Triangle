@@ -13,16 +13,26 @@ import {
   updateOrderItemsAction, 
   updateOrderStatusAction,
   type CreateOrderInput,
-  type OrderItemInput
+  type OrderItemInput,
+  type AppOrder
 } from '@backend/actions/orderActions';
-import type { AppOrder } from '@backend/actions/orderActions'; 
-import { Prisma } from '@prisma/client'; 
+import { Prisma } from '@prisma/client';
 
 interface OrderPanelProps {
   tableIdParam: string; 
   initialOrder: Order | null;
   menuCategories: MenuCategory[];
 }
+
+// Helper to compare modifier arrays by their IDs and count
+const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
+  if (!arr1 && !arr2) return true; // Both null/undefined
+  if (!arr1 || !arr2) return false; // One is null/undefined
+  if (arr1.length !== arr2.length) return false;
+  const ids1 = arr1.map(m => m.id).sort();
+  const ids2 = arr2.map(m => m.id).sort();
+  return ids1.every((id, index) => id === ids2[index]);
+};
 
 const calculateOrderItemTotal = (item: Omit<OrderItem, 'id' | 'totalPrice' | 'menuItemName' | 'menuItemId'> & { unitPrice: number, selectedModifiers: Modifier[], quantity: number }): number => {
   const modifiersPrice = item.selectedModifiers.reduce((sum, mod) => sum + mod.priceChange, 0);
@@ -35,6 +45,15 @@ const calculateOrderTotals = (items: OrderItem[], taxRate: number = 0.08): Pick<
   const totalAmount = subtotal + taxAmount;
   return { subtotal, taxRate, taxAmount, totalAmount };
 };
+
+interface QueryDeltaItem {
+  n: string; // menuItemName
+  q: number; // quantity (current quantity)
+  oq?: number; // oldQuantity (if changed)
+  m?: string[]; // selectedModifiers (formatted string list)
+  s?: string; // specialRequests
+  st: 'new' | 'modified' | 'deleted'; // status of the item in delta
+}
 
 
 export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: OrderPanelProps) {
@@ -49,32 +68,27 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
   useEffect(() => {
     console.log("OrderPanel useEffect: initialOrder or tableIdParam changed.");
-    console.log("Current initialOrder:", initialOrder);
+    console.log("Current initialOrder:", initialOrder ? `ID: ${initialOrder.id}, Items: ${initialOrder.items.length}` : 'null');
     console.log("Current tableIdParam:", tableIdParam);
 
     if (initialOrder) {
       console.log("Setting currentOrder from initialOrder:", initialOrder);
       setCurrentOrder(initialOrder);
-      // Create a deep copy for the snapshot to avoid mutations affecting it
       setInitialOrderSnapshot(JSON.parse(JSON.stringify(initialOrder))); 
     } else if (tableIdParam) {
       console.log("initialOrder is null, creating new temp order for tableIdParam:", tableIdParam);
       const tableNumberMatch = tableIdParam.match(/\d+/);
-      // Ensure tableIdParam itself if it doesn't contain a number (e.g. it's 't2' or just an ID)
-      // For tableNumber, we try to parse it. If it's not a simple 't<number>' format,
-      // this might need adjustment based on how tableIdParam is structured.
-      // For now, assuming it's 't2' or similar.
       let tableNumber = 0;
       if (tableIdParam.startsWith('t') && tableNumberMatch) {
         tableNumber = parseInt(tableNumberMatch[0], 10);
       } else {
-        // If tableIdParam is a CUID or other format, we might need to fetch table details
-        // or rely on a default/placeholder for new orders if tableNumber is crucial here.
-        // For simplicity, let's assume 0 if not parsable.
-        console.warn(`Could not parse table number from tableIdParam: ${tableIdParam}`);
+         // If tableIdParam is a CUID, we might need to fetch table details.
+         // For now, let's assume the OrderPanel is always for a known table whose details
+         // would be part of a complete Table object if initialOrder was fetched using it.
+         // For this example, we'll default to 0 or parse from a 't<number>' pattern.
+         console.warn(`Could not parse table number from tableIdParam: ${tableIdParam} directly. Ensure tableIdParam is a valid table ID if initialOrder is null.`);
       }
       
-      console.log("Parsed table number:", tableNumber);
       const newTempOrder: Order = {
         id: `temp-ord-${Date.now()}`,
         tableId: tableIdParam,
@@ -89,9 +103,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         updatedAt: new Date().toISOString(),
       };
       setCurrentOrder(newTempOrder);
-      setInitialOrderSnapshot(null); // No snapshot for a brand new temporary order
+      setInitialOrderSnapshot(null); 
     } else {
-      console.log("Both initialOrder and tableIdParam are null/undefined. Setting currentOrder to null.");
       setCurrentOrder(null);
       setInitialOrderSnapshot(null);
     }
@@ -120,8 +133,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
     const existingItemIndex = currentOrder.items.findIndex(
       (item) => item.menuItemId === menuItem.id && 
-                 JSON.stringify(item.selectedModifiers.map(m=>m.id).sort()) === JSON.stringify(selectedModifiers.map(m=>m.id).sort()) && 
-                 !item.specialRequests 
+                 areModifierArraysEqual(item.selectedModifiers, selectedModifiers) &&
+                 !item.specialRequests // Only merge if no special requests on existing
     );
 
     let updatedItems;
@@ -164,20 +177,42 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     if (!currentOrder) return;
     let updatedItems;
     if (newQuantity <= 0) {
-      updatedItems = currentOrder.items.filter(item => item.id !== orderItemId);
+      // Instead of filtering immediately, mark for deletion or handle based on whether it was persisted
+      // For simplicity in delta, we'll allow setting to 0, delta logic will pick it up.
+      // If an item was persisted and quantity becomes 0, it's a "delete" in delta.
+      // If it was a new item (id starts with 'item-') and quantity becomes 0, it's just removed from currentOrder.
+      const itemToUpdate = currentOrder.items.find(item => item.id === orderItemId);
+      if (itemToUpdate && itemToUpdate.id.startsWith('item-')) { // New, unpersisted item
+        updatedItems = currentOrder.items.filter(item => item.id !== orderItemId);
+      } else { // Persisted item, quantity becomes 0
+         updatedItems = currentOrder.items.map(item =>
+          item.id === orderItemId ? { ...item, quantity: 0, totalPrice: 0 } : item // Keep it with qty 0 to detect for delta
+        );
+      }
     } else {
       updatedItems = currentOrder.items.map(item =>
         item.id === orderItemId ? { ...item, quantity: newQuantity, totalPrice: calculateOrderItemTotal({...item, quantity: newQuantity}) } : item
       );
     }
-    updateOrderAndRecalculate(updatedItems);
+    updateOrderAndRecalculate(updatedItems.filter(item => item.quantity > 0 || !item.id.startsWith('item-'))); // Remove client-side items with 0 qty
   };
 
   const handleRemoveItem = (orderItemId: string) => {
     if (!currentOrder) return;
-    const updatedItems = currentOrder.items.filter(item => item.id !== orderItemId);
-    updateOrderAndRecalculate(updatedItems);
-    toast({ title: "Item removed from order.", variant: "destructive" });
+    const itemToRemove = currentOrder.items.find(i => i.id === orderItemId);
+    if (!itemToRemove) return;
+
+    let updatedItems;
+    if (itemToRemove.id.startsWith('item-')) { // If it's a new, client-side only item
+        updatedItems = currentOrder.items.filter(item => item.id !== orderItemId);
+    } else { // If it's a persisted item, mark its quantity as 0 for delta calculation
+        updatedItems = currentOrder.items.map(item =>
+            item.id === orderItemId ? { ...item, quantity: 0, totalPrice: 0 } : item
+        );
+    }
+    // Filter out client-side items with 0 quantity for the UI, but keep persisted items with 0 quantity for delta.
+    updateOrderAndRecalculate(updatedItems.filter(item => item.quantity > 0 || !item.id.startsWith('item-')));
+    toast({ title: "Item marked for removal or removed.", variant: "destructive" });
   };
 
   const handleEditItemModifiers = (itemToEdit: OrderItem) => {
@@ -206,68 +241,139 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     toast({ title: "Modifiers updated." });
   };
 
+  const formatModifiersForKOT = (modifiers: Modifier[]): string[] => {
+    if (!modifiers || modifiers.length === 0) return [];
+    return modifiers.map(m => `${m.name}${m.priceChange !== 0 ? ` (${m.priceChange > 0 ? '+' : '-'}$${Math.abs(m.priceChange).toFixed(2)})` : ''}`);
+  };
+
   const handleConfirmOrder = async () => {
-    if (!currentOrder || currentOrder.items.length === 0) {
-      toast({ title: "Cannot confirm empty order", variant: "destructive" });
-      return;
+    if (!currentOrder || currentOrder.items.length === 0 && (!initialOrderSnapshot || initialOrderSnapshot.items.every(item => currentOrder.items.find(ci => ci.id === item.id)?.quantity === 0))) {
+      const allEffectivelyEmpty = currentOrder.items.every(ci => ci.quantity === 0);
+      if(allEffectivelyEmpty) {
+        toast({ title: "Cannot confirm empty or fully removed order", variant: "destructive" });
+        return;
+      }
     }
     setIsSaving(true);
 
-    console.log("--- OrderPanel: handleConfirmOrder - currentOrder state before API call: ---", JSON.stringify(currentOrder, null, 2));
+    const deltaItemsForKOT: QueryDeltaItem[] = [];
+    if (currentOrder) {
+        currentOrder.items.forEach(currentItem => {
+            const snapshotItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === currentItem.id);
+            if (!snapshotItem && currentItem.quantity > 0) { // New item
+                deltaItemsForKOT.push({
+                    n: currentItem.menuItemName,
+                    q: currentItem.quantity,
+                    m: formatModifiersForKOT(currentItem.selectedModifiers),
+                    s: currentItem.specialRequests,
+                    st: 'new'
+                });
+            } else if (snapshotItem && currentItem.quantity === 0 && snapshotItem.quantity > 0) { // Deleted item
+                 deltaItemsForKOT.push({
+                    n: currentItem.menuItemName,
+                    q: 0, // Current quantity is 0
+                    oq: snapshotItem.quantity,
+                    st: 'deleted'
+                });
+            } else if (snapshotItem && currentItem.quantity > 0) { // Potentially modified item
+                const qtyChanged = currentItem.quantity !== snapshotItem.quantity;
+                const modsChanged = !areModifierArraysEqual(currentItem.selectedModifiers, snapshotItem.selectedModifiers);
+                const reqsChanged = currentItem.specialRequests !== snapshotItem.specialRequests;
+                if (qtyChanged || modsChanged || reqsChanged) {
+                    deltaItemsForKOT.push({
+                        n: currentItem.menuItemName,
+                        q: currentItem.quantity,
+                        oq: snapshotItem.quantity,
+                        m: formatModifiersForKOT(currentItem.selectedModifiers),
+                        s: currentItem.specialRequests,
+                        st: 'modified'
+                    });
+                }
+            }
+        });
+         // Handle items that were in snapshot but completely removed from currentOrder.items (not just qty set to 0)
+        initialOrderSnapshot?.items.forEach(snapItem => {
+            if (!currentOrder.items.some(currItem => currItem.id === snapItem.id)) {
+                deltaItemsForKOT.push({
+                    n: snapItem.menuItemName,
+                    q: 0,
+                    oq: snapItem.quantity,
+                    st: 'deleted'
+                });
+            }
+        });
+    }
 
-    const orderItemsInput: OrderItemInput[] = currentOrder.items.map(item => ({
-      menuItemId: item.menuItemId,
-      menuItemName: item.menuItemName,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      selectedModifiers: item.selectedModifiers.map(m => ({ id: m.id, name: m.name, priceChange: m.priceChange })) as unknown as Prisma.JsonArray,
-      specialRequests: item.specialRequests,
-      totalPrice: item.totalPrice,
+    console.log("--- OrderPanel: Calculated deltaItemsForKOT for KOT page: ---", JSON.stringify(deltaItemsForKOT, null, 2));
+
+    const orderItemsInput: OrderItemInput[] = currentOrder.items
+      .filter(item => item.quantity > 0) // Only send items with quantity > 0 to backend
+      .map(item => ({
+        menuItemId: item.menuItemId,
+        menuItemName: item.menuItemName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        selectedModifiers: item.selectedModifiers.map(m => ({ id: m.id, name: m.name, priceChange: m.priceChange })) as unknown as Prisma.JsonArray,
+        specialRequests: item.specialRequests,
+        totalPrice: item.totalPrice,
     }));
+    
+    const finalTotals = calculateOrderTotals(currentOrder.items.filter(item => item.quantity > 0), currentOrder.taxRate);
 
     try {
       let result: AppOrder | { error: string };
       if (currentOrder.id.startsWith('temp-ord-')) { 
+        if (orderItemsInput.length === 0) {
+          toast({ title: "Cannot create an empty order", variant: "destructive" });
+          setIsSaving(false);
+          return;
+        }
         const createOrderData: CreateOrderInput = {
           tableId: currentOrder.tableId,
           items: orderItemsInput,
-          subtotal: currentOrder.subtotal,
-          taxRate: currentOrder.taxRate,
-          taxAmount: currentOrder.taxAmount,
-          totalAmount: currentOrder.totalAmount,
+          subtotal: finalTotals.subtotal,
+          taxRate: finalTotals.taxRate,
+          taxAmount: finalTotals.taxAmount,
+          totalAmount: finalTotals.totalAmount,
         };
-        console.log("--- OrderPanel: handleConfirmOrder - Creating new order with data: ---", JSON.stringify(createOrderData, null, 2));
+        console.log("--- OrderPanel: Creating new order with data: ---", JSON.stringify(createOrderData, null, 2));
         result = await createOrderAction(createOrderData);
       } else { 
-        console.log(`--- OrderPanel: handleConfirmOrder - Updating existing order ${currentOrder.id} with items: ---`, JSON.stringify(orderItemsInput, null, 2));
+        console.log(`--- OrderPanel: Updating existing order ${currentOrder.id} with items: ---`, JSON.stringify(orderItemsInput, null, 2));
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, {
-          subtotal: currentOrder.subtotal,
-          taxAmount: currentOrder.taxAmount,
-          totalAmount: currentOrder.totalAmount,
+          subtotal: finalTotals.subtotal,
+          taxAmount: finalTotals.taxAmount,
+          totalAmount: finalTotals.totalAmount,
         });
       }
 
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
-        console.error("--- OrderPanel: handleConfirmOrder - Error saving order from backend: ---", result.error);
+        console.error("--- OrderPanel: Error saving order from backend: ---", result.error);
       } else {
-        console.log("--- OrderPanel: handleConfirmOrder - Order saved successfully, backend response: ---", JSON.stringify(result, null, 2));
-        // Update currentOrder and initialOrderSnapshot with the persisted order from backend
         setCurrentOrder(result); 
-        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); // Update snapshot to the new persisted state
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); 
         toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-green-600 text-white" });
-        router.push(`/dashboard/kot/${result.id}`);
+        
+        let queryString = '';
+        if (deltaItemsForKOT.length > 0) {
+            queryString = `?delta=${encodeURIComponent(JSON.stringify(deltaItemsForKOT))}`;
+            console.log("--- OrderPanel: Navigating to KOT page with queryString: ---", queryString);
+        } else {
+            console.log("--- OrderPanel: No delta items, navigating to KOT page without delta query param. ---");
+        }
+        router.push(`/dashboard/kot/${result.id}${queryString}`);
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred while saving the order.", variant: "destructive" });
-      console.error("--- OrderPanel: handleConfirmOrder - Unexpected error: ---", e);
+      console.error("--- OrderPanel: Unexpected error: ---", e);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleGoToPayment = async () => {
-     if (!currentOrder || currentOrder.items.length === 0) {
+     if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0) {
       toast({ title: "Cannot proceed to payment for empty order", variant: "destructive" });
       return;
     }
@@ -293,7 +399,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       router.push(`/dashboard/payment/${orderForPayment.id}`);
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred.", variant: "destructive" });
-      console.error("--- OrderPanel: handleGoToPayment - Unexpected error: ---", e);
     } finally {
       setIsSaving(false);
     }
@@ -337,15 +442,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     setIsSaving(false);
   };
 
-
   if (!currentOrder && tableIdParam) { 
     return (
         <div className="flex flex-col h-[calc(100vh-var(--header-height,4rem))] md:flex-row bg-background text-foreground items-center justify-center">
-            <p>Loading order data...</p>
+            <p>Loading order data for table {tableIdParam}...</p>
         </div>
     );
   }
-
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height,4rem))] md:flex-row bg-background text-foreground">
