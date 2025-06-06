@@ -17,24 +17,36 @@ import {
   Percent,
   ArrowRightLeft,
   Ban,
-  Loader2 // For loading state
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface CurrentOrderSummaryProps {
   order: Order | null;
+  initialOrderSnapshot?: Order | null; // Optional snapshot of the order when it was loaded
   onUpdateItemQuantity: (itemId: string, newQuantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onEditItemModifiers: (item: OrderItem) => void;
-  onConfirmOrder: () => Promise<void>; // Made async
-  onGoToPayment: () => Promise<void>;  // Made async
-  onCancelOrder: () => Promise<void>; // New prop for cancelling order
-  isSaving: boolean; // For disabling buttons during async operations
+  onConfirmOrder: () => Promise<void>;
+  onGoToPayment: () => Promise<void>;
+  onCancelOrder: () => Promise<void>;
+  isSaving: boolean;
 }
+
+// Helper function to compare modifier arrays by their IDs and count
+const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
+  if (arr1.length !== arr2.length) return false;
+  const ids1 = arr1.map(m => m.id).sort();
+  const ids2 = arr2.map(m => m.id).sort();
+  return ids1.every((id, index) => id === ids2[index]);
+};
+
 
 export function CurrentOrderSummary({ 
   order, 
+  initialOrderSnapshot,
   onUpdateItemQuantity, 
   onRemoveItem, 
   onEditItemModifiers,
@@ -105,47 +117,69 @@ export function CurrentOrderSummary({
             </div>
         ) : (
             <ul className="space-y-3">
-            {order.items.map((item) => (
-                <li key={item.id} className="p-3 rounded-md border border-border bg-background/50">
-                <div className="flex justify-between items-start">
-                    <div>
-                    <p className="font-semibold text-sm">{item.menuItemName}</p>
-                    <p className="text-xs text-muted-foreground">
-                        ${item.unitPrice.toFixed(2)} x {item.quantity} = ${item.totalPrice.toFixed(2)}
-                    </p>
-                    {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                        <p className="text-xs text-primary mt-1">
-                        Modifiers: {formatModifiers(item.selectedModifiers)}
+            {order.items.map((item) => {
+                const initialItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === item.id);
+                let itemState: 'new' | 'modified' | 'unchanged' = 'unchanged';
+
+                if (!initialItem) {
+                    itemState = 'new';
+                } else if (initialItem && (
+                    item.quantity !== initialItem.quantity ||
+                    item.specialRequests !== initialItem.specialRequests ||
+                    !areModifierArraysEqual(item.selectedModifiers, initialItem.selectedModifiers)
+                )) {
+                    itemState = 'modified';
+                }
+                
+                const itemClasses = cn(
+                    "p-3 rounded-md border",
+                    itemState === 'new' && "bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500/50 shadow-sm",
+                    itemState === 'modified' && "bg-yellow-500/10 border-yellow-500/30 ring-1 ring-yellow-500/50 shadow-sm",
+                    itemState === 'unchanged' && "bg-background/50 border-border opacity-75 hover:opacity-100"
+                );
+
+                return (
+                    <li key={item.id} className={itemClasses}>
+                    <div className="flex justify-between items-start">
+                        <div>
+                        <p className="font-semibold text-sm">{item.menuItemName}</p>
+                        <p className="text-xs text-muted-foreground">
+                            ${item.unitPrice.toFixed(2)} x {item.quantity} = ${item.totalPrice.toFixed(2)}
                         </p>
-                    )}
-                    {item.specialRequests && (
-                        <p className="text-xs text-accent mt-1">Requests: {item.specialRequests}</p>
-                    )}
+                        {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                            <p className="text-xs text-primary mt-1">
+                            Modifiers: {formatModifiers(item.selectedModifiers)}
+                            </p>
+                        )}
+                        {item.specialRequests && (
+                            <p className="text-xs text-accent mt-1">Requests: {item.specialRequests}</p>
+                        )}
+                        </div>
+                        {!isOrderClosed && (
+                            <div className="flex items-center gap-1 shrink-0">
+                            <Button variant="ghost" size="icon" onClick={() => onEditItemModifiers(item)} className="h-7 w-7" disabled={isSaving}>
+                                <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.id)} className="h-7 w-7" disabled={isSaving}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                            </div>
+                        )}
                     </div>
                     {!isOrderClosed && (
-                        <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" onClick={() => onEditItemModifiers(item)} className="h-7 w-7" disabled={isSaving}>
-                            <Edit3 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onRemoveItem(item.id)} className="h-7 w-7" disabled={isSaving}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <div className="flex items-center gap-2 mt-2">
+                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, Math.max(0, item.quantity - 1))} disabled={isSaving || (item.quantity === 1 && !initialItem) }>
+                            <MinusCircle className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm w-6 text-center">{item.quantity}</span>
+                            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, item.quantity + 1)} disabled={isSaving}>
+                            <PlusCircle className="h-4 w-4" />
+                            </Button>
                         </div>
                     )}
-                </div>
-                {!isOrderClosed && (
-                    <div className="flex items-center gap-2 mt-2">
-                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, Math.max(0, item.quantity - 1))} disabled={isSaving || item.quantity === 1 && item.id.startsWith('item-') /* Prevent going to 0 for new items from here */}>
-                        <MinusCircle className="h-4 w-4" />
-                        </Button>
-                        <span className="text-sm w-6 text-center">{item.quantity}</span>
-                        <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onUpdateItemQuantity(item.id, item.quantity + 1)} disabled={isSaving}>
-                        <PlusCircle className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-                </li>
-            ))}
+                    </li>
+                );
+            })}
             </ul>
         )}
       </ScrollArea>
@@ -212,7 +246,7 @@ export function CurrentOrderSummary({
                         onClick={onGoToPayment} 
                         size="lg" 
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-                        disabled={noItems || isSaving || !isOrderPersisted} // Payment only if order is persisted
+                        disabled={noItems || isSaving || !isOrderPersisted}
                     >
                         {isSaving && !order.id.startsWith('temp-ord-') ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />} 
                         Proceed to Payment

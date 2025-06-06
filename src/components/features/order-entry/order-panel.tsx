@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { MenuCategory, MenuItem, Order, OrderItem, Modifier, OrderStatus } from '@/types';
+import type { MenuCategory, MenuItem, Order, OrderItem, Modifier } from '@/types';
 import { MenuItemSelector } from './menu-item-selector';
 import { CurrentOrderSummary } from './current-order-summary';
 import { ModifierModal } from './modifier-modal';
@@ -15,8 +15,8 @@ import {
   type CreateOrderInput,
   type OrderItemInput
 } from '@backend/actions/orderActions';
-import type { AppOrder } from '@backend/actions/orderActions'; // Import AppOrder for backend response type
-import { Prisma } from '@prisma/client'; // For Prisma.JsonNull
+import type { AppOrder } from '@backend/actions/orderActions'; 
+import { Prisma } from '@prisma/client'; 
 
 interface OrderPanelProps {
   tableIdParam: string; 
@@ -39,6 +39,7 @@ const calculateOrderTotals = (items: OrderItem[], taxRate: number = 0.08): Pick<
 
 export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: OrderPanelProps) {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [initialOrderSnapshot, setInitialOrderSnapshot] = useState<Order | null>(null);
   const [isModifierModalOpen, setIsModifierModalOpen] = useState(false);
   const [editingOrderItem, setEditingOrderItem] = useState<OrderItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -47,19 +48,34 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   const router = useRouter();
 
   useEffect(() => {
-    console.log("OrderPanel useEffect: initialOrder changed or tableIdParam changed.");
+    console.log("OrderPanel useEffect: initialOrder or tableIdParam changed.");
     console.log("Current initialOrder:", initialOrder);
     console.log("Current tableIdParam:", tableIdParam);
 
     if (initialOrder) {
       console.log("Setting currentOrder from initialOrder:", initialOrder);
       setCurrentOrder(initialOrder);
+      // Create a deep copy for the snapshot to avoid mutations affecting it
+      setInitialOrderSnapshot(JSON.parse(JSON.stringify(initialOrder))); 
     } else if (tableIdParam) {
       console.log("initialOrder is null, creating new temp order for tableIdParam:", tableIdParam);
       const tableNumberMatch = tableIdParam.match(/\d+/);
-      const tableNumber = tableNumberMatch ? parseInt(tableNumberMatch[0], 10) : 0;
+      // Ensure tableIdParam itself if it doesn't contain a number (e.g. it's 't2' or just an ID)
+      // For tableNumber, we try to parse it. If it's not a simple 't<number>' format,
+      // this might need adjustment based on how tableIdParam is structured.
+      // For now, assuming it's 't2' or similar.
+      let tableNumber = 0;
+      if (tableIdParam.startsWith('t') && tableNumberMatch) {
+        tableNumber = parseInt(tableNumberMatch[0], 10);
+      } else {
+        // If tableIdParam is a CUID or other format, we might need to fetch table details
+        // or rely on a default/placeholder for new orders if tableNumber is crucial here.
+        // For simplicity, let's assume 0 if not parsable.
+        console.warn(`Could not parse table number from tableIdParam: ${tableIdParam}`);
+      }
+      
       console.log("Parsed table number:", tableNumber);
-      setCurrentOrder({
+      const newTempOrder: Order = {
         id: `temp-ord-${Date.now()}`,
         tableId: tableIdParam,
         tableNumber: tableNumber, 
@@ -71,10 +87,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         totalAmount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      });
+      };
+      setCurrentOrder(newTempOrder);
+      setInitialOrderSnapshot(null); // No snapshot for a brand new temporary order
     } else {
       console.log("Both initialOrder and tableIdParam are null/undefined. Setting currentOrder to null.");
       setCurrentOrder(null);
+      setInitialOrderSnapshot(null);
     }
   }, [initialOrder, tableIdParam]);
 
@@ -108,7 +127,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     let updatedItems;
     let itemToPotentiallyOpenModalFor: OrderItem | undefined;
 
-    if (existingItemIndex > -1 && selectedModifiers.length === 0 && !menuItem.availableModifiers?.length) { 
+    if (existingItemIndex > -1 && selectedModifiers.length === 0 && (!menuItem.availableModifiers || menuItem.availableModifiers.length === 0)) { 
       updatedItems = currentOrder.items.map((item, index) => {
         if (index === existingItemIndex) {
           const newQuantity = item.quantity + 1;
@@ -194,13 +213,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     }
     setIsSaving(true);
 
-    // Ensure selectedModifiers is Prisma.JsonValue or an array of plain objects
+    console.log("--- OrderPanel: handleConfirmOrder - currentOrder state before API call: ---", JSON.stringify(currentOrder, null, 2));
+
     const orderItemsInput: OrderItemInput[] = currentOrder.items.map(item => ({
       menuItemId: item.menuItemId,
       menuItemName: item.menuItemName,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      // selectedModifiers should be an array of plain objects for Prisma JSON
       selectedModifiers: item.selectedModifiers.map(m => ({ id: m.id, name: m.name, priceChange: m.priceChange })) as unknown as Prisma.JsonArray,
       specialRequests: item.specialRequests,
       totalPrice: item.totalPrice,
@@ -217,10 +236,10 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           taxAmount: currentOrder.taxAmount,
           totalAmount: currentOrder.totalAmount,
         };
-        console.log("Creating new order with data:", JSON.stringify(createOrderData, null, 2));
+        console.log("--- OrderPanel: handleConfirmOrder - Creating new order with data: ---", JSON.stringify(createOrderData, null, 2));
         result = await createOrderAction(createOrderData);
       } else { 
-        console.log(`Updating existing order ${currentOrder.id} with items:`, JSON.stringify(orderItemsInput, null, 2));
+        console.log(`--- OrderPanel: handleConfirmOrder - Updating existing order ${currentOrder.id} with items: ---`, JSON.stringify(orderItemsInput, null, 2));
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, {
           subtotal: currentOrder.subtotal,
           taxAmount: currentOrder.taxAmount,
@@ -230,15 +249,18 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
-        console.error("Error saving order from backend:", result.error);
+        console.error("--- OrderPanel: handleConfirmOrder - Error saving order from backend: ---", result.error);
       } else {
+        console.log("--- OrderPanel: handleConfirmOrder - Order saved successfully, backend response: ---", JSON.stringify(result, null, 2));
+        // Update currentOrder and initialOrderSnapshot with the persisted order from backend
         setCurrentOrder(result); 
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); // Update snapshot to the new persisted state
         toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-green-600 text-white" });
         router.push(`/dashboard/kot/${result.id}`);
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred while saving the order.", variant: "destructive" });
-      console.error("Unexpected error in handleConfirmOrder:", e);
+      console.error("--- OrderPanel: handleConfirmOrder - Unexpected error: ---", e);
     } finally {
       setIsSaving(false);
     }
@@ -256,6 +278,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
     setIsSaving(true);
     try {
+      let orderForPayment = currentOrder;
       if (currentOrder.status !== 'DONE' && currentOrder.status !== 'PAID' && currentOrder.status !== 'CANCELLED') {
         const statusUpdateResult = await updateOrderStatusAction(currentOrder.id, 'DONE');
         if ('error' in statusUpdateResult) {
@@ -264,11 +287,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           return;
         }
         setCurrentOrder(statusUpdateResult); 
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(statusUpdateResult)));
+        orderForPayment = statusUpdateResult;
       }
-      router.push(`/dashboard/payment/${currentOrder.id}`);
+      router.push(`/dashboard/payment/${orderForPayment.id}`);
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred.", variant: "destructive" });
-      console.error("Unexpected error in handleGoToPayment:", e);
+      console.error("--- OrderPanel: handleGoToPayment - Unexpected error: ---", e);
     } finally {
       setIsSaving(false);
     }
@@ -279,7 +304,10 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     setIsSaving(true);
     if (currentOrder.id.startsWith('temp-ord-')) { 
       const tableNumberMatch = tableIdParam.match(/\d+/);
-      const tableNumber = tableNumberMatch ? parseInt(tableNumberMatch[0], 10) : 0;
+      let tableNumber = 0;
+       if (tableIdParam.startsWith('t') && tableNumberMatch) {
+        tableNumber = parseInt(tableNumberMatch[0], 10);
+      }
       setCurrentOrder({
         id: `temp-ord-${Date.now()}`,
         tableId: tableIdParam,
@@ -293,6 +321,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+      setInitialOrderSnapshot(null);
       toast({ title: "Order Cleared", description: "The unsaved order has been cleared." });
     } else { 
       const result = await updateOrderStatusAction(currentOrder.id, 'CANCELLED');
@@ -300,6 +329,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         toast({ title: "Error Cancelling Order", description: result.error, variant: "destructive" });
       } else {
         setCurrentOrder(result);
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result)));
         toast({ title: "Order Cancelled", description: `Order ${result.id.substring(0,8)} has been cancelled.`, variant: "destructive" });
         router.push('/dashboard/tables'); 
       }
@@ -327,6 +357,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         {currentOrder ? (
           <CurrentOrderSummary 
             order={currentOrder}
+            initialOrderSnapshot={initialOrderSnapshot}
             onUpdateItemQuantity={handleUpdateItemQuantity}
             onRemoveItem={handleRemoveItem}
             onEditItemModifiers={handleEditItemModifiers}
