@@ -38,16 +38,19 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// Using relative path to bypass potential alias issues
 import { 
   getAllCategoriesAction, 
   createCategoryAction, 
   updateCategoryAction, 
   deleteCategoryAction 
-} from '@backend/actions/categoryActions';
+} from '../../../../backend/actions/categoryActions';
 
 export function CategoryManagementSettings() {
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<AppMenuCategory | null>(null);
@@ -60,7 +63,7 @@ export function CategoryManagementSettings() {
 
   const fetchCategories = async () => {
     console.log('CategoryManagementSettings: fetchCategories called');
-    setIsLoading(true);
+    setIsFetching(true); 
     try {
       const dbCategories = await getAllCategoriesAction();
       console.log('CategoryManagementSettings: Fetched categories from DB:', dbCategories);
@@ -69,7 +72,8 @@ export function CategoryManagementSettings() {
       toast({ title: 'Error', description: 'Failed to fetch categories.', variant: 'destructive' });
       console.error("CategoryManagementSettings: Failed to fetch categories:", error);
     }
-    setIsLoading(false);
+    setIsFetching(false); 
+    setIsLoading(false); 
   };
 
   useEffect(() => {
@@ -83,7 +87,7 @@ export function CategoryManagementSettings() {
       toast({ title: 'Error', description: 'Category name is required.', variant: 'destructive' });
       return;
     }
-    setIsLoading(true); // Indicate loading state for add operation
+    setIsMutating(true);
     try {
       const result = await createCategoryAction({
         name: addForm.name,
@@ -97,13 +101,13 @@ export function CategoryManagementSettings() {
         toast({ title: 'Category Added', description: `Category "${result.name}" has been added.` });
         setAddForm({ name: '', iconName: '' });
         setIsAddDialogOpen(false);
-        await fetchCategories(); // Re-fetch categories to update the list
+        await fetchCategories(); 
       }
     } catch (error) {
       console.error("CategoryManagementSettings: Error in handleAddCategory:", error);
       toast({ title: 'Unexpected Error', description: 'Could not add category.', variant: 'destructive' });
     } finally {
-      setIsLoading(false); // Reset loading state
+      setIsMutating(false);
     }
   };
   
@@ -119,7 +123,7 @@ export function CategoryManagementSettings() {
       toast({ title: 'Error', description: 'Category name is required.', variant: 'destructive' });
       return;
     }
-    setIsLoading(true);
+    setIsMutating(true);
     try {
       const result = await updateCategoryAction(editingCategory.id, {
         name: editForm.name,
@@ -139,7 +143,7 @@ export function CategoryManagementSettings() {
       console.error("CategoryManagementSettings: Error in handleUpdateCategory:", error);
       toast({ title: 'Unexpected Error', description: 'Could not update category.', variant: 'destructive' });
     } finally {
-      setIsLoading(false);
+      setIsMutating(false);
     }
   };
 
@@ -150,7 +154,7 @@ export function CategoryManagementSettings() {
   const handleDeleteCategory = async () => {
     if (!categoryToDelete) return;
     console.log('CategoryManagementSettings: handleDeleteCategory called for:', categoryToDelete.name);
-    setIsLoading(true);
+    setIsMutating(true);
     try {
       const result = await deleteCategoryAction(categoryToDelete.id);
       console.log('CategoryManagementSettings: deleteCategoryAction result:', result);
@@ -166,7 +170,7 @@ export function CategoryManagementSettings() {
       toast({ title: 'Unexpected Error', description: 'Could not delete category.', variant: 'destructive' });
     } finally {
       setCategoryToDelete(null);
-      setIsLoading(false);
+      setIsMutating(false);
     }
   };
 
@@ -178,12 +182,13 @@ export function CategoryManagementSettings() {
           <CardDescription>Manage your menu categories from the database.</CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchCategories} disabled={isLoading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading && !isAddDialogOpen && !isEditDialogOpen ? 'animate-spin' : ''}`} /> Refresh
+          <Button variant="outline" onClick={fetchCategories} disabled={isFetching || isMutating}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching && !isAddDialogOpen && !isEditDialogOpen ? 'animate-spin' : ''}`} /> 
+            {isFetching ? 'Refreshing...' : 'Refresh'}
           </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={isMutating || isFetching}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Category
               </Button>
             </DialogTrigger>
@@ -203,9 +208,9 @@ export function CategoryManagementSettings() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddCategory} disabled={isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  {isLoading ? 'Adding...' : 'Add Category'}
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isMutating}>Cancel</Button>
+                <Button onClick={handleAddCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  {isMutating ? 'Adding...' : 'Add Category'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -213,7 +218,7 @@ export function CategoryManagementSettings() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading && categories.length === 0 ? (
+        {isFetching && categories.length === 0 ? (
           <div className="text-center py-10">
             <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
             <p className="mt-2 text-muted-foreground">Loading categories...</p>
@@ -234,12 +239,12 @@ export function CategoryManagementSettings() {
                   <TableCell className="font-medium">{category.name}</TableCell>
                   <TableCell>{category.iconName || 'N/A'}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)} className="mr-2" disabled={isLoading}>
+                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)} className="mr-2" disabled={isMutating || isFetching}>
                       <Edit2 className="h-4 w-4" />
                     </Button>
                     <AlertDialog open={!!categoryToDelete && categoryToDelete.id === category.id} onOpenChange={(isOpen) => !isOpen && setCategoryToDelete(null)}>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteCategory(category)} disabled={isLoading}>
+                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteCategory(category)} disabled={isMutating || isFetching}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
@@ -252,9 +257,9 @@ export function CategoryManagementSettings() {
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setCategoryToDelete(null)}>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleDeleteCategory} disabled={isLoading} className="bg-destructive hover:bg-destructive/90">
-                            {isLoading ? 'Deleting...' : 'Delete'}
+                          <AlertDialogCancel onClick={() => setCategoryToDelete(null)} disabled={isMutating}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleDeleteCategory} disabled={isMutating} className="bg-destructive hover:bg-destructive/90">
+                            {isMutating ? 'Deleting...' : 'Delete'}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -262,7 +267,7 @@ export function CategoryManagementSettings() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && categories.length === 0 && (
+              {!isFetching && categories.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center text-muted-foreground py-6">No categories found in the database. Add some!</TableCell>
                 </TableRow>
@@ -289,9 +294,9 @@ export function CategoryManagementSettings() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdateCategory} disabled={isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-             {isLoading ? 'Saving...' : 'Save Changes'}
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isMutating}>Cancel</Button>
+            <Button onClick={handleUpdateCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+             {isMutating ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -299,3 +304,5 @@ export function CategoryManagementSettings() {
     </Card>
   );
 }
+
+    
