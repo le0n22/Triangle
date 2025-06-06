@@ -2,7 +2,7 @@
 'use server';
 
 import prisma from '@backend/lib/prisma';
-import { Prisma } from '@prisma/client'; // Corrected: Value import for Prisma namespace
+import { Prisma } from '@prisma/client'; // Correct: Value import for Prisma namespace
 import type { 
   Order as PrismaOrder, 
   OrderItem as PrismaOrderItem, 
@@ -10,8 +10,6 @@ import type {
   OrderStatus as PrismaOrderStatus
 } from '@prisma/client';
 import { updateTableOrderDetailsAction } from './tableActions';
-// Assuming TableStatus is defined in your frontend types, if not, it might need adjustment
-// For now, we'll rely on PrismaTableStatus and convert as needed.
 
 // Frontend-facing types
 export interface AppOrderItem {
@@ -302,3 +300,5 @@ export async function updateOrderStatusAction(orderId: string, status: PrismaOrd
     return { error: `Failed to update status for order ${orderId}.` };
   }
 }
+
+    
