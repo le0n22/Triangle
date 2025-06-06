@@ -65,8 +65,8 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
         />
       </div>
 
-      <div className="flex flex-1 min-h-0 gap-3"> {/* Added gap-3 for spacing */}
-        <ScrollArea className="w-1/3 p-2 border border-border/50 rounded-md"> {/* Updated classes for border */}
+      <div className="flex flex-1 min-h-0 gap-3">
+        <ScrollArea className="w-1/3 pr-1"> {/* Kategori sütunu için sağda ince bir ayırıcı olabilir */}
           <nav className="flex flex-col gap-2">
             {initialCategories && initialCategories.length > 0 ? (
               initialCategories.map((category) => (
@@ -74,7 +74,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
                   key={category.id}
                   variant="outline"
                   className={cn(
-                    "w-full flex flex-col items-center justify-center h-14 p-2 text-sm leading-tight whitespace-normal break-words", 
+                    "w-full flex flex-col items-center justify-center h-14 p-2 text-sm leading-tight whitespace-normal break-words",
                     selectedCategoryId === category.id && "bg-accent text-accent-foreground",
                     isSaving && "opacity-50 cursor-not-allowed"
                   )}
@@ -93,7 +93,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
           </nav>
         </ScrollArea>
 
-        <ScrollArea className="w-2/3 p-2 border border-border/50 rounded-md"> {/* Updated classes for border */}
+        <ScrollArea className="w-2/3 pl-1"> 
           {selectedCategory ? (
             <section id={`order-panel-items-${selectedCategory.id}`}>
               {filteredItems.length > 0 ? (
@@ -102,7 +102,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
                     <div
                       key={item.id}
                       className={cn(
-                        "flex items-center p-2 rounded-md hover:bg-accent/10 cursor-pointer transition-colors group border border-transparent hover:border-accent/50",
+                        "flex items-center p-2 rounded-md hover:bg-accent/10 cursor-pointer transition-colors group border border-primary/60", // Renkli çerçeve eklendi
                         isSaving && "opacity-50 cursor-not-allowed hover:bg-transparent hover:border-transparent"
                       )}
                       onClick={() => handleItemClick(item)}
@@ -119,7 +119,6 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
                       <div className="flex-grow min-w-0">
                         <h4 className="font-semibold text-sm truncate">{item.name}</h4>
                         <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-                        {/* Price display removed from here */}
                       </div>
                       <Button variant="ghost" size="icon" className={cn("opacity-0 group-hover:opacity-100 transition-opacity ml-2 h-7 w-7 shrink-0", isSaving && "hidden")}>
                         <PlusCircle className="h-4 w-4 text-primary" />
