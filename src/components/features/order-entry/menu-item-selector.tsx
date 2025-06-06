@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 interface MenuItemSelectorProps {
   categories: MenuCategory[];
   onSelectItem: (item: MenuItem, modifiers: Modifier[]) => void;
-  isSaving: boolean; 
+  isSaving: boolean;
 }
 
 export function MenuItemSelector({ categories: initialCategories, onSelectItem, isSaving }: MenuItemSelectorProps) {
@@ -32,11 +32,11 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCategories]); 
+  }, [initialCategories]);
 
   const handleItemClick = (item: MenuItem) => {
-    if (isSaving) return; 
-    onSelectItem(item, []); 
+    if (isSaving) return;
+    onSelectItem(item, []);
   };
 
   const selectedCategory = useMemo(() => {
@@ -67,21 +67,21 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
 
       <div className="flex flex-1 min-h-0">
         <ScrollArea className="w-1/3 pr-3 border-r border-border/50">
-          <nav className="flex flex-col gap-1">
+          <nav className="flex flex-col gap-2"> {/* Increased gap from gap-1 to gap-2 */}
             {initialCategories && initialCategories.length > 0 ? (
               initialCategories.map((category) => (
                 <Button
                   key={category.id}
                   variant="outline"
                   className={cn(
-                    "w-full flex flex-col items-center justify-center h-auto py-2 px-2 text-xs leading-tight", // Updated styles
+                    "w-full flex flex-col items-center justify-center h-auto min-h-[8rem] p-3 text-sm leading-tight whitespace-normal break-words", // Increased min-h to 8rem, changed padding to p-3
                     selectedCategoryId === category.id && "bg-accent text-accent-foreground",
                     isSaving && "opacity-50 cursor-not-allowed"
                   )}
                   onClick={() => { if (!isSaving) setSelectedCategoryId(category.id); }}
                   disabled={isSaving}
                 >
-                  <span className="text-center">{category.name}</span>
+                  <span className="text-center leading-snug">{category.name}</span>
                 </Button>
               ))
             ) : (
