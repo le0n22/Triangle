@@ -87,6 +87,8 @@ interface OrderPageProps {
 
 export default async function OrderPage({ params }: OrderPageProps) {
   const { tableId } = params;
+  // This console.log is added to try and force a recompile of the chunk
+  console.log(`OrderPage: Rendering for tableId: ${tableId} - Attempting to fix ChunkLoadError.`);
 
   const menuDataResult = await getMenuDataForOrderPanel();
   const initialOrderResult = await getOpenOrderByTableIdAction(tableId);
