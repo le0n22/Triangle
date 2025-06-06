@@ -4,29 +4,25 @@
 import type { MenuCategory, MenuItem, Order, OrderItem, Modifier } from '@/types';
 import { MenuItemSelector } from './menu-item-selector';
 import { CurrentOrderSummary } from './current-order-summary';
-// SmartUpsellSuggestions is removed
 import { ModifierModal } from './modifier-modal';
-// Button imports for actions are moved to CurrentOrderSummary
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation'; // For navigation, will be passed or used in CurrentOrderSummary
+import { useRouter } from 'next/navigation';
 
 interface OrderPanelProps {
   tableId: string;
-  initialOrder: Order | null; // Could be an existing order for the table
-  menuCategories: MenuCategory[]; // Full menu
+  initialOrder: Order | null;
+  menuCategories: MenuCategory[];
 }
 
-// Helper to calculate item total price
 const calculateOrderItemTotal = (item: Omit<OrderItem, 'id' | 'totalPrice'>): number => {
   const modifiersPrice = item.selectedModifiers.reduce((sum, mod) => sum + mod.priceChange, 0);
   return item.quantity * (item.unitPrice + modifiersPrice);
 };
 
-// Helper to calculate order totals
 const calculateOrderTotals = (items: OrderItem[]): Pick<Order, 'subtotal' | 'taxAmount' | 'totalAmount'> => {
   const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
-  const taxRate = 0.08; // Example tax rate (8%)
+  const taxRate = 0.08;
   const taxAmount = subtotal * taxRate;
   const totalAmount = subtotal + taxAmount;
   return { subtotal, taxAmount, totalAmount };
@@ -40,14 +36,18 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
   const { toast } = useToast();
   const router = useRouter();
 
+  console.log(`OrderPanel: Rendered for table ${tableId}. Received menuCategories count: ${menuCategories?.length}`);
+  // console.log(`OrderPanel: Received menuCategories DATA:`, JSON.stringify(menuCategories, null, 2));
+
+
   useEffect(() => {
-    if (!currentOrder && tableId) { // If no initial order, create a new one for the table
+    if (!currentOrder && tableId) {
       setCurrentOrder({
-        id: `ord-${Date.now()}`, // Temporary ID
+        id: `ord-${Date.now()}`,
         tableId: tableId,
         tableNumber: parseInt(tableId.replace('t',''), 10) || 0, 
         items: [],
-        status: 'pending',
+        status: 'OPEN', // Default to OPEN status
         subtotal: 0,
         taxRate: 0.08, 
         taxAmount: 0,
@@ -79,6 +79,8 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
     );
 
     let updatedItems;
+    let itemToPotentiallyOpenModalFor: OrderItem | undefined;
+
     if (existingItemIndex > -1) {
       updatedItems = currentOrder.items.map((item, index) =>
         index === existingItemIndex ? { ...item, quantity: item.quantity + 1, totalPrice: calculateOrderItemTotal({...item, quantity: item.quantity + 1}) } : item
@@ -89,7 +91,7 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
         menuItemName: menuItem.name,
         quantity: 1,
         unitPrice: menuItem.price,
-        selectedModifiers: selectedModifiers,
+        selectedModifiers: selectedModifiers, // Start with passed modifiers (usually empty from selector)
         specialRequests: '', 
       };
       const newOrderItem: OrderItem = {
@@ -98,15 +100,14 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
         totalPrice: calculateOrderItemTotal(newOrderItemBase),
       };
       updatedItems = [...currentOrder.items, newOrderItem];
+      itemToPotentiallyOpenModalFor = newOrderItem;
     }
     updateOrderAndRecalculate(updatedItems);
     toast({ title: `${menuItem.name} added to order.` });
 
-    if (menuItem.availableModifiers && menuItem.availableModifiers.length > 0 && selectedModifiers.length === 0) {
-        const justAddedItem = updatedItems.find(i => i.menuItemId === menuItem.id && i.quantity === 1 && JSON.stringify(i.selectedModifiers) === JSON.stringify(selectedModifiers) ); 
-        if (justAddedItem) {
-             handleEditItemModifiers(justAddedItem);
-        }
+    // If the item has available modifiers and was just added (or if selectedModifiers were empty initially), open modal.
+    if (itemToPotentiallyOpenModalFor && menuItem.availableModifiers && menuItem.availableModifiers.length > 0) {
+        handleEditItemModifiers(itemToPotentiallyOpenModalFor);
     }
   };
 
@@ -131,10 +132,12 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
   };
 
   const handleEditItemModifiers = (itemToEdit: OrderItem) => {
-    const menuItem = menuCategories.flatMap(c => c.items).find(mi => mi.id === itemToEdit.menuItemId);
-    if (menuItem) {
-      setEditingOrderItem({ ...itemToEdit, menuItemName: menuItem.name }); 
+    const menuItemDetails = menuCategories.flatMap(c => c.items).find(mi => mi.id === itemToEdit.menuItemId);
+    if (menuItemDetails) {
+      setEditingOrderItem({ ...itemToEdit, menuItemName: menuItemDetails.name }); 
       setIsModifierModalOpen(true);
+    } else {
+      toast({ title: "Error", description: "Could not find menu item details to edit modifiers.", variant: "destructive" });
     }
   };
 
@@ -154,16 +157,15 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
     toast({ title: "Modifiers updated." });
   };
 
-  // handleAddUpsellItem is removed as SmartUpsellSuggestions is removed
-
   const handleConfirmOrder = () => {
     if (!currentOrder || currentOrder.items.length === 0) {
       toast({ title: "Cannot confirm empty order", variant: "destructive" });
       return;
     }
-    console.log("Order Confirmed:", currentOrder);
+    // TODO: Persist order to backend, change status to 'pending_kitchen' or similar
+    console.log("Order Confirmed (simulated):", currentOrder);
     toast({ title: "Order Confirmed!", description: "KOT will be generated.", className: "bg-green-600 text-white" });
-    router.push(`/dashboard/kot/${currentOrder.id}`);
+    router.push(`/dashboard/kot/${currentOrder.id}`); // Pass currentOrder.id (temp or real)
   };
 
   const handleGoToPayment = () => {
@@ -171,19 +173,18 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
       toast({ title: "Cannot proceed to payment for empty order", variant: "destructive" });
       return;
     }
-    console.log("Proceeding to Payment for order:", currentOrder.id);
+    // TODO: Ensure order is confirmed or kitchen status allows payment
+    console.log("Proceeding to Payment for order (simulated):", currentOrder.id);
     router.push(`/dashboard/payment/${currentOrder.id}`);
   };
 
 
   return (
     <div className="flex flex-col h-[calc(100vh-var(--header-height,4rem))] md:flex-row bg-background text-foreground">
-      {/* MenuItemSelector takes a portion of the width */}
       <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full border-r border-border">
         <MenuItemSelector categories={menuCategories} onSelectItem={handleSelectItem} />
       </div>
       
-      {/* CurrentOrderSummary takes the remaining width and includes action buttons */}
       <div className="w-full md:w-2/3 lg:w-3/5 xl:w-2/3 h-1/2 md:h-full order-first md:order-none">
         <CurrentOrderSummary 
           order={currentOrder}
@@ -192,16 +193,14 @@ export function OrderPanel({ tableId, initialOrder, menuCategories }: OrderPanel
           onEditItemModifiers={handleEditItemModifiers}
           onConfirmOrder={handleConfirmOrder}
           onGoToPayment={handleGoToPayment}
-          // router can be used internally or Back to Tables link can be constructed with order.tableId
         />
       </div>
-
-      {/* SmartUpsellSuggestions column is removed */}
 
       {editingOrderItem && menuCategories.flatMap(c => c.items).find(mi => mi.id === editingOrderItem.menuItemId) && (
         <ModifierModal
           isOpen={isModifierModalOpen}
           onClose={() => { setIsModifierModalOpen(false); setEditingOrderItem(null); }}
+          // Ensure menuItem prop passed to ModifierModal has availableModifiers
           menuItem={menuCategories.flatMap(c => c.items).find(mi => mi.id === editingOrderItem.menuItemId)!}
           currentSelectedModifiers={editingOrderItem.selectedModifiers}
           onApplyModifiers={handleApplyModifiers}
