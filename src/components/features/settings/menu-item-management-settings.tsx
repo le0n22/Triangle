@@ -35,7 +35,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit2, Trash2, RefreshCw, ImagePlus, UploadCloud } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import {
   Table,
   TableHeader,
@@ -56,13 +56,6 @@ import {
 import { getAllCategoriesAction } from '../../../../backend/actions/categoryActions';
 import { getAllModifiersAction } from '../../../../backend/actions/modifierActions';
 
-// Frontend'in kullanacağı MenuItem tipi (categoryName ve availableModifier detaylarını içerecek)
-// backend/actions/menuItemActions.ts'deki AppMenuItem ile aynı olmalı
-interface MenuItemDisplay extends AppMenuItem {
-  categoryName: string; 
-}
-
-
 export function MenuItemManagementSettings() {
   const [menuItems, setMenuItems] = useState<AppMenuItem[]>([]);
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
@@ -71,7 +64,7 @@ export function MenuItemManagementSettings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingCategories, setIsFetchingCategories] = useState(true);
   const [isFetchingModifiers, setIsFetchingModifiers] = useState(true);
-  const [isMutating, setIsMutating] = useState(false); // For add/edit/delete operations
+  const [isMutating, setIsMutating] = useState(false);
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState<AppMenuItem | null>(null);
@@ -85,67 +78,73 @@ export function MenuItemManagementSettings() {
     price: '',
     imageUrl: '',
     dataAiHint: '',
-    category: '', // categoryId
+    category: '', 
     availableModifierIds: [] as string[],
   };
   const [currentForm, setCurrentForm] = useState(initialFormState);
 
-  const fetchAllData = useCallback(async () => {
-    console.log("FRONTEND: MenuItemManagementSettings: fetchAllData triggered.");
+  const fetchMenuItems = useCallback(async () => {
     setIsLoading(true);
-    setIsFetchingCategories(true);
-    setIsFetchingModifiers(true);
     try {
-      const [menuItemsResult, categoriesResult, modifiersResult] = await Promise.all([
-        getAllMenuItemsAction(),
-        getAllCategoriesAction(),
-        getAllModifiersAction()
-      ]);
-
-      if ('error' in menuItemsResult) {
-        toast({ title: 'Error Fetching Menu Items', description: menuItemsResult.error, variant: 'destructive' });
+      const result = await getAllMenuItemsAction();
+      if ('error' in result) {
+        toast({ title: 'Error Fetching Menu Items', description: result.error, variant: 'destructive' });
         setMenuItems([]);
       } else {
-        setMenuItems(menuItemsResult.sort((a, b) => a.name.localeCompare(b.name)));
-        console.log("FRONTEND: MenuItemManagementSettings: Menu items state SET. Count:", menuItemsResult.length);
+        setMenuItems(result.sort((a, b) => a.name.localeCompare(b.name)));
       }
-
-      if (Array.isArray(categoriesResult)) { // Assuming categoriesResult is AppMenuCategory[]
-        setCategories(categoriesResult.sort((a, b) => a.name.localeCompare(b.name)));
-        console.log("FRONTEND: MenuItemManagementSettings: Categories state SET. Count:", categoriesResult.length);
-      } else { // Handle if categoriesResult is { error: string } or unexpected
-        toast({ title: 'Error Fetching Categories', description: (categoriesResult as any).error || 'Unexpected error', variant: 'destructive' });
-        setCategories([]);
-      }
-      
-      if (Array.isArray(modifiersResult)) { // Assuming modifiersResult is AppModifier[]
-          setAllModifiers(modifiersResult.sort((a, b) => a.name.localeCompare(b.name)));
-          console.log("FRONTEND: MenuItemManagementSettings: Modifiers state SET. Count:", modifiersResult.length);
-      } else if (modifiersResult && typeof modifiersResult === 'object' && 'error' in modifiersResult) {
-          toast({ title: 'Error Fetching Modifiers', description: (modifiersResult as {error: string}).error, variant: 'destructive' });
-          setAllModifiers([]);
-      } else {
-          toast({ title: 'Error Fetching Modifiers', description: 'Unexpected response for modifiers.', variant: 'destructive' });
-          setAllModifiers([]);
-      }
-
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to fetch initial data for menu items.', variant: 'destructive' });
-      console.error("FRONTEND: MenuItemManagementSettings: Failed to fetch data:", error);
+      toast({ title: 'Error', description: 'Failed to fetch menu items.', variant: 'destructive' });
       setMenuItems([]);
-      setCategories([]);
-      setAllModifiers([]);
     } finally {
       setIsLoading(false);
-      setIsFetchingCategories(false);
-      setIsFetchingModifiers(false);
-      console.log("FRONTEND: MenuItemManagementSettings: fetchAllData finished.");
     }
   }, [toast]);
 
+  const fetchCategories = useCallback(async () => {
+    setIsFetchingCategories(true);
+    try {
+      const result = await getAllCategoriesAction();
+      if (Array.isArray(result)) {
+        setCategories(result.sort((a, b) => a.name.localeCompare(b.name)));
+      } else {
+        toast({ title: 'Error Fetching Categories', description: result.error || 'Unexpected error', variant: 'destructive' });
+        setCategories([]);
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to fetch categories.', variant: 'destructive' });
+      setCategories([]);
+    } finally {
+      setIsFetchingCategories(false);
+    }
+  }, [toast]);
+
+  const fetchModifiers = useCallback(async () => {
+    setIsFetchingModifiers(true);
+    try {
+      const result = await getAllModifiersAction();
+      if (Array.isArray(result)) {
+        setAllModifiers(result.sort((a, b) => a.name.localeCompare(b.name)));
+      } else if (result && 'error' in result) {
+        toast({ title: 'Error Fetching Modifiers', description: result.error, variant: 'destructive' });
+        setAllModifiers([]);
+      } else {
+         toast({ title: 'Error', description: 'Unexpected error fetching modifiers.', variant: 'destructive' });
+        setAllModifiers([]);
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to fetch modifiers.', variant: 'destructive' });
+      setAllModifiers([]);
+    } finally {
+      setIsFetchingModifiers(false);
+    }
+  }, [toast]);
+  
   useEffect(() => {
-    fetchAllData();
-  }, [fetchAllData]);
+    fetchMenuItems();
+    fetchCategories();
+    fetchModifiers();
+  }, [fetchMenuItems, fetchCategories, fetchModifiers]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -172,11 +171,10 @@ export function MenuItemManagementSettings() {
   const openAddDialog = () => {
     setEditingMenuItem(null);
     let defaultCategoryId = '';
-    if (categories.length > 0) {
+    if (categories.length > 0 && !isFetchingCategories) {
         defaultCategoryId = categories[0].id;
     }
     setCurrentForm({...initialFormState, category: defaultCategoryId });
-    console.log("FRONTEND: MenuItemManagementSettings: Opening Add Dialog, currentForm state:", {...initialFormState, category: defaultCategoryId });
     setIsFormDialogOpen(true);
   };
 
@@ -191,15 +189,6 @@ export function MenuItemManagementSettings() {
       category: menuItem.categoryId,
       availableModifierIds: menuItem.availableModifiers ? menuItem.availableModifiers.map(mod => mod.id) : [],
     });
-    console.log("FRONTEND: MenuItemManagementSettings: Opening Edit Dialog for:", menuItem.name, "Form state:", {
-        name: menuItem.name,
-        description: menuItem.description || '',
-        price: menuItem.price.toString(),
-        imageUrl: menuItem.imageUrl || '',
-        dataAiHint: menuItem.dataAiHint || '',
-        category: menuItem.categoryId,
-        availableModifierIds: menuItem.availableModifiers ? menuItem.availableModifiers.map(mod => mod.id) : [],
-      });
     setIsFormDialogOpen(true);
   };
 
@@ -228,23 +217,19 @@ export function MenuItemManagementSettings() {
     try {
       let result;
       if (editingMenuItem) {
-        console.log("FRONTEND: MenuItemManagementSettings: Calling updateMenuItemAction for ID:", editingMenuItem.id, "Data:", formData);
         result = await updateMenuItemAction(editingMenuItem.id, formData);
       } else {
-        console.log("FRONTEND: MenuItemManagementSettings: Calling createMenuItemAction with Data:", formData);
         result = await createMenuItemAction(formData);
       }
-      console.log("FRONTEND: MenuItemManagementSettings: Action result:", result);
 
       if ('error' in result) {
         toast({ title: `Error ${editingMenuItem ? 'Updating' : 'Adding'} Menu Item`, description: result.error, variant: 'destructive' });
       } else {
         toast({ title: `Menu Item ${editingMenuItem ? 'Updated' : 'Added'}`, description: `"${result.name}" has been successfully ${editingMenuItem ? 'updated' : 'added'}.` });
         setIsFormDialogOpen(false);
-        await fetchAllData(); // Refresh all data
+        fetchMenuItems(); 
       }
     } catch (error) {
-      console.error("FRONTEND: MenuItemManagementSettings: Error in handleSubmitMenuItem:", error);
       toast({ title: 'Unexpected Error', description: `Could not ${editingMenuItem ? 'update' : 'add'} menu item.`, variant: 'destructive' });
     } finally {
       setIsMutating(false);
@@ -258,19 +243,15 @@ export function MenuItemManagementSettings() {
   const handleDeleteMenuItem = async () => {
     if (!menuItemToDelete) return;
     setIsMutating(true);
-    console.log("FRONTEND: MenuItemManagementSettings: Calling deleteMenuItemAction for ID:", menuItemToDelete.id);
     try {
       const result = await deleteMenuItemAction(menuItemToDelete.id);
-      console.log("FRONTEND: MenuItemManagementSettings: deleteMenuItemAction result:", result);
-
       if (result.success) {
         toast({ title: 'Menu Item Deleted', description: `"${menuItemToDelete.name}" has been deleted.` });
-        await fetchAllData(); // Refresh all data
+        fetchMenuItems(); 
       } else {
         toast({ title: 'Error Deleting Menu Item', description: result.error || 'Failed to delete menu item.', variant: 'destructive' });
       }
     } catch (error) {
-      console.error("FRONTEND: MenuItemManagementSettings: Error in handleDeleteMenuItem:", error);
       toast({ title: 'Unexpected Error', description: 'Could not delete menu item.', variant: 'destructive' });
     } finally {
       setMenuItemToDelete(null);
@@ -362,13 +343,13 @@ export function MenuItemManagementSettings() {
           <CardDescription>Manage your menu items, their categories, and modifiers.</CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchAllData} disabled={isLoading || isMutating}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${(isLoading && !isFormDialogOpen) ? 'animate-spin' : ''}`} /> 
-            {isLoading && !isFormDialogOpen ? 'Refreshing...' : 'Refresh All'}
+          <Button variant="outline" onClick={() => { fetchMenuItems(); fetchCategories(); fetchModifiers(); }} disabled={isLoading || isFetchingCategories || isFetchingModifiers || isMutating}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${(isLoading || isFetchingCategories || isFetchingModifiers) && !isFormDialogOpen ? 'animate-spin' : ''}`} /> 
+            { (isLoading || isFetchingCategories || isFetchingModifiers) && !isFormDialogOpen ? 'Refreshing...' : 'Refresh All'}
           </Button>
           <Dialog open={isFormDialogOpen} onOpenChange={(open) => { if(!open) setIsFormDialogOpen(false); }}>
             <DialogTrigger asChild>
-              <Button onClick={openAddDialog} disabled={isMutating || isLoading}>
+              <Button onClick={openAddDialog} disabled={isMutating || isLoading || isFetchingCategories || isFetchingModifiers}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Menu Item
               </Button>
             </DialogTrigger>
@@ -393,10 +374,10 @@ export function MenuItemManagementSettings() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
+        {(isLoading || (isFetchingCategories && categories.length === 0) || (isFetchingModifiers && allModifiers.length === 0) ) && menuItems.length === 0 ? (
           <div className="text-center py-10">
             <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-2 text-muted-foreground">Loading menu items...</p>
+            <p className="mt-2 text-muted-foreground">Loading data...</p>
           </div>
         ) : (
           <Table>
@@ -433,12 +414,12 @@ export function MenuItemManagementSettings() {
                       : 'None'}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)} className="mr-2" disabled={isMutating || isLoading}>
+                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)} className="mr-2" disabled={isMutating || isLoading || isFetchingCategories || isFetchingModifiers}>
                       <Edit2 className="h-4 w-4" />
                     </Button>
                     <AlertDialog open={!!menuItemToDelete && menuItemToDelete.id === item.id} onOpenChange={(isOpen) => !isOpen && setMenuItemToDelete(null)}>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteMenuItem(item)} disabled={isMutating || isLoading}>
+                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteMenuItem(item)} disabled={isMutating || isLoading || isFetchingCategories || isFetchingModifiers}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
@@ -461,7 +442,7 @@ export function MenuItemManagementSettings() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && menuItems.length === 0 && (
+              {!isLoading && !isFetchingCategories && !isFetchingModifiers && menuItems.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-6">No menu items found in the database. Add some!</TableCell>
                 </TableRow>
@@ -473,5 +454,3 @@ export function MenuItemManagementSettings() {
     </Card>
   );
 }
-
-    

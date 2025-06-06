@@ -80,7 +80,6 @@ export async function createMenuItemAction(data: MenuItemFormData): Promise<AppM
         return { error: 'Price cannot be negative.' };
     }
 
-    // Aynı isimde başka bir menü öğesi var mı kontrol et
     const existingItem = await prisma.menuItem.findFirst({
         where: { name: data.name }
     });
@@ -129,7 +128,6 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
     if (data.price !== undefined && data.price < 0) return { error: 'Price cannot be negative.' };
     if (data.categoryId === '') return { error: 'Category cannot be empty.' };
 
-
     if (data.name) {
         const existingItemWithNewName = await prisma.menuItem.findFirst({
             where: { name: data.name, NOT: { id: id } }
@@ -148,11 +146,11 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
         imageUrl: data.imageUrl,
         dataAiHint: data.dataAiHint,
         category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
-        availableModifiers: data.availableModifierIds
+        availableModifiers: data.availableModifierIds !== undefined // Check if it's explicitly passed
           ? {
-              set: data.availableModifierIds.map(modId => ({ id: modId })), // Önceki bağlantıları keser, yenilerini bağlar
+              set: data.availableModifierIds.map(modId => ({ id: modId })), 
             }
-          : undefined, // Eğer availableModifierIds gelmezse modifier'ları değiştirme
+          : undefined, 
       },
       include: {
         category: true,
@@ -166,7 +164,7 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
     if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('name') && data.name) {
       return { error: `Another menu item with name "${data.name}" already exists.` };
     }
-    if (prismaError.code === 'P2025') { // Kayıt bulunamadı hatası
+    if (prismaError.code === 'P2025') { 
         if (prismaError.meta?.cause?.includes('record to update not found')) {
              return { error: 'Menu item to update not found.'};
         }
@@ -181,14 +179,6 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
 
 export async function deleteMenuItemAction(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Önce bu menü öğesini içeren sipariş öğesi var mı kontrol et. Varsa silme.
-    // Prisma schema'da MenuItem.orderItems üzerinde onDelete:Restrict olduğu için bu kontrol otomatik.
-    // Ancak daha kullanıcı dostu bir mesaj için manuel kontrol eklenebilir.
-    // const orderItems = await prisma.orderItem.findMany({ where: { menuItemId: id }});
-    // if (orderItems.length > 0) {
-    //   return { success: false, error: 'Cannot delete menu item. It is part of existing orders.' };
-    // }
-    
     await prisma.menuItem.delete({
       where: { id },
     });
@@ -196,10 +186,10 @@ export async function deleteMenuItemAction(id: string): Promise<{ success: boole
   } catch (error) {
     console.error('Error deleting menu item:', error);
     const prismaError = error as { code?: string, meta?: { cause?: string } };
-    if (prismaError.code === 'P2025') { // Kayıt bulunamadı
+    if (prismaError.code === 'P2025') { 
          return { success: false, error: 'Menu item not found or already deleted.' };
     }
-    if (prismaError.code === 'P2003') { // Foreign key constraint (ilişkili OrderItem var ve onDelete:Restrict)
+    if (prismaError.code === 'P2003') { 
         return { success: false, error: 'Cannot delete menu item. It is part of one or more existing orders.' };
     }
     return { success: false, error: 'Failed to delete menu item. Please check server logs.' };
