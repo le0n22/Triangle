@@ -33,7 +33,7 @@ interface OrderActionSidebarProps {
 interface ActionButtonConfig {
   label: string;
   getLabel?: (order: Order | null) => string; // For dynamic labels
-  icon: React.ElementType;
+  icon?: React.ElementType; // Icon is now optional
   onClick: () => void | Promise<void>;
   isDisabled: (order: Order | null, isSaving: boolean) => boolean;
   variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link" | "success" | "destructive-outline";
@@ -70,7 +70,7 @@ export function OrderActionSidebar({
   
   const navigationAndPrimaryActions: ActionButtonConfig[] = [
      { 
-      label: '< Back', 
+      label: 'Back', 
       icon: ChevronLeft, 
       onClick: onBackToTables, 
       isDisabled: (o, s) => s, 
@@ -80,7 +80,6 @@ export function OrderActionSidebar({
      { 
       getLabel: (o) => (o && o.id && !o.id.startsWith('temp-ord-')) ? 'Update' : 'Confirm', 
       label: '', // Will be overridden by getLabel
-      icon: Save, 
       onClick: onConfirmOrder, 
       isDisabled: (o, s) => effectiveNoItemsForActions || s || !!isOrderClosed, 
       variant: 'default',
@@ -89,11 +88,10 @@ export function OrderActionSidebar({
     },
     { 
       label: 'Payment', 
-      icon: CreditCard, 
       onClick: onGoToPayment, 
       isDisabled: (o, s) => effectiveNoItemsForActions || s || !(o && o.id && !o.id.startsWith('temp-ord-')) || !!isOrderClosed, 
       variant: 'success', 
-      className: "bg-accent hover:bg-accent/90 text-accent-foreground h-12 text-xs px-3",
+      className: "bg-accent hover:bg-accent/90 text-accent-foreground h-12 text-xs px-3", // This uses accent color which is green-ish
       showSpinner: true 
     },
   ];
@@ -123,7 +121,7 @@ export function OrderActionSidebar({
                 btn.className
               )}
             >
-              {isSaving && btn.showSpinner ? <Loader2 className="h-5 w-5 animate-spin mb-0.5" /> : <btn.icon className="h-5 w-5 mb-0.5" />}
+              {isSaving && btn.showSpinner && btn.icon ? <Loader2 className="h-5 w-5 animate-spin mb-0.5" /> : (btn.icon && <btn.icon className="h-5 w-5 mb-0.5" />)}
               <span className="text-center text-[10px]">{btn.label}</span>
             </Button>
           ))}
@@ -134,16 +132,20 @@ export function OrderActionSidebar({
            const currentLabel = btn.getLabel ? btn.getLabel(order) : btn.label;
            return (
             <Button
-              key={currentLabel} // Use currentLabel for key if getLabel exists
-              variant={btn.variant === 'success' ? 'default' : (btn.variant || 'default')}
+              key={currentLabel} 
+              variant={btn.variant === 'success' ? 'default' : (btn.variant || 'default')} // Apply success variant if needed
               onClick={btn.onClick}
               disabled={btn.isDisabled(order, isSaving)}
               className={cn(
                 "w-full", 
-                btn.className 
+                btn.className,
+                btn.variant === 'success' && "bg-accent hover:bg-accent/90 text-accent-foreground" // Explicitly apply green color for 'success'
               )}
             >
-              {isSaving && btn.showSpinner ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <btn.icon className="mr-2 h-4 w-4" />}
+              {isSaving && btn.showSpinner ? 
+                <Loader2 className={btn.icon ? "mr-2 h-4 w-4 animate-spin" : "h-4 w-4 animate-spin"} /> : 
+                (btn.icon && <btn.icon className="mr-2 h-4 w-4" />)
+              }
               {currentLabel}
             </Button>
            );
@@ -157,4 +159,6 @@ export function OrderActionSidebar({
     </div>
   );
 }
+    
+
     
