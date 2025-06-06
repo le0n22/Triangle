@@ -48,12 +48,12 @@ const calculateOrderTotals = (items: OrderItem[], taxRate: number = 0.08): Pick<
 };
 
 interface QueryDeltaItem {
-  n: string; 
-  q: number; 
-  oq?: number; 
-  m?: string[]; 
-  s?: string; 
-  st: 'new' | 'modified' | 'deleted'; 
+  n: string; // menuItemName
+  q: number; // quantity (current quantity)
+  oq?: number; // oldQuantity (if changed)
+  m?: string[]; // selectedModifiers (formatted string list)
+  s?: string; // specialRequests
+  st: 'new' | 'modified' | 'deleted'; // status of the item in delta
 }
 
 
@@ -297,6 +297,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
+        console.error("--- OrderPanel: Error saving order from backend: ---", result.error);
       } else {
         setCurrentOrder(result); 
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); 
@@ -313,6 +314,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred.", variant: "destructive" });
+      console.error("--- OrderPanel: Unexpected error during confirmOrder: ---", e);
     } finally {
       setIsSaving(false);
     }

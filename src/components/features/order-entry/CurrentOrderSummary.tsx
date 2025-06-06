@@ -18,7 +18,7 @@ import {
   ArrowRightLeft,
   Ban,
   Loader2,
-  Save // Added Save for Confirm/Update KOT button
+  Save // Confirm/Update KOT için Save ikonu
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -32,7 +32,7 @@ interface CurrentOrderSummaryProps {
   onConfirmOrder: () => Promise<void>;
   onGoToPayment: () => Promise<void>;
   onCancelOrder: () => Promise<void>;
-  onBackToTables: () => void;
+  onBackToTables: () => void; // Added for Back to Tables button
   isSaving: boolean;
 }
 
@@ -60,7 +60,7 @@ export function CurrentOrderSummary({
 }: CurrentOrderSummaryProps) {
   const { toast } = useToast();
 
-  // Stub functions for utility actions now handled within CurrentOrderSummary
+  // Stub functions for utility actions, to be implemented if needed
   const handleSplitBill = () => {
     if (!order || order.items.filter(i => i.quantity > 0).length === 0 || isSaving || isOrderClosed) return;
     toast({ title: 'Split Bill', description: 'Functionality to split bill (Not Implemented).' });
@@ -141,6 +141,8 @@ export function CurrentOrderSummary({
                 )) {
                     itemState = 'modified';
                 } else if (!initialItem && !item.id.startsWith('item-')) { 
+                    // This case means an item was persisted in DB but somehow not in initial snapshot.
+                    // Treat as new for UI highlighting, though it might indicate a state sync issue.
                     itemState = 'new'; 
                 }
                 
@@ -221,6 +223,7 @@ export function CurrentOrderSummary({
       <div className="mt-auto pt-4 border-t border-border space-y-3">
         {!isOrderClosed && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {/* Utility Buttons - Square-ish */}
                 <Button variant="outline" onClick={handleSplitBill} disabled={effectiveNoItemsForActions || isSaving} className="h-16 flex flex-col items-center justify-center">
                     <SplitSquareHorizontal className="h-6 w-6 mb-1" /> <span className="text-xs">Split Bill</span>
                 </Button>
@@ -243,6 +246,7 @@ export function CurrentOrderSummary({
             </div>
         )}
 
+        {/* Main Action Buttons - Larger */}
         {!isOrderClosed && (
             <div className="space-y-2 pt-2">
                  <Button 
@@ -257,7 +261,7 @@ export function CurrentOrderSummary({
                 <Button 
                     onClick={onGoToPayment} 
                     size="lg" 
-                    className="w-full h-14 bg-green-600 hover:bg-green-700 text-white"
+                    className="w-full h-14 bg-green-600 hover:bg-green-700 text-white" // Green color
                     disabled={effectiveNoItemsForActions || isSaving || !isOrderPersisted}
                 >
                     {isSaving && isOrderPersisted ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />} 
@@ -280,6 +284,7 @@ export function CurrentOrderSummary({
   );
 }
 
+// Helper component for ShoppingCartIcon if not already globally available or part of lucide
 function ShoppingCartIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
