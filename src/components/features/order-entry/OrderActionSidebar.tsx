@@ -54,10 +54,8 @@ export function OrderActionSidebar({
   const isOrderPersisted = order.id && !order.id.startsWith('temp-ord-');
   const isOrderClosed = order.status === 'PAID' || order.status === 'CANCELLED';
   const allItemsQuantityZero = order.items.every(item => item.quantity === 0);
-  // Disable actions if there are effectively no items to act upon, or if order is closed/saving
-  const baseActionDisabled = effectiveNoItemsForActions || isSaving || isOrderClosed;
   const effectiveNoItemsForActions = noItemsCurrentlyInOrder || (isOrderPersisted && allItemsQuantityZero);
-
+  const baseActionDisabled = effectiveNoItemsForActions || isSaving || isOrderClosed;
 
   const actionButtons = [
     { label: 'Split Bill', icon: SplitSquareHorizontal, onClick: onSplitBill, disabled: baseActionDisabled, variant: 'outline' as const },
@@ -67,11 +65,11 @@ export function OrderActionSidebar({
     { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, disabled: isSaving, variant: 'outline' as const },
     { 
       label: 'Cancel Order', 
-      icon: isSaving && order.id.startsWith('temp-ord-') ? Loader2 : Ban, 
+      icon: isSaving && (order.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') ? Loader2 : Ban, 
       onClick: onCancelOrder, 
-      disabled: isSaving && !order.id.startsWith('temp-ord-') || isOrderClosed, 
+      disabled: isSaving && !(order.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') || isOrderClosed, 
       variant: 'destructive-outline' as const,
-      iconClassName: isSaving && order.id.startsWith('temp-ord-') ? "animate-spin" : ""
+      iconClassName: isSaving && (order.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') ? "animate-spin" : ""
     },
   ];
 
@@ -85,7 +83,11 @@ export function OrderActionSidebar({
               variant={btn.variant}
               onClick={btn.onClick}
               disabled={btn.disabled}
-              className={cn("w-full justify-start h-12 text-sm", btn.variant === 'destructive-outline' && "border-destructive text-destructive hover:bg-destructive/10")}
+              className={cn(
+                "w-full justify-start h-12 text-sm", 
+                btn.variant === 'destructive-outline' && "border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive-foreground",
+                btn.variant === 'outline' && "hover:bg-accent hover:text-accent-foreground"
+              )}
             >
               <btn.icon className={cn("mr-3 h-5 w-5", btn.iconClassName)} />
               {btn.label}

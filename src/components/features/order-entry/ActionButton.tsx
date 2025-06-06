@@ -1,3 +1,3 @@
 // This file is no longer needed and should be deleted.
-// Its functionality has been merged into OrderActionSidebar.tsx
-// or is handled by standard Button components within it.
+// Its functionality has been replaced by OrderActionSidebar.tsx.
+// If this file still exists, its content can be removed or the file deleted.

@@ -70,15 +70,9 @@ export function CurrentOrderSummary({
         ) : (
           <ul className="space-y-3">
             {order.items.map((item) => {
-              // Filter out items that were persisted but now have 0 quantity before they are rendered
-              // Client-side new items with 0 quantity are already filtered out in updateOrderAndRecalculate
               if (item.quantity === 0 && !item.id.startsWith('item-')) {
-                // This is a persisted item whose quantity was reduced to 0.
-                // It's kept in currentOrder for delta calculation but shouldn't be displayed.
                 return null;
               }
-              // New items (id starts with 'item-') with quantity 0 should already be filtered out by `updateOrderAndRecalculate`.
-              // But as a safeguard, or if they were added and immediately set to 0 before any recalculation that filters:
               if (item.quantity === 0 && item.id.startsWith('item-')) {
                 return null;
               }
@@ -86,7 +80,7 @@ export function CurrentOrderSummary({
               const initialItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === item.id);
               let itemState: 'new' | 'modified' | 'unchanged' = 'unchanged';
 
-              if (!initialItem && item.id.startsWith('item-')) { // Truly new client-side item
+              if (!initialItem && item.id.startsWith('item-')) {
                 itemState = 'new';
               } else if (initialItem && (
                 item.quantity !== initialItem.quantity ||
@@ -95,9 +89,6 @@ export function CurrentOrderSummary({
               )) {
                 itemState = 'modified';
               } else if (!initialItem && !item.id.startsWith('item-')) { 
-                // This case means the item.id is NOT a client-side ID (e.g. it came from initialOrder)
-                // but it's not found in initialOrderSnapshot. This could happen if initialOrderSnapshot
-                // was reset or out of sync. For UI, treat as new if quantity > 0.
                  if (item.quantity > 0) itemState = 'new';
               }
               
@@ -174,7 +165,6 @@ export function CurrentOrderSummary({
         </>
       )}
       
-      {/* Action buttons are now moved to OrderActionSidebar */}
       {isOrderClosed && (
         <p className="text-center text-muted-foreground py-4 mt-auto border-t border-border">
           This order is {order.status.toLowerCase()}. No further actions can be taken.
