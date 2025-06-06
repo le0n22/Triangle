@@ -7,7 +7,8 @@ import type {
   Order as PrismaOrder, 
   OrderItem as PrismaOrderItem, 
   Table as PrismaTable,
-  OrderStatus as PrismaOrderStatus
+  OrderStatus as PrismaOrderStatus,
+  Modifier as PrismaModifier // Ensure Modifier is imported if used for typing selectedModifiers
 } from '@prisma/client';
 import { updateTableOrderDetailsAction } from './tableActions';
 
@@ -18,7 +19,7 @@ export interface AppOrderItem {
   menuItemName: string;
   quantity: number;
   unitPrice: number;
-  selectedModifiers: Prisma.JsonValue; 
+  selectedModifiers: { id: string; name: string; priceChange: number }[]; // Changed from Prisma.JsonValue to specific type
   specialRequests?: string | null;
   totalPrice: number;
 }
@@ -43,7 +44,7 @@ export interface OrderItemInput {
   menuItemName: string; 
   quantity: number;
   unitPrice: number;    
-  selectedModifiers: Prisma.JsonValue; 
+  selectedModifiers: Prisma.JsonValue; // Keep as JsonValue for Prisma create/update
   specialRequests?: string;
   totalPrice: number; 
 }
@@ -57,16 +58,34 @@ export interface CreateOrderInput {
   totalAmount: number;
 }
 
+// Helper to safely parse selectedModifiers from JSON
+function parseSelectedModifiers(jsonData: Prisma.JsonValue): { id: string; name: string; priceChange: number }[] {
+  if (Array.isArray(jsonData)) {
+    return jsonData.map(mod => {
+      if (typeof mod === 'object' && mod !== null && 'id' in mod && 'name' in mod && 'priceChange' in mod) {
+        return {
+          id: String(mod.id),
+          name: String(mod.name),
+          priceChange: typeof mod.priceChange === 'number' ? mod.priceChange : parseFloat(String(mod.priceChange)) || 0,
+        };
+      }
+      return { id: 'unknown', name: 'Unknown Modifier', priceChange: 0 }; // Fallback for malformed data
+    }).filter(mod => mod.id !== 'unknown'); // Filter out malformed ones
+  }
+  return [];
+}
+
+
 function mapPrismaOrderItemToAppOrderItem(item: PrismaOrderItem): AppOrderItem {
   return {
     id: item.id,
     menuItemId: item.menuItemId,
     menuItemName: item.menuItemName,
     quantity: item.quantity,
-    unitPrice: item.unitPrice.toNumber(), // Convert Decimal to number
-    selectedModifiers: item.selectedModifiers,
+    unitPrice: item.unitPrice.toNumber(),
+    selectedModifiers: parseSelectedModifiers(item.selectedModifiers), // Use helper for safe parsing
     specialRequests: item.specialRequests,
-    totalPrice: item.totalPrice.toNumber(), // Convert Decimal to number
+    totalPrice: item.totalPrice.toNumber(),
   };
 }
 
@@ -101,7 +120,6 @@ export async function createOrderAction(input: CreateOrderInput): Promise<AppOrd
      if (tableExists.status === 'RESERVED' || tableExists.status === 'DIRTY') {
         return { error: `Cannot create order for table ${tableExists.number} because it is ${tableExists.status.toLowerCase()}.` };
     }
-
 
     const newOrder = await prisma.order.create({
       data: {
@@ -139,11 +157,11 @@ export async function createOrderAction(input: CreateOrderInput): Promise<AppOrd
              return { error: 'Failed to create order. Related record (e.g., table or menu item) not found.' };
         }
     }
-    // Added more specific error check for ReferenceError, though ideally the import fixes it.
     if (error instanceof ReferenceError && error.message.includes("Prisma is not defined")) {
         return { error: 'Internal server error: Prisma namespace not available.' };
     }
-    return { error: 'Failed to create order. Please check server logs.' };
+    const typedError = error as Error;
+    return { error: `Failed to create order. ${typedError.message || 'Please check server logs.'}` };
   }
 }
 
@@ -181,7 +199,8 @@ export async function getOpenOrderByTableIdAction(tableId: string): Promise<AppO
     if (error instanceof ReferenceError && error.message.includes("Prisma is not defined")) {
         return { error: 'Internal server error: Prisma namespace not available.' };
     }
-    return { error: `Failed to fetch open order for table ${tableId}.` };
+    const typedError = error as Error;
+    return { error: `Failed to fetch open order for table ${tableId}. ${typedError.message || ''}` };
   }
 }
 
@@ -199,15 +218,11 @@ export async function updateOrderItemsAction(
         return { error: `Cannot update items for an order that is already ${orderToUpdate.status.toLowerCase()}.` };
     }
 
-
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      // Delete existing items first.
-      // This will also disconnect them from the OrderItemModifiers join table due to cascade on the implicit relation.
       await tx.orderItem.deleteMany({
         where: { orderId: orderId },
       });
 
-      // Then create new items.
       const orderWithNewItems = await tx.order.update({
         where: { id: orderId },
         data: {
@@ -225,7 +240,7 @@ export async function updateOrderItemsAction(
           subtotal: new Prisma.Decimal(totals.subtotal),
           taxAmount: new Prisma.Decimal(totals.taxAmount),
           totalAmount: new Prisma.Decimal(totals.totalAmount),
-          updatedAt: new Date(), // Explicitly set updatedAt
+          updatedAt: new Date(), 
         },
         include: {
           items: true,
@@ -248,7 +263,8 @@ export async function updateOrderItemsAction(
     if (error instanceof ReferenceError && error.message.includes("Prisma is not defined")) {
         return { error: 'Internal server error: Prisma namespace not available.' };
     }
-    return { error: `Failed to update items for order ${orderId}.` };
+    const typedError = error as Error;
+    return { error: `Failed to update items for order ${orderId}. ${typedError.message || ''}` };
   }
 }
 
@@ -269,7 +285,7 @@ export async function updateOrderStatusAction(orderId: string, status: PrismaOrd
       where: { id: orderId },
       data: {
         status: status,
-        updatedAt: new Date(), // Explicitly set updatedAt
+        updatedAt: new Date(), 
       },
       include: {
         items: true,
@@ -278,13 +294,10 @@ export async function updateOrderStatusAction(orderId: string, status: PrismaOrd
     });
 
     if (status === 'PAID' || status === 'CANCELLED') {
-      // For PAID or CANCELLED orders, clear the order from the table and set table to AVAILABLE
       await updateTableOrderDetailsAction(updatedOrder.tableId, null, null);
     } else if (status === 'DONE' || status === 'IN_PROGRESS' || status === 'OPEN') {
-      // For other active statuses, ensure table is OCCUPIED and total is updated
       await updateTableOrderDetailsAction(updatedOrder.tableId, updatedOrder.id, updatedOrder.totalAmount.toNumber());
     }
-
 
     return mapPrismaOrderToAppOrder(updatedOrder);
   } catch (error) {
@@ -297,8 +310,7 @@ export async function updateOrderStatusAction(orderId: string, status: PrismaOrd
     if (error instanceof ReferenceError && error.message.includes("Prisma is not defined")) {
         return { error: 'Internal server error: Prisma namespace not available.' };
     }
-    return { error: `Failed to update status for order ${orderId}.` };
+    const typedError = error as Error;
+    return { error: `Failed to update status for order ${orderId}. ${typedError.message || ''}` };
   }
 }
-
-    

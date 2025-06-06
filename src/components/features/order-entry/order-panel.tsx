@@ -16,9 +16,10 @@ import {
   type OrderItemInput
 } from '@backend/actions/orderActions';
 import type { AppOrder } from '@backend/actions/orderActions'; // Import AppOrder for backend response type
+import { Prisma } from '@prisma/client'; // For Prisma.JsonNull
 
 interface OrderPanelProps {
-  tableIdParam: string; // Renamed from tableId to avoid conflict with Order.tableId
+  tableIdParam: string; 
   initialOrder: Order | null;
   menuCategories: MenuCategory[];
 }
@@ -46,16 +47,20 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   const router = useRouter();
 
   useEffect(() => {
+    console.log("OrderPanel useEffect: initialOrder changed or tableIdParam changed.");
+    console.log("Current initialOrder:", initialOrder);
+    console.log("Current tableIdParam:", tableIdParam);
+
     if (initialOrder) {
+      console.log("Setting currentOrder from initialOrder:", initialOrder);
       setCurrentOrder(initialOrder);
-    } else if (tableIdParam && !currentOrder) { // Only initialize if currentOrder is not already set
-      // Attempt to parse table number from tableIdParam (e.g., "t1" -> 1)
-      // This might need adjustment based on actual tableIdParam format
+    } else if (tableIdParam) {
+      console.log("initialOrder is null, creating new temp order for tableIdParam:", tableIdParam);
       const tableNumberMatch = tableIdParam.match(/\d+/);
       const tableNumber = tableNumberMatch ? parseInt(tableNumberMatch[0], 10) : 0;
-
+      console.log("Parsed table number:", tableNumber);
       setCurrentOrder({
-        id: `temp-ord-${Date.now()}`, // Temporary ID for new orders
+        id: `temp-ord-${Date.now()}`,
         tableId: tableIdParam,
         tableNumber: tableNumber, 
         items: [],
@@ -67,8 +72,11 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+    } else {
+      console.log("Both initialOrder and tableIdParam are null/undefined. Setting currentOrder to null.");
+      setCurrentOrder(null);
     }
-  }, [initialOrder, tableIdParam, currentOrder]);
+  }, [initialOrder, tableIdParam]);
 
 
   const updateOrderAndRecalculate = useCallback((updatedItems: OrderItem[]) => {
@@ -85,18 +93,22 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   }, []);
 
   const handleSelectItem = (menuItem: MenuItem, selectedModifiers: Modifier[] = []) => {
-    if (!currentOrder) return;
+    if (!currentOrder) {
+      console.error("Cannot select item, currentOrder is null.");
+      toast({ title: "Error", description: "Order not initialized.", variant: "destructive" });
+      return;
+    }
 
     const existingItemIndex = currentOrder.items.findIndex(
       (item) => item.menuItemId === menuItem.id && 
                  JSON.stringify(item.selectedModifiers.map(m=>m.id).sort()) === JSON.stringify(selectedModifiers.map(m=>m.id).sort()) && 
-                 !item.specialRequests // Simple check: if existing has no special requests
+                 !item.specialRequests 
     );
 
     let updatedItems;
     let itemToPotentiallyOpenModalFor: OrderItem | undefined;
 
-    if (existingItemIndex > -1 && selectedModifiers.length === 0 && !menuItem.availableModifiers?.length) { // Only increment if no modifiers involved initially
+    if (existingItemIndex > -1 && selectedModifiers.length === 0 && !menuItem.availableModifiers?.length) { 
       updatedItems = currentOrder.items.map((item, index) => {
         if (index === existingItemIndex) {
           const newQuantity = item.quantity + 1;
@@ -115,7 +127,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       };
       const newOrderItem: OrderItem = {
         ...newOrderItemBase,
-        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, // Temp client-side ID for item
+        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
         totalPrice: calculateOrderItemTotal(newOrderItemBase),
       };
       updatedItems = [...currentOrder.items, newOrderItem];
@@ -182,19 +194,21 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     }
     setIsSaving(true);
 
+    // Ensure selectedModifiers is Prisma.JsonValue or an array of plain objects
     const orderItemsInput: OrderItemInput[] = currentOrder.items.map(item => ({
       menuItemId: item.menuItemId,
       menuItemName: item.menuItemName,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
-      selectedModifiers: item.selectedModifiers, // Prisma.JsonValue
+      // selectedModifiers should be an array of plain objects for Prisma JSON
+      selectedModifiers: item.selectedModifiers.map(m => ({ id: m.id, name: m.name, priceChange: m.priceChange })) as unknown as Prisma.JsonArray,
       specialRequests: item.specialRequests,
       totalPrice: item.totalPrice,
     }));
 
     try {
       let result: AppOrder | { error: string };
-      if (currentOrder.id.startsWith('temp-ord-')) { // New order
+      if (currentOrder.id.startsWith('temp-ord-')) { 
         const createOrderData: CreateOrderInput = {
           tableId: currentOrder.tableId,
           items: orderItemsInput,
@@ -203,8 +217,10 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           taxAmount: currentOrder.taxAmount,
           totalAmount: currentOrder.totalAmount,
         };
+        console.log("Creating new order with data:", JSON.stringify(createOrderData, null, 2));
         result = await createOrderAction(createOrderData);
-      } else { // Existing order, update items
+      } else { 
+        console.log(`Updating existing order ${currentOrder.id} with items:`, JSON.stringify(orderItemsInput, null, 2));
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, {
           subtotal: currentOrder.subtotal,
           taxAmount: currentOrder.taxAmount,
@@ -214,15 +230,15 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
+        console.error("Error saving order from backend:", result.error);
       } else {
-        setCurrentOrder(result); // Update with backend order (real ID)
+        setCurrentOrder(result); 
         toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-green-600 text-white" });
-        // TODO: Update status to 'IN_PROGRESS' if KOT is printed?
-        // For now, just navigate to KOT page
         router.push(`/dashboard/kot/${result.id}`);
       }
-    } catch (e) {
-      toast({ title: "Error", description: "An unexpected error occurred while saving the order.", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "An unexpected error occurred while saving the order.", variant: "destructive" });
+      console.error("Unexpected error in handleConfirmOrder:", e);
     } finally {
       setIsSaving(false);
     }
@@ -240,7 +256,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
     setIsSaving(true);
     try {
-      // Optionally update status to 'DONE' if not already
       if (currentOrder.status !== 'DONE' && currentOrder.status !== 'PAID' && currentOrder.status !== 'CANCELLED') {
         const statusUpdateResult = await updateOrderStatusAction(currentOrder.id, 'DONE');
         if ('error' in statusUpdateResult) {
@@ -248,11 +263,12 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           setIsSaving(false);
           return;
         }
-        setCurrentOrder(statusUpdateResult); // Update order with new status
+        setCurrentOrder(statusUpdateResult); 
       }
       router.push(`/dashboard/payment/${currentOrder.id}`);
-    } catch (e) {
-      toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message || "An unexpected error occurred.", variant: "destructive" });
+      console.error("Unexpected error in handleGoToPayment:", e);
     } finally {
       setIsSaving(false);
     }
@@ -261,9 +277,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   const handleCancelOrder = async () => {
     if (!currentOrder) return;
     setIsSaving(true);
-    if (currentOrder.id.startsWith('temp-ord-')) { // Unsaved local order
-      setCurrentOrder(null); // Or reset to a new empty order for the table
-       // Re-initialize an empty order for the table
+    if (currentOrder.id.startsWith('temp-ord-')) { 
       const tableNumberMatch = tableIdParam.match(/\d+/);
       const tableNumber = tableNumberMatch ? parseInt(tableNumberMatch[0], 10) : 0;
       setCurrentOrder({
@@ -280,21 +294,21 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         updatedAt: new Date().toISOString(),
       });
       toast({ title: "Order Cleared", description: "The unsaved order has been cleared." });
-    } else { // Order exists in backend
+    } else { 
       const result = await updateOrderStatusAction(currentOrder.id, 'CANCELLED');
       if ('error' in result) {
         toast({ title: "Error Cancelling Order", description: result.error, variant: "destructive" });
       } else {
         setCurrentOrder(result);
         toast({ title: "Order Cancelled", description: `Order ${result.id.substring(0,8)} has been cancelled.`, variant: "destructive" });
-        router.push('/dashboard/tables'); // Navigate back to tables after cancelling a persisted order
+        router.push('/dashboard/tables'); 
       }
     }
     setIsSaving(false);
   };
 
 
-  if (!currentOrder && tableIdParam) { // Still loading initial state or tableIdParam not yet processed
+  if (!currentOrder && tableIdParam) { 
     return (
         <div className="flex flex-col h-[calc(100vh-var(--header-height,4rem))] md:flex-row bg-background text-foreground items-center justify-center">
             <p>Loading order data...</p>
@@ -310,16 +324,22 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       </div>
       
       <div className="w-full md:w-2/3 lg:w-3/5 xl:w-2/3 h-1/2 md:h-full order-first md:order-none">
-        <CurrentOrderSummary 
-          order={currentOrder}
-          onUpdateItemQuantity={handleUpdateItemQuantity}
-          onRemoveItem={handleRemoveItem}
-          onEditItemModifiers={handleEditItemModifiers}
-          onConfirmOrder={handleConfirmOrder}
-          onGoToPayment={handleGoToPayment}
-          onCancelOrder={handleCancelOrder} // Pass the cancel handler
-          isSaving={isSaving}
-        />
+        {currentOrder ? (
+          <CurrentOrderSummary 
+            order={currentOrder}
+            onUpdateItemQuantity={handleUpdateItemQuantity}
+            onRemoveItem={handleRemoveItem}
+            onEditItemModifiers={handleEditItemModifiers}
+            onConfirmOrder={handleConfirmOrder}
+            onGoToPayment={handleGoToPayment}
+            onCancelOrder={handleCancelOrder} 
+            isSaving={isSaving}
+          />
+        ) : (
+          <div className="flex flex-col h-full items-center justify-center text-muted-foreground p-4">
+            <p>Loading order information or select a table...</p>
+          </div>
+        )}
       </div>
 
       {editingOrderItem && menuCategories.flatMap(c => c.items).find(mi => mi.id === editingOrderItem.menuItemId) && (
@@ -327,7 +347,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           isOpen={isModifierModalOpen}
           onClose={() => { setIsModifierModalOpen(false); setEditingOrderItem(null); }}
           menuItem={menuCategories.flatMap(c => c.items).find(mi => mi.id === editingOrderItem.menuItemId)!}
-          currentSelectedOrderItem={editingOrderItem} // Pass the full OrderItem
+          currentSelectedOrderItem={editingOrderItem} 
           onApplyModifiers={handleApplyModifiers}
         />
       )}
