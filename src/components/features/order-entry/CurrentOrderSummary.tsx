@@ -32,11 +32,10 @@ interface CurrentOrderSummaryProps {
   onConfirmOrder: () => Promise<void>;
   onGoToPayment: () => Promise<void>;
   onCancelOrder: () => Promise<void>;
-  onBackToTables: () => void; // Added for Back to Tables button
+  onBackToTables: () => void; 
   isSaving: boolean;
 }
 
-// Helper function to compare modifier arrays by their IDs and count
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
   if (!arr1 && !arr2) return true;
   if (!arr1 || !arr2) return false;
@@ -60,7 +59,6 @@ export function CurrentOrderSummary({
 }: CurrentOrderSummaryProps) {
   const { toast } = useToast();
 
-  // Stub functions for utility actions, to be implemented if needed
   const handleSplitBill = () => {
     if (!order || order.items.filter(i => i.quantity > 0).length === 0 || isSaving || isOrderClosed) return;
     toast({ title: 'Split Bill', description: 'Functionality to split bill (Not Implemented).' });
@@ -81,7 +79,6 @@ export function CurrentOrderSummary({
     toast({ title: 'Transfer Table', description: 'Transfer table... (Not Implemented).' });
   };
 
-
   if (!order) { 
     return (
       <div className="p-6 text-center text-muted-foreground h-full flex flex-col justify-center items-center">
@@ -95,10 +92,8 @@ export function CurrentOrderSummary({
   const isOrderPersisted = order.id && !order.id.startsWith('temp-ord-');
   const isOrderClosed = order.status === 'PAID' || order.status === 'CANCELLED';
   
-  // Determine if there are any "active" items (new or modified or to be removed) for KOT/Payment enabling
   const allItemsQuantityZero = order.items.every(item => item.quantity === 0);
   const effectiveNoItemsForActions = noItemsCurrentlyInOrder || (isOrderPersisted && allItemsQuantityZero);
-
 
   const formatModifiers = (modifiers: Modifier[]) => {
     if (!modifiers || modifiers.length === 0) return null;
@@ -122,10 +117,10 @@ export function CurrentOrderSummary({
         ) : (
             <ul className="space-y-3">
             {order.items.map((item) => {
-                if (item.quantity === 0 && !item.id.startsWith('item-')) { // Persisted item marked for deletion, don't render
+                if (item.quantity === 0 && !item.id.startsWith('item-')) { 
                     return null;
                 }
-                if (item.quantity === 0 && item.id.startsWith('item-')) { // Client-side item with 0 quantity (removed), don't render
+                if (item.quantity === 0 && item.id.startsWith('item-')) { 
                     return null;
                 }
 
@@ -141,8 +136,6 @@ export function CurrentOrderSummary({
                 )) {
                     itemState = 'modified';
                 } else if (!initialItem && !item.id.startsWith('item-')) { 
-                    // This case means an item was persisted in DB but somehow not in initial snapshot.
-                    // Treat as new for UI highlighting, though it might indicate a state sync issue.
                     itemState = 'new'; 
                 }
                 
@@ -219,34 +212,31 @@ export function CurrentOrderSummary({
         </>
       )}
       
-      {/* Action Buttons Section */}
       <div className="mt-auto pt-4 border-t border-border space-y-3">
         {!isOrderClosed && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {/* Utility Buttons - Square-ish */}
-                <Button variant="outline" onClick={handleSplitBill} disabled={effectiveNoItemsForActions || isSaving} className="h-16 flex flex-col items-center justify-center">
-                    <SplitSquareHorizontal className="h-6 w-6 mb-1" /> <span className="text-xs">Split Bill</span>
-                </Button>
-                <Button variant="outline" onClick={handlePrintBill} disabled={effectiveNoItemsForActions || isSaving} className="h-16 flex flex-col items-center justify-center">
-                    <Printer className="h-6 w-6 mb-1" /> <span className="text-xs">Print Bill</span>
-                </Button>
-                <Button variant="outline" onClick={handleApplyDiscount} disabled={effectiveNoItemsForActions || isSaving} className="h-16 flex flex-col items-center justify-center">
-                    <Percent className="h-6 w-6 mb-1" /> <span className="text-xs">Discount</span>
-                </Button>
-                <Button variant="outline" onClick={handleTransferTable} disabled={effectiveNoItemsForActions || isSaving} className="h-16 flex flex-col items-center justify-center">
-                    <ArrowRightLeft className="h-6 w-6 mb-1" /> <span className="text-xs">Transfer</span>
-                </Button>
-                <Button variant="destructive-outline" onClick={onCancelOrder} disabled={isSaving && !order.id.startsWith('temp-ord-')} className="h-16 flex flex-col items-center justify-center">
-                    {isSaving && order.id.startsWith('temp-ord-') ? <Loader2 className="h-6 w-6 mb-1 animate-spin" /> : <Ban className="h-6 w-6 mb-1" />} 
-                    <span className="text-xs">Cancel Order</span>
-                </Button>
-                 <Button variant="outline" onClick={onBackToTables} disabled={isSaving} className="h-16 flex flex-col items-center justify-center">
-                    <ChevronLeft className="h-6 w-6 mb-1" /> <span className="text-xs">Back to Tables</span>
-                </Button>
+                {[
+                    { label: 'Split Bill', icon: SplitSquareHorizontal, onClick: handleSplitBill, disabled: effectiveNoItemsForActions || isSaving },
+                    { label: 'Print Bill', icon: Printer, onClick: handlePrintBill, disabled: effectiveNoItemsForActions || isSaving },
+                    { label: 'Discount', icon: Percent, onClick: handleApplyDiscount, disabled: effectiveNoItemsForActions || isSaving },
+                    { label: 'Transfer', icon: ArrowRightLeft, onClick: handleTransferTable, disabled: isSaving }, // Transfer might be allowed for empty saved orders
+                    { label: 'Cancel Order', icon: isSaving && !order.id.startsWith('temp-ord-') ? Loader2 : Ban, onClick: onCancelOrder, disabled: isSaving && !order.id.startsWith('temp-ord-'), className: (isSaving && order.id.startsWith('temp-ord-')) ? "text-muted-foreground" : "text-destructive border-destructive hover:bg-destructive/10", iconClassName: (isSaving && order.id.startsWith('temp-ord-')) ? "animate-spin" : "text-destructive" },
+                    { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, disabled: isSaving }
+                ].map(btn => (
+                    <Button 
+                        key={btn.label}
+                        variant="outline" 
+                        onClick={btn.onClick} 
+                        disabled={btn.disabled} 
+                        className={cn("h-16 flex flex-col items-center justify-center p-1 text-xs", btn.className)}
+                    >
+                        <btn.icon className={cn("h-5 w-5 mb-0.5", btn.iconClassName)} />
+                        {btn.label}
+                    </Button>
+                ))}
             </div>
         )}
 
-        {/* Main Action Buttons - Larger */}
         {!isOrderClosed && (
             <div className="space-y-2 pt-2">
                  <Button 
@@ -261,7 +251,7 @@ export function CurrentOrderSummary({
                 <Button 
                     onClick={onGoToPayment} 
                     size="lg" 
-                    className="w-full h-14 bg-green-600 hover:bg-green-700 text-white" // Green color
+                    className="w-full h-14 bg-green-600 hover:bg-green-700 text-white"
                     disabled={effectiveNoItemsForActions || isSaving || !isOrderPersisted}
                 >
                     {isSaving && isOrderPersisted ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />} 
@@ -284,7 +274,6 @@ export function CurrentOrderSummary({
   );
 }
 
-// Helper component for ShoppingCartIcon if not already globally available or part of lucide
 function ShoppingCartIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -306,4 +295,4 @@ function ShoppingCartIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-    
+  

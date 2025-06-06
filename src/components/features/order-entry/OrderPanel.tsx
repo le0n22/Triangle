@@ -25,7 +25,6 @@ interface OrderPanelProps {
   menuCategories: MenuCategory[];
 }
 
-// Helper to compare modifier arrays by their IDs and count
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
   if (!arr1 && !arr2) return true; 
   if (!arr1 || !arr2) return false; 
@@ -48,14 +47,13 @@ const calculateOrderTotals = (items: OrderItem[], taxRate: number = 0.08): Pick<
 };
 
 interface QueryDeltaItem {
-  n: string; // menuItemName
-  q: number; // quantity (current quantity)
-  oq?: number; // oldQuantity (if changed)
-  m?: string[]; // selectedModifiers (formatted string list)
-  s?: string; // specialRequests
-  st: 'new' | 'modified' | 'deleted'; // status of the item in delta
+  n: string; 
+  q: number; 
+  oq?: number; 
+  m?: string[]; 
+  s?: string; 
+  st: 'new' | 'modified' | 'deleted'; 
 }
-
 
 export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: OrderPanelProps) {
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
@@ -100,7 +98,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       setInitialOrderSnapshot(null);
     }
   }, [initialOrder, tableIdParam]);
-
 
   const updateOrderAndRecalculate = useCallback((updatedItems: OrderItem[]) => {
     setCurrentOrder(prevOrder => {
@@ -244,11 +241,12 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     if (currentOrder) {
         currentOrder.items.forEach(currentItem => {
             const snapshotItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === currentItem.id);
-            if (currentItem.quantity > 0 && !snapshotItem) { // New item with quantity > 0
+            
+            if (!snapshotItem && currentItem.quantity > 0) { 
                 deltaItemsForKOT.push({ n: currentItem.menuItemName, q: currentItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'new' });
-            } else if (snapshotItem && currentItem.quantity === 0 && snapshotItem.quantity > 0) { // Deleted persisted item
+            } else if (snapshotItem && currentItem.quantity === 0 && snapshotItem.quantity > 0) { 
                  deltaItemsForKOT.push({ n: currentItem.menuItemName, q: 0, oq: snapshotItem.quantity, st: 'deleted' });
-            } else if (snapshotItem && currentItem.quantity > 0) { // Potentially modified item
+            } else if (snapshotItem && currentItem.quantity > 0) { 
                 const qtyChanged = currentItem.quantity !== snapshotItem.quantity;
                 const modsChanged = !areModifierArraysEqual(currentItem.selectedModifiers, snapshotItem.selectedModifiers);
                 const reqsChanged = currentItem.specialRequests !== snapshotItem.specialRequests;
@@ -288,16 +286,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           return;
         }
         const createOrderData: CreateOrderInput = { tableId: currentOrder.tableId, items: orderItemsInput, ...finalTotals };
-        console.log("--- OrderPanel: Creating new order with data: ---", JSON.stringify(createOrderData, null, 2));
         result = await createOrderAction(createOrderData);
       } else { 
-        console.log(`--- OrderPanel: Updating existing order ${currentOrder.id} with items: ---`, JSON.stringify(orderItemsInput, null, 2));
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, finalTotals);
       }
 
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
-        console.error("--- OrderPanel: Error saving order from backend: ---", result.error);
       } else {
         setCurrentOrder(result); 
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); 
@@ -314,7 +309,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred.", variant: "destructive" });
-      console.error("--- OrderPanel: Unexpected error during confirmOrder: ---", e);
     } finally {
       setIsSaving(false);
     }
@@ -436,4 +430,4 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   );
 }
 
-    
+  
