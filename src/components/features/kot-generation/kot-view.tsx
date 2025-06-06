@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { KOT } from '@/types';
@@ -11,10 +12,11 @@ import { useRouter } from 'next/navigation';
 
 interface KotViewProps {
   kot: KOT;
-  orderId: string; // To link back to order or payment
+  orderId: string; // To link to payment (appOrder.id)
+  actualTableId: string; // The actual CUID of the table (appOrder.tableId)
 }
 
-export function KotView({ kot, orderId }: KotViewProps) {
+export function KotView({ kot, orderId, actualTableId }: KotViewProps) {
   const router = useRouter();
   const handlePrint = () => {
     // Basic browser print
@@ -63,7 +65,7 @@ export function KotView({ kot, orderId }: KotViewProps) {
           </p>
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row gap-2 pt-6 border-t border-border print:hidden">
-          <Link href={`/dashboard/order/${orderId}?tableId=t${kot.tableNumber}`} className="w-full sm:w-auto">
+          <Link href={`/dashboard/order/${actualTableId}`} className="w-full sm:w-auto">
             <Button variant="outline" className="w-full">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Order
             </Button>

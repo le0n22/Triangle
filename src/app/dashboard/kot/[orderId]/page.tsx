@@ -9,7 +9,7 @@ interface KotPageProps {
   params: {
     orderId: string;
   };
-  searchParams: { // For receiving delta KOT items
+  searchParams: {
     delta?: string;
   };
 }
@@ -28,7 +28,7 @@ function formatDeltaModifiersForKot(modifiers: QueryDeltaItem['m']): string[] | 
     if (!modifiers || modifiers.length === 0) {
         return undefined;
     }
-    return modifiers; // Already formatted strings
+    return modifiers;
 }
 
 // Helper function to format selected modifiers for KOT (from AppOrderItem)
@@ -124,12 +124,12 @@ export default async function KotPage({ params, searchParams }: KotPageProps) {
     kotItemsForView = deltaKOTItems.map(item => {
         let namePrefix = "";
         if (item.st === 'new') namePrefix = "(NEW) ";
-        else if (item.st === 'modified') namePrefix = `(MODIFIED ${item.oq} -> ${item.q}) `;
-        else if (item.st === 'deleted') namePrefix = `(DELETED ${item.oq}x) `;
+        else if (item.st === 'modified') namePrefix = `(MODIFIED ${item.oq ?? ''} -> ${item.q}) `;
+        else if (item.st === 'deleted') namePrefix = `(DELETED ${item.oq ?? ''}x) `;
         
         return {
             name: `${namePrefix}${item.n}`,
-            quantity: item.q, // Show current quantity, even if 0 for deleted
+            quantity: item.q, 
             modifiers: formatDeltaModifiersForKot(item.m),
             specialRequests: item.s || undefined,
         };
@@ -156,10 +156,10 @@ export default async function KotPage({ params, searchParams }: KotPageProps) {
   console.log(`--- KOT PAGE: Successfully created KOT data for orderId: ${appOrder.id}. KOT ID: ${kotData.id} ---`);
   console.log(`--- KOT PAGE: KOT Items Count: ${kotData.items.length}. Items:`, JSON.stringify(kotData.items.map(i => `${i.quantity}x ${i.name}`), null, 2));
   
-  console.log(`--- KOT PAGE: Rendering KotView with KOT ID: ${kotData.id} for orderId: ${orderIdFromParams} ---`);
+  console.log(`--- KOT PAGE: Rendering KotView with KOT ID: ${kotData.id} for orderId: ${orderIdFromParams} and tableId: ${appOrder.tableId} ---`);
   return (
     <div className="container mx-auto">
-      <KotView kot={kotData} orderId={orderIdFromParams} />
+      <KotView kot={kotData} orderId={orderIdFromParams} actualTableId={appOrder.tableId} />
     </div>
   );
 }
