@@ -8,36 +8,61 @@ import { Terminal } from 'lucide-react';
 
 // Helper function to transform backend data to frontend MenuCategory structure
 async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: string }> {
-  console.log("OrderPage: getMenuDataForOrderPanel called");
+  console.log("DEBUG: order/[tableId]/page.tsx - getMenuDataForOrderPanel called");
   const categoriesResult = await getAllCategoriesAction();
   const menuItemsResult = await getAllMenuItemsAction();
 
   if ('error' in categoriesResult) {
-    console.error("OrderPage: Error fetching categories:", categoriesResult.error);
+    console.error("DEBUG: order/[tableId]/page.tsx - Error fetching categories:", categoriesResult.error);
     return { error: `Failed to load categories: ${categoriesResult.error}` };
   }
   if ('error' in menuItemsResult) {
-    console.error("OrderPage: Error fetching menu items:", menuItemsResult.error);
+    console.error("DEBUG: order/[tableId]/page.tsx - Error fetching menu items:", menuItemsResult.error);
     return { error: `Failed to load menu items: ${menuItemsResult.error}` };
   }
 
   const dbCategories = categoriesResult as BackendMenuCategory[];
   const dbMenuItems = menuItemsResult as BackendMenuItem[];
+  console.log(`DEBUG: order/[tableId]/page.tsx - DB Categories: ${dbCategories.length}, DB Menu Items: ${dbMenuItems.length}`);
 
-  console.log("OrderPage: Fetched DB Categories Count:", dbCategories.length);
-  console.log("OrderPage: Fetched DB Menu Items Count:", dbMenuItems.length);
+  // 1. Map all dbMenuItems to frontend MenuItem structure
+  const allFrontendMenuItems: MenuItem[] = dbMenuItems.map(dbItem => {
+    const categoryForThisItem = dbCategories.find(cat => cat.id === dbItem.categoryId);
+    return {
+      id: dbItem.id,
+      name: dbItem.name,
+      description: dbItem.description || '',
+      price: dbItem.price,
+      category: categoryForThisItem ? categoryForThisItem.name : 'Uncategorized',
+      imageUrl: dbItem.imageUrl || undefined,
+      dataAiHint: dbItem.dataAiHint || undefined,
+      availableModifiers: dbItem.availableModifiers.map(mod => ({
+        id: mod.id,
+        name: mod.name,
+        priceChange: mod.priceChange,
+      })),
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name));
 
-  const menuCategoriesForPanel: MenuCategory[] = dbCategories.map(dbCategory => {
+  // 2. Create the "All" category
+  const allItemsCategory: MenuCategory = {
+    id: 'all-items-pseudo-category-id',
+    name: 'All',
+    iconName: 'List', // Though MenuItemSelector doesn't use icons, good for consistency
+    items: allFrontendMenuItems,
+  };
+
+  // 3. Map DB categories and their specific items
+  const mappedDbCategories: MenuCategory[] = dbCategories.map(dbCategory => {
     const itemsForThisCategory = dbMenuItems
       .filter(dbItem => dbItem.categoryId === dbCategory.id)
       .map(dbItem => {
-        // Map BackendMenuItem to frontend MenuItem type expected by OrderPanel/MenuItemSelector
-        const frontendMenuItem: MenuItem = {
+        return {
           id: dbItem.id,
           name: dbItem.name,
           description: dbItem.description || '',
           price: dbItem.price,
-          category: dbCategory.name, // Category name for display in MenuItemCard if needed, though selector uses category objects
+          category: dbCategory.name,
           imageUrl: dbItem.imageUrl || undefined,
           dataAiHint: dbItem.dataAiHint || undefined,
           availableModifiers: dbItem.availableModifiers.map(mod => ({
@@ -46,21 +71,21 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
             priceChange: mod.priceChange,
           })),
         };
-        return frontendMenuItem;
-      });
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return {
       id: dbCategory.id,
       name: dbCategory.name,
       iconName: dbCategory.iconName,
-      items: itemsForThisCategory.sort((a, b) => a.name.localeCompare(b.name)),
+      items: itemsForThisCategory,
     };
-  });
+  }).sort((a,b) => a.name.localeCompare(b.name));
   
-  const sortedMenuCategories = menuCategoriesForPanel.sort((a,b) => a.name.localeCompare(b.name));
-  console.log("OrderPage: Transformed menuCategoriesForPanel Count:", sortedMenuCategories.length);
-  // console.log("OrderPage: Transformed menuCategoriesForPanel DATA:", JSON.stringify(sortedMenuCategories, null, 2));
-  return sortedMenuCategories;
+  // 4. Prepend "All" category
+  const finalMenuCategories = [allItemsCategory, ...mappedDbCategories];
+  console.log("DEBUG: order/[tableId]/page.tsx - Final categories structure:", finalMenuCategories.map(c => ({ id: c.id, name: c.name, itemCount: c.items.length })));
+  return finalMenuCategories;
 }
 
 interface OrderPageProps {
@@ -87,9 +112,10 @@ export default async function OrderPage({ params }: OrderPageProps) {
     );
   }
   
-  if (menuData.length === 0) {
-    console.log("OrderPage: No menu data (categories/items) found to pass to OrderPanel.");
+  if (menuData.length === 0 || (menuData.length === 1 && menuData[0].id === 'all-items-pseudo-category-id' && menuData[0].items.length === 0)) {
+    console.log("DEBUG: order/[tableId]/page.tsx - No menu data (categories/items) found to pass to OrderPanel.");
     // OrderPanel should handle empty menuCategories gracefully.
+    // Passing empty array ensures OrderPanel / MenuItemSelector can show "no items" message.
   }
 
   return (
