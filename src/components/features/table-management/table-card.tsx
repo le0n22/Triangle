@@ -4,7 +4,7 @@
 import type { Table, TableStatus } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CircleCheck, CalendarClock, Trash2, UsersRound, Utensils, DollarSign } from 'lucide-react';
+import { CircleCheck, CalendarClock, Trash2, UsersRound, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import React from 'react'; 
@@ -39,15 +39,15 @@ const statusText: Record<TableStatus, string> = {
 
 export function TableCard({ table, position, onTableDragStart }: TableCardProps) {
   const Icon = statusIcons[table.status] || Utensils;
-  const title = table.name ? `${table.name} (${table.number})` : `Table ${table.number}`;
-  const { formatCurrency } = useCurrency(); // Use the hook
+  const title = table.name ? table.name : `Table ${table.number}`; // Updated title logic
+  const { formatCurrency } = useCurrency();
 
   const handleDragStartInternal = (e: React.DragEvent<HTMLDivElement>) => {
     onTableDragStart(e, table.id);
   };
 
   const linkHref = table.status === 'available' || table.status === 'occupied'
-    ? `/dashboard/order/${table.id}` // Assuming order page uses table.id
+    ? `/dashboard/order/${table.id}` 
     : '#';
   
   const isClickable = table.status !== 'dirty' && table.status !== 'reserved';
@@ -57,18 +57,18 @@ export function TableCard({ table, position, onTableDragStart }: TableCardProps)
       draggable={true}
       onDragStart={handleDragStartInternal}
       className={cn(
-        "hover:shadow-lg transition-all duration-200 flex flex-col w-44 h-44", // Increased height slightly
+        "hover:shadow-lg transition-all duration-200 flex flex-col w-44 h-44", 
         statusColors[table.status]
       )}
       style={{ cursor: 'grab' }}
     >
-      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3 px-3"> {/* Adjusted padding */}
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-3 px-3">
         <CardTitle className="text-lg font-headline font-bold leading-tight">
           {title}
         </CardTitle>
         <Icon className={cn("h-5 w-5", statusColors[table.status] ? 'text-inherit' : 'text-muted-foreground')} />
       </CardHeader>
-      <CardContent className="flex-grow flex flex-col justify-between px-3 pb-3 pt-0"> {/* Adjusted padding */}
+      <CardContent className="flex-grow flex flex-col justify-between px-3 pb-3 pt-0">
         <div className="space-y-1">
           <Badge variant="outline" className={cn("text-xs py-0.5", statusColors[table.status] ? 'text-inherit border-current' : '')}>
             {statusText[table.status]}
@@ -79,13 +79,11 @@ export function TableCard({ table, position, onTableDragStart }: TableCardProps)
         </div>
         {table.status === 'occupied' && (
           <div className="mt-1.5 space-y-0.5">
-            {table.currentOrderId && (
-              <p className="text-xs text-primary truncate">Order: {table.currentOrderId.substring(0,8)}...</p>
-            )}
+            {/* Removed Order ID display */}
             {typeof table.currentOrderTotal === 'number' && (
               <div className="flex items-center text-sm font-semibold text-accent">
-                <DollarSign className="h-3.5 w-3.5 mr-1" />
-                {formatCurrency(table.currentOrderTotal)} {/* Use formatCurrency */}
+                {/* Removed DollarSign icon, formatCurrency will handle the symbol */}
+                {formatCurrency(table.currentOrderTotal)}
               </div>
             )}
           </div>
@@ -104,7 +102,7 @@ export function TableCard({ table, position, onTableDragStart }: TableCardProps)
           left: `${position.x}px`,
           top: `${position.y}px`,
           width: '176px', 
-          height: '176px', // h-44 = 176px
+          height: '176px', 
           cursor: 'pointer', 
         }}
       >
