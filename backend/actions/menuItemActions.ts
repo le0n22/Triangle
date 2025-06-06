@@ -10,12 +10,12 @@ export interface AppMenuItem {
   id: string;
   name: string;
   description?: string | null;
-  price: number;
+  price: number; // Should be number
   imageUrl?: string | null;
   dataAiHint?: string | null;
   categoryId: string;
   categoryName: string; // Kategori adını göstermek için
-  availableModifiers: { id: string; name: string; priceChange: number }[]; // Modifier detayları
+  availableModifiers: { id: string; name: string; priceChange: number }[]; // priceChange should be number
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,7 +38,7 @@ function mapPrismaMenuItemToAppMenuItem(
     id: prismaMenuItem.id,
     name: prismaMenuItem.name,
     description: prismaMenuItem.description,
-    price: prismaMenuItem.price,
+    price: prismaMenuItem.price.toNumber(), // Convert Decimal to number
     imageUrl: prismaMenuItem.imageUrl,
     dataAiHint: prismaMenuItem.dataAiHint,
     categoryId: prismaMenuItem.categoryId,
@@ -46,7 +46,7 @@ function mapPrismaMenuItemToAppMenuItem(
     availableModifiers: prismaMenuItem.availableModifiers.map(mod => ({
       id: mod.id,
       name: mod.name,
-      priceChange: mod.priceChange,
+      priceChange: mod.priceChange.toNumber(), // Convert Decimal to number
     })),
     createdAt: prismaMenuItem.createdAt,
     updatedAt: prismaMenuItem.updatedAt,
@@ -91,7 +91,7 @@ export async function createMenuItemAction(data: MenuItemFormData): Promise<AppM
       data: {
         name: data.name,
         description: data.description || null,
-        price: data.price,
+        price: data.price, // Prisma handles number to Decimal conversion here
         imageUrl: data.imageUrl || null,
         dataAiHint: data.dataAiHint || null,
         category: {
@@ -142,7 +142,7 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
       data: {
         name: data.name,
         description: data.description,
-        price: data.price,
+        price: data.price, // Prisma handles number to Decimal conversion
         imageUrl: data.imageUrl,
         dataAiHint: data.dataAiHint,
         category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
