@@ -67,14 +67,14 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
 
       <div className="flex flex-1 min-h-0">
         <ScrollArea className="w-1/3 pr-3 border-r border-border/50">
-          <nav className="flex flex-col gap-2"> {/* Increased gap from gap-1 to gap-2 */}
+          <nav className="flex flex-col gap-2">
             {initialCategories && initialCategories.length > 0 ? (
               initialCategories.map((category) => (
                 <Button
                   key={category.id}
                   variant="outline"
                   className={cn(
-                    "w-full flex flex-col items-center justify-center h-auto min-h-[8rem] p-3 text-sm leading-tight whitespace-normal break-words", // Increased min-h to 8rem, changed padding to p-3
+                    "w-full flex flex-col items-center justify-center h-14 p-2 text-sm leading-tight whitespace-normal break-words", 
                     selectedCategoryId === category.id && "bg-accent text-accent-foreground",
                     isSaving && "opacity-50 cursor-not-allowed"
                   )}
@@ -119,7 +119,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
                       <div className="flex-grow min-w-0">
                         <h4 className="font-semibold text-sm truncate">{item.name}</h4>
                         <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-                        <p className="text-xs md:text-sm font-medium text-primary">$\${item.price.toFixed(2)}</p>
+                        <p className="text-xs md:text-sm font-medium text-primary">${item.price.toFixed(2)}</p>
                       </div>
                       <Button variant="ghost" size="icon" className={cn("opacity-0 group-hover:opacity-100 transition-opacity ml-2 h-7 w-7 shrink-0", isSaving && "hidden")}>
                         <PlusCircle className="h-4 w-4 text-primary" />
