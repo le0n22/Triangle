@@ -1,23 +1,103 @@
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Table {
-  id                 String  @id @default(cuid())
-  number             Int     @unique
+  id                 String      @id @default(cuid())
+  number             Int         @unique
   capacity           Int
   name               String?
   status             TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
-  currentOrderId     String? // ID of the current order on this table
-  currentOrderTotal  Float?  // Total amount of the current order
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  currentOrderId     String?     @unique // Link to the current active order on this table
+  currentOrderTotal  Float?      // Denormalized total for quick display
+  Order              Order[] // A table can have many historical orders
+
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+model MenuCategory {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  iconName  String?    // For frontend icon display
+  items     MenuItem[] // Relation to MenuItem
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model MenuItem {
+  id                 String         @id @default(cuid())
+  name               String         @unique
+  description        String?
+  price              Float
+  imageUrl           String?
+  dataAiHint         String?        // For AI-assisted image searching or placeholder hints
+  categoryId         String
+  category           MenuCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  availableModifiers Modifier[]     @relation("MenuItemModifiers") // Modifiers available for this item
+  orderItems         OrderItem[]    // Menu items can be part of many order items
+  
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model Modifier {
+  id            String     @id @default(cuid())
+  name          String     @unique
+  priceChange   Float      // Can be positive or negative
+  menuItems     MenuItem[] @relation("MenuItemModifiers") // Menu items this modifier is available for
+  orderItems    OrderItem[] @relation("OrderItemModifiers") // Order items this modifier was applied to
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  tableId     String
+  table       Table       @relation(fields: [tableId], references: [id])
+  items       OrderItem[] @relation(fields: [id], references: [orderId], onDelete: Cascade) // Ensures OrderItems are deleted if Order is deleted
+  status      OrderStatus @default(OPEN) // OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
+  subtotal    Float
+  taxRate     Float       @default(0.08) // Default tax rate, e.g., 8%
+  taxAmount   Float
+  totalAmount Float
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([tableId])
+}
+
+model OrderItem {
+  id                String     @id @default(cuid())
+  orderId           String
+  order             Order      @relation(fields: [orderId], references: [id], onDelete: Cascade) // Ensures OrderItem is deleted if its Order is deleted
+  menuItemId        String
+  menuItem          MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Prevent menu item deletion if in an order item
+  menuItemName      String     // Denormalized for historical data
+  quantity          Int
+  unitPrice         Float      // Price at the time of order
+  selectedModifiers Json?      // Store selected modifiers as JSON: { id: string, name: string, priceChange: float }[]
+  appliedModifiers  Modifier[] @relation("OrderItemModifiers") // Explicit many-to-many for applied modifiers
+  specialRequests   String?    // Customer's special requests for this item
+  totalPrice        Float      // quantity * (unitPrice + sum of modifier priceChanges)
+
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([orderId])
+  @@index([menuItemId])
 }
 
 enum TableStatus {
@@ -27,84 +107,10 @@ enum TableStatus {
   DIRTY
 }
 
-model MenuCategory {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  iconName  String?
-  items     MenuItem[] // Relation to MenuItem
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-}
-
-model Modifier {
-  id          String     @id @default(cuid())
-  name        String     @unique
-  priceChange Float
-  menuItems   MenuItem[] @relation("MenuItemAvailableModifiers")
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-}
-
-model MenuItem {
-  id                 String     @id @default(cuid())
-  name               String
-  description        String?
-  price              Float
-  imageUrl           String?
-  dataAiHint         String?    // For Unsplash search hint for placeholder images
-  
-  categoryId         String
-  category           MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  availableModifiers Modifier[] @relation("MenuItemAvailableModifiers")
-
-  orderItems         OrderItem[] // Relation to OrderItem
-
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-
-  @@index([categoryId])
-}
-
-model Order {
-  id          String      @id @default(cuid())
-  tableId     String
-  tableNumber Int         // Denormalized for convenience
-  items       OrderItem[]
-  status      OrderStatus @default(OPEN) // OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
-  subtotal    Float
-  taxRate     Float       // e.g., 0.08 for 8%
-  taxAmount   Float
-  totalAmount Float
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-}
-
 enum OrderStatus {
-  OPEN
-  IN_PROGRESS
-  DONE
-  PAID
-  CANCELLED
-}
-
-model OrderItem {
-  id                String    @id @default(cuid())
-  orderId           String
-  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
-  menuItemId        String
-  menuItem          MenuItem  @relation(fields: [menuItemId], references: [id], onDelete:Restrict) // Prevent deleting menu item if it's in an order
-  menuItemName      String    // Denormalized
-  quantity          Int
-  unitPrice         Float     // Price of the menu item at the time of order
-  
-  selectedModifiers Json?     // Store selected modifiers as JSON: [{id: "mod1", name: "Extra Cheese", priceChange: 1.50}, ...]
-                               // This captures modifier details at the time of order.
-  
-  specialRequests   String?
-  totalPrice        Float     // Calculated: quantity * (unitPrice + sum of selectedModifier.priceChange)
-
-  @@index([orderId])
-  @@index([menuItemId])
+  OPEN          // Order created, items being added/modified by staff
+  IN_PROGRESS   // Order sent to kitchen, being prepared
+  DONE          // Order prepared by kitchen, ready for serving/payment
+  PAID          // Order paid by customer
+  CANCELLED     // Order cancelled
 }
