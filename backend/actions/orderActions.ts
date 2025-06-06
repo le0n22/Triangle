@@ -2,13 +2,12 @@
 'use server';
 
 import prisma from '@backend/lib/prisma';
+import { Prisma } from '@prisma/client'; // Corrected: Value import for Prisma namespace
 import type { 
   Order as PrismaOrder, 
   OrderItem as PrismaOrderItem, 
   Table as PrismaTable,
-  OrderStatus as PrismaOrderStatus,
-  // Prisma needs to be imported for Prisma.Decimal, Prisma.JsonNull etc.
-  Prisma 
+  OrderStatus as PrismaOrderStatus
 } from '@prisma/client';
 import { updateTableOrderDetailsAction } from './tableActions';
 // Assuming TableStatus is defined in your frontend types, if not, it might need adjustment
