@@ -62,7 +62,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   const [isModifierModalOpen, setIsModifierModalOpen] = useState(false);
   const [editingOrderItem, setEditingOrderItem] = useState<OrderItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  // const [testVisibility, setTestVisibility] = useState(false); // Test flag removed
 
   const { toast } = useToast();
   const router = useRouter();
@@ -409,7 +408,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       </div>
 
       {/* Right Column: Action Sidebar - Fixed Width, Narrower */}
-      <div className="w-full md:w-24 md:flex-none h-auto md:h-full order-last md:order-none">
+      <div className="w-full md:w-28 md:flex-none h-auto md:h-full order-last md:order-none">
          <OrderActionSidebar
             order={currentOrder}
             isSaving={isSaving}
