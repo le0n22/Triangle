@@ -9,9 +9,9 @@ import { MenuItemManagementSettings } from '@/components/features/settings/menu-
 import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings';
 import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings';
 import { ThemeSettings } from '@/components/features/settings/theme-settings';
-import { LanguageSettings } from '@/components/features/settings/language-settings'; // New import
+import { LanguageSettings } from '@/components/features/settings/language-settings';
 import type { Table, MenuCategory, MenuItem, Modifier, DeliveryPlatform, TranslationKey } from '@/types'; 
-import { useLanguage } from '@/hooks/use-language'; // New import
+import { useLanguage } from '@/hooks/use-language';
 
 // Mock data (ideally this would come from a global store or API in a real app)
 const mockTablesData: Table[] = [
@@ -58,7 +58,6 @@ export default function SettingsPage() {
   const settingsTabs: { value: string; labelKey: TranslationKey }[] = [
     { value: 'restaurant', labelKey: 'restaurant' },
     { value: 'appearance', labelKey: 'appearance' },
-    { value: 'language', labelKey: 'language' },
     { value: 'tables', labelKey: 'tables' },
     { value: 'categories', labelKey: 'categories' },
     { value: 'menu_items', labelKey: 'menu_items' },
@@ -71,7 +70,7 @@ export default function SettingsPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">{t('settings')}</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 mb-6">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 mb-6"> {/* Adjusted grid-cols for 7 items */}
            {settingsTabs.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
           ))}
@@ -80,10 +79,10 @@ export default function SettingsPage() {
           <RestaurantSettings />
         </TabsContent>
         <TabsContent value="appearance">
-          <ThemeSettings />
-        </TabsContent>
-        <TabsContent value="language"> {/* New Tab Content */}
-          <LanguageSettings />
+          <div className="space-y-8">
+            <ThemeSettings />
+            <LanguageSettings />
+          </div>
         </TabsContent>
         <TabsContent value="tables">
           <TableManagementSettings initialTables={mockTablesData} />
