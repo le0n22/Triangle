@@ -65,8 +65,8 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
         />
       </div>
 
-      <div className="flex flex-1 min-h-0">
-        <ScrollArea className="w-1/3 pr-3 border-r border-border/50">
+      <div className="flex flex-1 min-h-0 gap-3"> {/* Added gap-3 for spacing */}
+        <ScrollArea className="w-1/3 p-2 border border-border/50 rounded-md"> {/* Updated classes for border */}
           <nav className="flex flex-col gap-2">
             {initialCategories && initialCategories.length > 0 ? (
               initialCategories.map((category) => (
@@ -93,7 +93,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
           </nav>
         </ScrollArea>
 
-        <ScrollArea className="w-2/3 pl-3">
+        <ScrollArea className="w-2/3 p-2 border border-border/50 rounded-md"> {/* Updated classes for border */}
           {selectedCategory ? (
             <section id={`order-panel-items-${selectedCategory.id}`}>
               {filteredItems.length > 0 ? (
@@ -119,7 +119,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
                       <div className="flex-grow min-w-0">
                         <h4 className="font-semibold text-sm truncate">{item.name}</h4>
                         <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-                        <p className="text-xs md:text-sm font-medium text-primary">${item.price.toFixed(2)}</p>
+                        {/* Price display removed from here */}
                       </div>
                       <Button variant="ghost" size="icon" className={cn("opacity-0 group-hover:opacity-100 transition-opacity ml-2 h-7 w-7 shrink-0", isSaving && "hidden")}>
                         <PlusCircle className="h-4 w-4 text-primary" />
@@ -152,4 +152,6 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
     </div>
   );
 }
+    
+
     
