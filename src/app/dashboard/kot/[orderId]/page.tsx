@@ -1,37 +1,9 @@
-import type { KOT } from '@/types';
+
+import type { KOT, AppOrderItem as FrontendOrderItem } from '@/types';
 import { KotView } from '@/components/features/kot-generation/kot-view';
-// import { redirect } from 'next/navigation'; // No longer redirecting from here, showing message instead
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-
-// Mock function to generate/fetch KOT data for an order
-async function getKotForOrder(orderId: string): Promise<KOT | null> {
-  // More direct logging
-  console.log(`--- KOT PAGE: getKotForOrder CALLED ---`);
-  console.log(`--- KOT PAGE: getKotForOrder received orderId: >>${orderId}<< ---`);
-
-  if (!orderId || typeof orderId !== 'string' || orderId.trim() === "") {
-    console.error(`--- KOT PAGE: getKotForOrder - INVALID orderId received: >>${orderId}<<. Returning null. ---`);
-    return null;
-  }
-
-  // Simulate KOT generation based on orderId
-  // For now, as long as we have an orderId, return a mock KOT.
-  // In a real app, you would fetch order details from the DB using this orderId.
-  const mockKotData: KOT = {
-    id: `kot-${orderId.substring(0,8)}-${Date.now().toString().slice(-5)}`, // Make ID more readable
-    orderId: orderId,
-    tableNumber: Math.floor(Math.random() * 10) + 1, // Random table number for mock
-    items: [
-      { name: 'Mock Item A', quantity: Math.floor(Math.random() * 3) + 1, specialRequests: 'Mock request A' },
-      { name: 'Mock Item B', quantity: Math.floor(Math.random() * 2) + 1, modifiers: ["Mock Mod X"] },
-    ],
-    createdAt: new Date().toISOString(),
-  };
-  console.log(`--- KOT PAGE: getKotForOrder successfully generated mock KOT for orderId: >>${orderId}<< ---`);
-  return mockKotData;
-}
-
+import { getAppOrderByIdAction, type AppOrder } from '@backend/actions/orderActions';
 
 interface KotPageProps {
   params: {
@@ -39,11 +11,26 @@ interface KotPageProps {
   };
 }
 
+// Helper function to format selected modifiers for KOT
+function formatKotModifiers(modifiers: FrontendOrderItem['selectedModifiers']): string[] | undefined {
+    if (!modifiers || modifiers.length === 0) {
+        return undefined;
+    }
+    return modifiers.map(mod => {
+        let modifierString = mod.name;
+        if (mod.priceChange !== 0) {
+            modifierString += ` (${mod.priceChange > 0 ? '+' : '-'}$${Math.abs(mod.priceChange).toFixed(2)})`;
+        }
+        return modifierString;
+    });
+}
+
+
 export default async function KotPage({ params }: KotPageProps) {
   console.log(`--- KOT PAGE: KotPage Server Component EXECUTION START ---`);
-  console.log(`--- KOT PAGE: Received params object:`, JSON.stringify(params, null, 2));
+  // console.log(`--- KOT PAGE: Received params object:`, JSON.stringify(params, null, 2)); // This line causes Next.js warning
 
-  const orderIdFromParams = params?.orderId; // Safely access orderId
+  const orderIdFromParams = params?.orderId;
 
   console.log(`--- KOT PAGE: Extracted orderIdFromParams: >>${orderIdFromParams}<< ---`);
 
@@ -59,27 +46,64 @@ export default async function KotPage({ params }: KotPageProps) {
       </div>
     );
   }
-  
-  const kot = await getKotForOrder(orderIdFromParams);
-  console.log(`--- KOT PAGE: Result from getKotForOrder:`, kot ? `KOT ID ${kot.id}` : 'null');
 
-  if (!kot) {
-    console.error(`--- KOT PAGE: KOT data is null for orderId: >>${orderIdFromParams}<<. Displaying 'Not Found' message. ---`);
+  const appOrderResult = await getAppOrderByIdAction(orderIdFromParams);
+  console.log(`--- KOT PAGE: Result from getAppOrderByIdAction for orderId ${orderIdFromParams}:`, 
+              appOrderResult ? (('error' in appOrderResult) ? `Error: ${appOrderResult.error}` : `Order status ${appOrderResult.status}`) : 'null (Order not found by action)');
+
+
+  if (!appOrderResult || ('error' in appOrderResult && appOrderResult.error)) {
+    const errorMessage = appOrderResult && 'error' in appOrderResult ? appOrderResult.error : 'Order not found or could not be fetched.';
+    console.error(`--- KOT PAGE: Error fetching order or order not found for ID: >>${orderIdFromParams}<<. Error: ${errorMessage} ---`);
      return (
       <div className="container mx-auto py-10 text-center">
-        <h1 className="text-2xl font-bold text-destructive">KOT Not Found</h1>
-        <p className="text-muted-foreground">Could not generate or find KOT for order ID "{orderIdFromParams}".</p>
+        <h1 className="text-2xl font-bold text-destructive">KOT Generation Failed</h1>
+        <p className="text-muted-foreground">{errorMessage}</p>
+        <p className="text-sm text-muted-foreground">Could not generate KOT for order ID "{orderIdFromParams}".</p>
         <Link href="/dashboard/tables">
             <Button className="mt-4">Go to Tables</Button>
         </Link>
       </div>
     );
   }
+
+  // At this point, appOrderResult should be AppOrder | null. If it's null, it means order not found by action.
+  if (appOrderResult === null) {
+    console.error(`--- KOT PAGE: Order with ID >>${orderIdFromParams}<< not found by getAppOrderByIdAction (returned null). ---`);
+     return (
+      <div className="container mx-auto py-10 text-center">
+        <h1 className="text-2xl font-bold text-destructive">KOT Generation Failed</h1>
+        <p className="text-muted-foreground">Order with ID "{orderIdFromParams}" not found.</p>
+        <Link href="/dashboard/tables">
+            <Button className="mt-4">Go to Tables</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const appOrder = appOrderResult as AppOrder; // Cast is safe here due to above checks
+
+  // Dynamically create KOT data from AppOrder
+  const kotData: KOT = {
+    id: `kot-${appOrder.id.substring(0,8)}-${new Date(appOrder.createdAt).getTime().toString().slice(-5)}`,
+    orderId: appOrder.id,
+    tableNumber: appOrder.tableNumber,
+    items: appOrder.items.map(item => ({
+      name: item.menuItemName,
+      quantity: item.quantity,
+      modifiers: formatKotModifiers(item.selectedModifiers),
+      specialRequests: item.specialRequests || undefined,
+    })),
+    createdAt: appOrder.createdAt.toString(), // Ensure it's a string
+  };
   
-  console.log(`--- KOT PAGE: Rendering KotView with KOT ID: ${kot.id} for orderId: ${orderIdFromParams} ---`);
+  console.log(`--- KOT PAGE: Successfully created KOT data for orderId: ${appOrder.id}. KOT ID: ${kotData.id} ---`);
+  console.log(`--- KOT PAGE: KOT Items:`, JSON.stringify(kotData.items, null, 2));
+  
+  console.log(`--- KOT PAGE: Rendering KotView with KOT ID: ${kotData.id} for orderId: ${orderIdFromParams} ---`);
   return (
     <div className="container mx-auto">
-      <KotView kot={kot} orderId={orderIdFromParams} />
+      <KotView kot={kotData} orderId={orderIdFromParams} />
     </div>
   );
 }
