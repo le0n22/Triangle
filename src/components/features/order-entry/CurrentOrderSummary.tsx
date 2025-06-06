@@ -71,24 +71,31 @@ export function CurrentOrderSummary({
           <ul className="space-y-3">
             {order.items.map((item) => {
               if (item.quantity === 0 && !item.id.startsWith('item-')) {
-                return null;
+                // This item was persisted and now marked for deletion (quantity 0)
+                // We might still want to show it differently or not at all depending on UI preference
+                // For now, if it's persisted and quantity is 0, it's effectively removed for display here.
+                return null; 
               }
               if (item.quantity === 0 && item.id.startsWith('item-')) {
+                // This was a new client-side item and its quantity became 0, so don't render.
                 return null;
               }
 
               const initialItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === item.id);
               let itemState: 'new' | 'modified' | 'unchanged' = 'unchanged';
 
-              if (!initialItem && item.id.startsWith('item-')) {
+              if (!initialItem && item.id.startsWith('item-')) { // Item is purely client-side new
                 itemState = 'new';
-              } else if (initialItem && (
+              } else if (initialItem && ( // Item was persisted and has changes
                 item.quantity !== initialItem.quantity ||
                 item.specialRequests !== initialItem.specialRequests ||
                 !areModifierArraysEqual(item.selectedModifiers, initialItem.selectedModifiers)
               )) {
                 itemState = 'modified';
               } else if (!initialItem && !item.id.startsWith('item-')) { 
+                // This case implies a persisted item that wasn't in the initial snapshot (shouldn't happen if snapshot is from DB load)
+                // or an item that was added, saved, and then the page reloaded without initialOrder reflecting it yet.
+                // For safety, treat as 'new' if it has quantity.
                  if (item.quantity > 0) itemState = 'new';
               }
               
@@ -164,6 +171,8 @@ export function CurrentOrderSummary({
           </div>
         </>
       )}
+      
+      {/* Action buttons are now removed from here and will be in OrderActionSidebar */}
       
       {isOrderClosed && (
         <p className="text-center text-muted-foreground py-4 mt-auto border-t border-border">

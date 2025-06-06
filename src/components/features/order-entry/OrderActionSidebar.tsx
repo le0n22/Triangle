@@ -55,22 +55,19 @@ export function OrderActionSidebar({
   const isOrderClosed = order.status === 'PAID' || order.status === 'CANCELLED';
   const allItemsQuantityZero = order.items.every(item => item.quantity === 0);
   const effectiveNoItemsForActions = noItemsCurrentlyInOrder || (isOrderPersisted && allItemsQuantityZero);
+  
+  // Disable most actions if order is closed, or if saving, or if no items for certain actions
   const baseActionDisabled = effectiveNoItemsForActions || isSaving || isOrderClosed;
+  const confirmDisabled = baseActionDisabled || isSaving || isOrderClosed;
+  const paymentDisabled = baseActionDisabled || isSaving || !isOrderPersisted || isOrderClosed;
+  const cancelDisabled = isSaving || isOrderClosed; // Cancel might be possible even with no items if order is persisted
+  const backToTablesDisabled = isSaving;
 
   const actionButtons = [
     { label: 'Split Bill', icon: SplitSquareHorizontal, onClick: onSplitBill, disabled: baseActionDisabled, variant: 'outline' as const },
     { label: 'Print Bill', icon: Printer, onClick: onPrintBill, disabled: baseActionDisabled, variant: 'outline' as const },
     { label: 'Discount', icon: Percent, onClick: onApplyDiscount, disabled: baseActionDisabled, variant: 'outline' as const },
     { label: 'Transfer Table', icon: ArrowRightLeft, onClick: onTransferTable, disabled: isSaving || isOrderClosed, variant: 'outline' as const },
-    { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, disabled: isSaving, variant: 'outline' as const },
-    { 
-      label: 'Cancel Order', 
-      icon: isSaving && (order.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') ? Loader2 : Ban, 
-      onClick: onCancelOrder, 
-      disabled: isSaving && !(order.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') || isOrderClosed, 
-      variant: 'destructive-outline' as const,
-      iconClassName: isSaving && (order.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') ? "animate-spin" : ""
-    },
   ];
 
   return (
@@ -84,12 +81,11 @@ export function OrderActionSidebar({
               onClick={btn.onClick}
               disabled={btn.disabled}
               className={cn(
-                "w-full justify-start h-12 text-sm", 
-                btn.variant === 'destructive-outline' && "border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive-foreground",
+                "w-full justify-start h-12 text-sm",
                 btn.variant === 'outline' && "hover:bg-accent hover:text-accent-foreground"
               )}
             >
-              <btn.icon className={cn("mr-3 h-5 w-5", btn.iconClassName)} />
+              <btn.icon className={cn("mr-3 h-5 w-5")} />
               {btn.label}
             </Button>
           ))}
@@ -100,19 +96,39 @@ export function OrderActionSidebar({
           onClick={onConfirmOrder}
           size="lg"
           className="w-full h-14 bg-accent hover:bg-accent/90 text-accent-foreground"
-          disabled={effectiveNoItemsForActions || isSaving || isOrderClosed}
+          disabled={confirmDisabled}
         >
-          {isSaving && order.id.startsWith('temp-ord-') ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+          {isSaving && (currentOrder.id.startsWith('temp-ord-') || !isOrderClosed) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
           {isOrderPersisted ? 'Update & KOT' : 'Confirm & KOT'}
         </Button>
         <Button
           onClick={onGoToPayment}
           size="lg"
           className="w-full h-14 bg-green-600 hover:bg-green-700 text-white"
-          disabled={effectiveNoItemsForActions || isSaving || !isOrderPersisted || isOrderClosed}
+          disabled={paymentDisabled}
         >
-          {isSaving && isOrderPersisted ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+          {isSaving && isOrderPersisted && !isOrderClosed ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
           Proceed to Payment
+        </Button>
+        <Button
+          variant="destructive-outline"
+          onClick={onCancelOrder}
+          size="lg"
+          className="w-full h-14"
+          disabled={cancelDisabled}
+        >
+          {isSaving && (currentOrder.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Ban className="mr-2 h-5 w-5" />}
+          Cancel Order
+        </Button>
+        <Button
+          variant="outline"
+          onClick={onBackToTables}
+          size="lg"
+          className="w-full h-14"
+          disabled={backToTablesDisabled}
+        >
+          <ChevronLeft className="mr-2 h-5 w-5" />
+          Back to Tables
         </Button>
       </div>
     </div>

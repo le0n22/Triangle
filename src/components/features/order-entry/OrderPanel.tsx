@@ -366,9 +366,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       </div>
     );
   }
+  
+  // THIS IS THE TEST H1 TAG
+  const testVisibility = true; // Change to true to show
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] bg-background text-foreground">
+      {testVisibility && <h1 className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white p-4 text-2xl z-50">ORDER PANEL TEST VISIBLE</h1>}
       {/* Left Column: Menu Item Selector */}
       <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full">
         <MenuItemSelector categories={menuCategories} onSelectItem={handleSelectItem} />
