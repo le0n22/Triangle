@@ -5,7 +5,13 @@ import type { Order, OrderItem, Modifier } from '@/types';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Edit3, PlusCircle, MinusCircle, Loader2 } from 'lucide-react';
+import { 
+  Trash2, 
+  Edit3, 
+  PlusCircle, 
+  MinusCircle, 
+  Loader2
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CurrentOrderSummaryProps {
@@ -49,7 +55,17 @@ export function CurrentOrderSummary({
 
   const formatModifiers = (modifiers: Modifier[]) => {
     if (!modifiers || modifiers.length === 0) return null;
-    return modifiers.map(m => \`\${m.name}\${m.priceChange !== 0 ? \` (\${m.priceChange > 0 ? '+' : '-'}$\${Math.abs(m.priceChange).toFixed(2)})\` : ''}\`).join(', ');
+    // VERIFICATION COMMENT: Ensure this comment and the corrected line below are present after update.
+    // The line below has the leading backslash removed from the template literal.
+    return modifiers.map(m => {
+      let modifierString = m.name;
+      if (m.priceChange !== 0) {
+        const sign = m.priceChange > 0 ? '+' : '-';
+        const amount = Math.abs(m.priceChange).toFixed(2);
+        modifierString += ` (${sign}$${amount})`;
+      }
+      return modifierString;
+    }).join(', ');
   };
 
   return (
@@ -104,7 +120,7 @@ export function CurrentOrderSummary({
                     <div>
                       <p className="font-semibold text-sm">{item.menuItemName}</p>
                       <p className="text-xs text-muted-foreground">
-                        $\${item.unitPrice.toFixed(2)} x {item.quantity} = $\${item.totalPrice.toFixed(2)}
+                        ${item.unitPrice.toFixed(2)} x {item.quantity} = ${item.totalPrice.toFixed(2)}
                       </p>
                       {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                         <p className="text-xs text-primary mt-1">
@@ -150,21 +166,19 @@ export function CurrentOrderSummary({
           <div className="space-y-1 text-sm mb-4">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>$\${order.subtotal.toFixed(2)}</span>
+              <span>${order.subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span>Tax ({(order.taxRate * 100).toFixed(0)}%):</span>
-              <span>$\${order.taxAmount.toFixed(2)}</span>
+              <span>${order.taxAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-bold text-base text-primary">
               <span>Total:</span>
-              <span>$\${order.totalAmount.toFixed(2)}</span>
+              <span>${order.totalAmount.toFixed(2)}</span>
             </div>
           </div>
         </>
       )}
-      
-      {/* All action buttons have been moved to OrderActionSidebar */}
       
       {isOrderClosed && (
         <p className="text-center text-muted-foreground py-4 mt-auto border-t border-border">
@@ -200,3 +214,5 @@ function ShoppingCartIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+  
