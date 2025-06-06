@@ -6,8 +6,8 @@ import { MenuItemCard } from './menu-item-card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Soup, UtensilsCrossed, CakeSlice, CupSoda, CookingPot, Star } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { Search, Soup, UtensilsCrossed, CakeSlice, CupSoda, CookingPot, Star, Inbox } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -26,16 +26,24 @@ const categoryIcons: Record<string, React.ElementType> = {
 
 export function MenuBrowser({ categories: initialCategories }: MenuBrowserProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
-    initialCategories.length > 0 ? initialCategories[0].id : null
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Select the first category by default if categories are available and none is selected
+    if (initialCategories.length > 0 && !selectedCategoryId) {
+      setSelectedCategoryId(initialCategories[0].id);
+    } else if (initialCategories.length === 0) {
+      setSelectedCategoryId(null); // No categories, so no selection
+    }
+  }, [initialCategories, selectedCategoryId]);
+
 
   const handleAddItemToOrder = (item: MenuItem) => {
     console.log('Adding item to order:', item);
     toast({
       title: `${item.name} added`,
-      description: `1 x ${item.name} has been added to the current order.`,
+      description: `1 x ${item.name} has been added to the current order (simulation).`,
       duration: 3000,
     });
   };
@@ -49,7 +57,7 @@ export function MenuBrowser({ categories: initialCategories }: MenuBrowserProps)
     if (!selectedCategory) return [];
     return selectedCategory.items.filter(item =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchTerm.toLowerCase())
+      (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [selectedCategory, searchTerm]);
 
@@ -57,9 +65,11 @@ export function MenuBrowser({ categories: initialCategories }: MenuBrowserProps)
 
   if (!initialCategories || initialCategories.length === 0) {
     return (
-      <div className="text-center py-10">
-        <h1 className="text-3xl font-headline font-bold text-foreground mb-4">Digital Menu</h1>
-        <p className="text-muted-foreground text-lg">The menu is currently empty.</p>
+      <div className="text-center py-10 h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] flex flex-col justify-center items-center">
+        <Inbox className="w-24 h-24 text-muted-foreground mb-6" />
+        <h1 className="text-3xl font-headline font-bold text-foreground mb-2">Digital Menu is Empty</h1>
+        <p className="text-muted-foreground text-lg">No categories or items found.</p>
+        <p className="text-sm text-muted-foreground">Please add them in the settings page.</p>
       </div>
     );
   }
@@ -116,15 +126,25 @@ export function MenuBrowser({ categories: initialCategories }: MenuBrowserProps)
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground py-10 text-lg">
-                  {selectedCategory.items.length > 0 ? 'No menu items match your search in this category.' : 'This category is empty.'}
-                </p>
+                 <div className="text-center py-10 flex flex-col items-center">
+                    <Inbox className="w-16 h-16 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground text-lg">
+                    {selectedCategory.items.length > 0 ? 'No menu items match your search.' : 'This category is empty.'}
+                    </p>
+                 </div>
               )}
             </section>
           ) : (
-            <p className="text-center text-muted-foreground py-10 text-lg">
-              Select a category to view its items.
-            </p>
+             initialCategories.length > 0 ? (
+                <p className="text-center text-muted-foreground py-10 text-lg">
+                Select a category to view its items.
+                </p>
+             ) : (
+                // This case should be handled by the top-level check, but as a fallback:
+                <p className="text-center text-muted-foreground py-10 text-lg">
+                    No categories available to select.
+                </p>
+             )
           )}
         </ScrollArea>
       </div>

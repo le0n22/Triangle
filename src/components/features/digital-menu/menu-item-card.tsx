@@ -1,3 +1,4 @@
+
 import type { MenuItem } from '@/types';
 import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,13 +23,14 @@ export function MenuItemCard({ item, onAddItem }: MenuItemCardProps) {
             style={{objectFit: 'cover'}}
             className="transition-transform duration-300 group-hover:scale-105"
             data-ai-hint={item.dataAiHint}
+            onError={(e) => (e.currentTarget.src = 'https://placehold.co/600x400.png?text=Image+Error')}
           />
         </div>
       )}
       <CardHeader className="pb-2">
         <CardTitle className="text-xl font-headline">{item.name}</CardTitle>
         <CardDescription className="text-sm text-muted-foreground min-h-[40px] line-clamp-2">
-          {item.description}
+          {item.description || ""}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow pt-0">

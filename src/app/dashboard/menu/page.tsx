@@ -1,60 +1,86 @@
+
 import type { MenuCategory, MenuItem, Modifier } from '@/types';
 import { MenuBrowser } from '@/components/features/digital-menu/menu-browser';
+import { getAllCategoriesAction, type AppMenuCategory as BackendMenuCategory } from '@backend/actions/categoryActions';
+import { getAllMenuItemsAction, type AppMenuItem as BackendMenuItem } from '@backend/actions/menuItemActions';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
-const mockModifiers: Modifier[] = [
-  { id: 'mod1', name: 'Extra Cheese', priceChange: 1.50 },
-  { id: 'mod2', name: 'No Onions', priceChange: 0.00 },
-  { id: 'mod3', name: 'Spicy', priceChange: 0.50 },
-];
+async function getMenuDataForBrowser(): Promise<MenuCategory[] | { error: string }> {
+  const categoriesResult = await getAllCategoriesAction();
+  const menuItemsResult = await getAllMenuItemsAction();
 
-// Mock data for menu items and categories
-const mockMenuCategories: MenuCategory[] = [
-  {
-    id: 'cat1',
-    name: 'Appetizers',
-    iconName: 'Soup',
-    items: [
-      { id: 'item1', name: 'Spring Rolls', description: 'Crispy vegetable spring rolls served with sweet chili sauce.', price: 8.99, category: 'Appetizers', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'spring rolls', availableModifiers: [mockModifiers[1]] },
-      { id: 'item2', name: 'Garlic Bread', description: 'Toasted baguette with garlic butter and herbs.', price: 6.50, category: 'Appetizers', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'garlic bread', availableModifiers: [mockModifiers[0]] },
-    ],
-  },
-  {
-    id: 'cat2',
-    name: 'Main Courses',
-    iconName: 'UtensilsCrossed',
-    items: [
-      { id: 'item3', name: 'Grilled Salmon', description: 'Fresh salmon fillet grilled to perfection, served with roasted vegetables.', price: 22.00, category: 'Main Courses', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'grilled salmon', availableModifiers: [mockModifiers[2]] },
-      { id: 'item4', name: 'Margherita Pizza', description: 'Classic pizza with tomato, mozzarella, and basil.', price: 15.00, category: 'Main Courses', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'pizza margherita', availableModifiers: [mockModifiers[0], mockModifiers[2]] },
-      { id: 'item5', name: 'Chicken Pasta', description: 'Creamy Alfredo pasta with grilled chicken breast.', price: 18.50, category: 'Main Courses', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'chicken pasta', availableModifiers: [] },
-    ],
-  },
-  {
-    id: 'cat3',
-    name: 'Desserts',
-    iconName: 'CakeSlice',
-    items: [
-      { id: 'item6', name: 'Chocolate Lava Cake', description: 'Warm chocolate cake with a molten center, served with vanilla ice cream.', price: 9.00, category: 'Desserts', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'chocolate cake', availableModifiers: [] },
-      { id: 'item7', name: 'Tiramisu', description: 'Classic Italian dessert with coffee-soaked ladyfingers and mascarpone cream.', price: 8.50, category: 'Desserts', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'tiramisu dessert', availableModifiers: [] },
-    ],
-  },
-  {
-    id: 'cat4',
-    name: 'Beverages',
-    iconName: 'CupSoda',
-    items: [
-      { id: 'item8', name: 'Coca-Cola', description: 'Classic Coke.', price: 3.00, category: 'Beverages', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'soda drink', availableModifiers: [] },
-      { id: 'item9', name: 'Fresh Orange Juice', description: 'Freshly squeezed orange juice.', price: 5.00, category: 'Beverages', imageUrl: 'https://placehold.co/600x400.png', dataAiHint: 'orange juice', availableModifiers: [] },
-    ],
-  },
-];
+  if ('error' in categoriesResult) {
+    return { error: `Failed to load categories: ${categoriesResult.error}` };
+  }
+  if ('error' in menuItemsResult) {
+    return { error: `Failed to load menu items: ${menuItemsResult.error}` };
+  }
 
-export default function MenuPage() {
-  // In a real app, fetch menu data
-  const categories = mockMenuCategories;
+  const dbCategories = categoriesResult as BackendMenuCategory[];
+  const dbMenuItems = menuItemsResult as BackendMenuItem[];
+
+  const menuCategoriesForBrowser: MenuCategory[] = dbCategories.map(dbCategory => {
+    const itemsForThisCategory = dbMenuItems
+      .filter(dbItem => dbItem.categoryId === dbCategory.id)
+      .map(dbItem => {
+        // Map BackendMenuItem to frontend MenuItem type
+        const frontendMenuItem: MenuItem = {
+          id: dbItem.id,
+          name: dbItem.name,
+          description: dbItem.description || '', // Ensure description is not null/undefined
+          price: dbItem.price,
+          category: dbCategory.name, // Use category name from the parent category
+          imageUrl: dbItem.imageUrl || undefined,
+          dataAiHint: dbItem.dataAiHint || undefined,
+          availableModifiers: dbItem.availableModifiers.map(mod => ({ // Ensure modifiers match frontend type
+            id: mod.id,
+            name: mod.name,
+            priceChange: mod.priceChange,
+          })),
+        };
+        return frontendMenuItem;
+      });
+
+    return {
+      id: dbCategory.id,
+      name: dbCategory.name,
+      iconName: dbCategory.iconName,
+      items: itemsForThisCategory.sort((a, b) => a.name.localeCompare(b.name)),
+    };
+  });
+
+  return menuCategoriesForBrowser.sort((a,b) => a.name.localeCompare(b.name));
+}
+
+export default async function MenuPage() {
+  const menuData = await getMenuDataForBrowser();
+
+  if ('error' in menuData) {
+    return (
+      <div className="container mx-auto py-10">
+        <Alert variant="destructive">
+          <Terminal className="h-4 w-4" />
+          <AlertTitle>Error Loading Menu</AlertTitle>
+          <AlertDescription>{menuData.error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+  
+  if (menuData.length === 0) {
+     return (
+      <div className="container mx-auto py-10 text-center">
+        <h1 className="text-3xl font-headline font-bold text-foreground mb-4">Digital Menu</h1>
+        <p className="text-muted-foreground text-lg">The menu is currently empty or no categories are defined.</p>
+        <p className="text-sm text-muted-foreground">Please add categories and menu items in the settings.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto">
-      <MenuBrowser categories={categories} />
+      <MenuBrowser categories={menuData} />
     </div>
   );
 }
