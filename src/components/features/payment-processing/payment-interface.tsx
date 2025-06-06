@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Order, PaymentMethod } from '@/types';
@@ -46,7 +47,7 @@ export function PaymentInterface({ order }: PaymentInterfaceProps) {
       toast({
         title: 'Payment Successful!',
         description: `Paid $${order.totalAmount.toFixed(2)} using ${paymentMethodLabels[selectedMethod]}.`,
-        className: 'bg-green-600 text-white', // Custom success styling
+        className: 'bg-accent text-accent-foreground', 
       });
       // In a real app: update order status to 'paid', clear table, etc.
       // Redirect to a success page or back to tables
@@ -123,7 +124,7 @@ export function PaymentInterface({ order }: PaymentInterfaceProps) {
           <Button 
             onClick={handleProcessPayment} 
             disabled={isProcessing || !selectedMethod}
-            className="w-full sm:flex-grow bg-primary hover:bg-primary/90 text-primary-foreground"
+            className="w-full sm:flex-grow bg-accent hover:bg-accent/90 text-accent-foreground"
           >
             {isProcessing ? 'Processing...' : `Pay $${order.totalAmount.toFixed(2)}`}
             {selectedMethod && <CheckCircle className="ml-2 h-5 w-5" />}

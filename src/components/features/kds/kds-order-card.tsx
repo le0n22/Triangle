@@ -22,10 +22,10 @@ export function KdsOrderCard({ order, onUpdateStatus }: KdsOrderCardProps) {
       case 'OPEN':
         return { borderColor: 'border-primary', textColor: 'text-primary' };
       case 'IN_PROGRESS':
-        return { borderColor: 'border-accent', textColor: 'text-accent' };
+        return { borderColor: 'border-accent', textColor: 'text-accent' }; // Use accent for in progress
       case 'DONE':
-        return { borderColor: 'border-muted', textColor: 'text-green-600' }; // Using a direct green for "DONE"
-      case 'CANCELLED': // Style for cancelled if it were to be displayed, though usually filtered out
+        return { borderColor: 'border-muted', textColor: 'text-accent' }; // Use accent for done (ready)
+      case 'CANCELLED': 
         return { borderColor: 'border-destructive', textColor: 'text-destructive' };
       default:
         return { borderColor: 'border-border', textColor: 'text-foreground' };
@@ -70,7 +70,7 @@ export function KdsOrderCard({ order, onUpdateStatus }: KdsOrderCardProps) {
         </CardContent>
       </ScrollArea>
       <Separator />
-      <CardFooter className="p-3 flex flex-col gap-0 print:hidden"> {/* Changed to flex-col and gap-0, margin handled by button */}
+      <CardFooter className="p-3 flex flex-col gap-0 print:hidden"> 
         {order.status === 'OPEN' && (
           <Button
             size="sm"
@@ -91,14 +91,14 @@ export function KdsOrderCard({ order, onUpdateStatus }: KdsOrderCardProps) {
           </Button>
         )}
         {order.status === 'DONE' && (
-           <p className="w-full text-center text-sm text-green-600 font-semibold py-2">Order Ready!</p> // Added py-2 for spacing consistency
+           <p className="w-full text-center text-sm text-accent font-semibold py-2">Order Ready!</p> 
         )}
 
         {(order.status === 'OPEN' || order.status === 'IN_PROGRESS') && (
           <Button
             size="sm"
             variant="destructive"
-            className="w-full mt-2" // Margin top for separation
+            className="w-full mt-2" 
             onClick={() => onUpdateStatus(order.id, 'CANCELLED')}
           >
             Cancel Order

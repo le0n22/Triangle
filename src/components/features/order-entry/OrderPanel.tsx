@@ -281,7 +281,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       } else {
         setCurrentOrder(result);
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(result)));
-        toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-green-600 text-white" });
+        toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-accent text-accent-foreground" });
         let queryString = '';
         if (deltaItemsForKOT.length > 0) {
           queryString = \`?delta=\${encodeURIComponent(JSON.stringify(deltaItemsForKOT))}\`;
@@ -367,14 +367,11 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     );
   }
   
-  // THIS IS THE TEST H1 TAG
-  const testVisibility = true; // Change to true to show
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] bg-background text-foreground">
-      {testVisibility && <h1 className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white p-4 text-2xl z-50">ORDER PANEL TEST VISIBLE</h1>}
       {/* Left Column: Menu Item Selector */}
-      <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full">
+      <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full border-r border-border">
         <MenuItemSelector categories={menuCategories} onSelectItem={handleSelectItem} />
       </div>
 

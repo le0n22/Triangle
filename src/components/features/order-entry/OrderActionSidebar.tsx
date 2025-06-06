@@ -96,7 +96,7 @@ export function OrderActionSidebar({
         <Button
           onClick={onConfirmOrder}
           size="lg"
-          className="w-full h-14 bg-accent hover:bg-accent/90 text-accent-foreground"
+          className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground" // Changed to primary from accent
           disabled={confirmDisabled}
         >
           {isSaving && (order.id.startsWith('temp-ord-') || (isOrderPersisted && !isOrderClosed)) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
@@ -105,7 +105,7 @@ export function OrderActionSidebar({
         <Button
           onClick={onGoToPayment}
           size="lg"
-          className="w-full h-14 bg-green-600 hover:bg-green-700 text-white"
+          className="w-full h-14 bg-accent hover:bg-accent/90 text-accent-foreground" // Using accent for green payment
           disabled={paymentDisabled}
         >
           {isSaving && isOrderPersisted && !isOrderClosed && order.status !== 'PAID' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}

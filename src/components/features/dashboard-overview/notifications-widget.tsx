@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,10 +7,10 @@ import { Bell, ShoppingCart, AlertTriangle, Info } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const mockNotifications = [
-  { id: 1, type: 'order', message: 'New online order #ORD789 received.', timestamp: new Date(Date.now() - 5 * 60 * 1000), icon: ShoppingCart, iconColor: 'text-green-500' },
-  { id: 2, type: 'system', message: 'Table 5 marked as "dirty".', timestamp: new Date(Date.now() - 15 * 60 * 1000), icon: AlertTriangle, iconColor: 'text-yellow-500' },
-  { id: 3, type: 'info', message: 'KDS printer connection restored.', timestamp: new Date(Date.now() - 30 * 60 * 1000), icon: Info, iconColor: 'text-blue-500' },
-  { id: 4, type: 'order', message: 'Order #ORD456 ready for pickup.', timestamp: new Date(Date.now() - 45 * 60 * 1000), icon: ShoppingCart, iconColor: 'text-green-500' },
+  { id: 1, type: 'order', message: 'New online order #ORD789 received.', timestamp: new Date(Date.now() - 5 * 60 * 1000), icon: ShoppingCart, iconColor: 'text-accent' },
+  { id: 2, type: 'system', message: 'Table 5 marked as "dirty".', timestamp: new Date(Date.now() - 15 * 60 * 1000), icon: AlertTriangle, iconColor: 'text-primary' }, // Changed yellow to primary
+  { id: 3, type: 'info', message: 'KDS printer connection restored.', timestamp: new Date(Date.now() - 30 * 60 * 1000), icon: Info, iconColor: 'text-primary' }, // Changed blue to primary
+  { id: 4, type: 'order', message: 'Order #ORD456 ready for pickup.', timestamp: new Date(Date.now() - 45 * 60 * 1000), icon: ShoppingCart, iconColor: 'text-accent' },
 ];
 
 export function NotificationsWidget() {
@@ -21,7 +22,7 @@ export function NotificationsWidget() {
           <h2 className="text-xl font-semibold">Notifications</h2>
         </div>
         {mockNotifications.length > 0 ? (
-          <ScrollArea className="flex-grow pr-2 -mr-2"> {/* Negative margin to hide scrollbar visually if not needed */}
+          <ScrollArea className="flex-grow pr-2 -mr-2"> 
             <ul className="space-y-3">
               {mockNotifications.map(notif => {
                 const IconComponent = notif.icon;
