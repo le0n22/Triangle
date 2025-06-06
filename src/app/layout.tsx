@@ -1,9 +1,11 @@
 
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/context/theme-provider';
-import { LanguageProvider } from '@/context/language-provider'; // New import
+import { LanguageProvider } from '@/context/language-provider';
+import { CurrencyProvider } from '@/context/CurrencyProvider'; // New import
 
 export const metadata: Metadata = {
   title: 'OrderFlow - Restaurant POS',
@@ -27,9 +29,11 @@ export default function RootLayout({
             defaultTheme="dark" 
             storageKey="orderflow-theme"
         >
-          <LanguageProvider> {/* Wrap with LanguageProvider */}
-            {children}
-            <Toaster />
+          <LanguageProvider>
+            <CurrencyProvider> {/* Wrap with CurrencyProvider */}
+              {children}
+              <Toaster />
+            </CurrencyProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>

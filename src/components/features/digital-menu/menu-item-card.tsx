@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface MenuItemCardProps {
   item: MenuItem;
@@ -11,6 +12,8 @@ interface MenuItemCardProps {
 }
 
 export function MenuItemCard({ item, onAddItem }: MenuItemCardProps) {
+  const { formatCurrency } = useCurrency(); // Use the hook
+
   return (
     <Card className="flex flex-col overflow-hidden h-full bg-card text-card-foreground shadow-lg hover:shadow-primary/20 transition-shadow duration-200 group">
       {item.imageUrl && (
@@ -34,7 +37,7 @@ export function MenuItemCard({ item, onAddItem }: MenuItemCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow pt-0">
-        <p className="text-lg font-semibold text-primary">${item.price.toFixed(2)}</p>
+        <p className="text-lg font-semibold text-primary">{formatCurrency(item.price)}</p> {/* Use formatCurrency */}
       </CardContent>
       <CardFooter>
         <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => onAddItem(item)}>

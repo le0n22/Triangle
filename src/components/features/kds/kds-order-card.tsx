@@ -8,6 +8,7 @@ import { formatDistanceToNow, parseISO } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface KdsOrderCardProps {
   order: Order;
@@ -16,6 +17,7 @@ interface KdsOrderCardProps {
 
 export function KdsOrderCard({ order, onUpdateStatus }: KdsOrderCardProps) {
   const timeSinceOrder = formatDistanceToNow(parseISO(order.createdAt), { addSuffix: true });
+  const { currency } = useCurrency(); // Use the hook
 
   const getCardStyles = (status: OrderStatus) => {
     switch (status) {
@@ -33,6 +35,11 @@ export function KdsOrderCard({ order, onUpdateStatus }: KdsOrderCardProps) {
   };
 
   const { borderColor, textColor } = getCardStyles(order.status);
+
+  const formatModifierPrice = (priceChange: number) => {
+    const sign = priceChange >= 0 ? '+' : '-';
+    return `${sign}${currency.symbol}${Math.abs(priceChange).toFixed(2)}`;
+  };
 
   return (
     <Card className={cn("flex flex-col h-full shadow-lg bg-card text-card-foreground border-2", borderColor)}>
@@ -58,7 +65,7 @@ export function KdsOrderCard({ order, onUpdateStatus }: KdsOrderCardProps) {
                 </div>
                 {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                   <p className="text-xs text-muted-foreground pl-2">
-                    - {item.selectedModifiers.map(m => `${m.name} (${m.priceChange >= 0 ? '+' : '-'}$${Math.abs(m.priceChange).toFixed(2)})`).join(', ')}
+                    - {item.selectedModifiers.map(m => `${m.name} (${formatModifierPrice(m.priceChange)})`).join(', ')}
                   </p>
                 )}
                 {item.specialRequests && (

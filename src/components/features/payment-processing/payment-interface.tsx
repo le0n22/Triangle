@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface PaymentInterfaceProps {
   order: Order;
@@ -34,6 +35,7 @@ export function PaymentInterface({ order }: PaymentInterfaceProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { formatCurrency, currency } = useCurrency(); // Use the hook
 
   const handleProcessPayment = () => {
     if (!selectedMethod) {
@@ -46,7 +48,7 @@ export function PaymentInterface({ order }: PaymentInterfaceProps) {
       setIsProcessing(false);
       toast({
         title: 'Payment Successful!',
-        description: `Paid $${order.totalAmount.toFixed(2)} using ${paymentMethodLabels[selectedMethod]}.`,
+        description: `Paid ${formatCurrency(order.totalAmount)} using ${paymentMethodLabels[selectedMethod]}.`,
         className: 'bg-accent text-accent-foreground', 
       });
       // In a real app: update order status to 'paid', clear table, etc.
@@ -70,7 +72,7 @@ export function PaymentInterface({ order }: PaymentInterfaceProps) {
               {order.items.map(item => (
                 <li key={item.id} className="flex justify-between">
                   <span>{item.quantity}x {item.menuItemName}</span>
-                  <span>${item.totalPrice.toFixed(2)}</span>
+                  <span>{formatCurrency(item.totalPrice)}</span>
                 </li>
               ))}
             </ul>
@@ -78,16 +80,16 @@ export function PaymentInterface({ order }: PaymentInterfaceProps) {
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>${order.subtotal.toFixed(2)}</span>
+                <span>{formatCurrency(order.subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tax ({(order.taxRate * 100).toFixed(0)}%):</span>
-                <span>${order.taxAmount.toFixed(2)}</span>
+                <span>{formatCurrency(order.taxAmount)}</span>
               </div>
               <Separator className="my-2 bg-border/50" />
               <div className="flex justify-between font-bold text-xl text-primary">
                 <span>Total Amount Due:</span>
-                <span>${order.totalAmount.toFixed(2)}</span>
+                <span>{formatCurrency(order.totalAmount)}</span>
               </div>
             </div>
           </div>
@@ -126,7 +128,7 @@ export function PaymentInterface({ order }: PaymentInterfaceProps) {
             disabled={isProcessing || !selectedMethod}
             className="w-full sm:flex-grow bg-accent hover:bg-accent/90 text-accent-foreground"
           >
-            {isProcessing ? 'Processing...' : `Pay $${order.totalAmount.toFixed(2)}`}
+            {isProcessing ? 'Processing...' : `Pay ${formatCurrency(order.totalAmount)}`}
             {selectedMethod && <CheckCircle className="ml-2 h-5 w-5" />}
           </Button>
         </CardFooter>

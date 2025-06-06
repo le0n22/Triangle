@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { PackageCheck, Ban, CookingPot, Bike, CheckCircle, AlertCircle } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface TrackingOrderCardProps {
   order: ExternalOrder;
@@ -28,6 +29,7 @@ const statusDetails: Record<ExternalOrderStatus, { label: string; icon: React.El
 export function TrackingOrderCard({ order, onUpdateStatus }: TrackingOrderCardProps) {
   const currentStatusDetail = statusDetails[order.status];
   const StatusIcon = currentStatusDetail.icon;
+  const { formatCurrency } = useCurrency(); // Use the hook
 
   return (
     <Card className={`shadow-md ${currentStatusDetail.color}`}>
@@ -56,7 +58,7 @@ export function TrackingOrderCard({ order, onUpdateStatus }: TrackingOrderCardPr
           <ul className="list-disc list-inside text-muted-foreground space-y-0.5 text-xs">
             {order.items.map(item => (
               <li key={item.id}>
-                {item.quantity}x {item.name} - ${(item.totalPrice).toFixed(2)}
+                {item.quantity}x {item.name} - {formatCurrency(item.totalPrice)}
                 {item.notes && <span className="block pl-4 text-accent text-xs">Note: {item.notes}</span>}
               </li>
             ))}
@@ -65,7 +67,7 @@ export function TrackingOrderCard({ order, onUpdateStatus }: TrackingOrderCardPr
         <Separator className="my-2" />
         <div className="flex justify-between items-center font-semibold">
           <span>Total:</span>
-          <span>${order.totalAmount.toFixed(2)}</span>
+          <span>{formatCurrency(order.totalAmount)}</span>
         </div>
         {order.notes && <p className="text-xs text-amber-600 mt-2">Customer Notes: {order.notes}</p>}
       </CardContent>

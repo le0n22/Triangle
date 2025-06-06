@@ -38,6 +38,7 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 // Using relative path
 import { 
   getAllModifiersAction, 
@@ -61,6 +62,7 @@ export function ModifierManagementSettings() {
   const [editForm, setEditForm] = useState({ id: '', name: '', priceChange: '' });
   
   const { toast } = useToast();
+  const { currency } = useCurrency(); // Use the hook
 
   const fetchModifiers = async () => {
     setIsLoading(true);
@@ -184,6 +186,11 @@ export function ModifierManagementSettings() {
     }
   };
   
+  const formatPriceChange = (priceChange: number) => {
+    const sign = priceChange >= 0 ? '+' : '-';
+    return `${sign}${currency.symbol}${Math.abs(priceChange).toFixed(2)}`;
+  };
+
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row justify-between items-center">
@@ -248,7 +255,7 @@ export function ModifierManagementSettings() {
                 <TableRow key={modifier.id}>
                   <TableCell className="font-medium">{modifier.name}</TableCell>
                   <TableCell className="text-right">
-                    {modifier.priceChange >= 0 ? `+$${modifier.priceChange.toFixed(2)}` : `-$${Math.abs(modifier.priceChange).toFixed(2)}`}
+                    {formatPriceChange(modifier.priceChange)}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(modifier)} className="mr-2" disabled={isMutating || isLoading}>

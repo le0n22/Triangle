@@ -160,5 +160,25 @@ export type TranslationKey =
   | 'categories'
   | 'menu_items'
   | 'modifiers'
-  | 'order_platforms';
+  | 'order_platforms'
+  | 'currency'
+  | 'selectCurrency'
+  | 'turkish_lira'
+  | 'us_dollar'
+  | 'euro'
+  | 'customCurrency'
+  | 'currencySymbol'
+  | 'currencyName';
+
+export interface CurrencyConfig {
+  symbol: string;
+  code: string; // e.g., 'TRY', 'USD', 'EUR', 'CUSTOM'
+  name: string; // e.g., 'Turkish Lira', 'US Dollar'
+}
+
+export interface CurrencyProviderState {
+  currency: CurrencyConfig;
+  setCurrency: (currency: CurrencyConfig) => void;
+  formatCurrency: (amount: number) => string;
+}
 

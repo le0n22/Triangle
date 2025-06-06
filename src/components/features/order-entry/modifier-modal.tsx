@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface ModifierModalProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export function ModifierModal({
 }: ModifierModalProps) {
   const [selectedModifierIds, setSelectedModifierIds] = useState<Record<string, boolean>>({});
   const [specialRequests, setSpecialRequests] = useState<string>('');
+  const { currency } = useCurrency(); // Use the hook
 
   useEffect(() => {
     if (isOpen && menuItem && menuItem.availableModifiers) {
@@ -65,6 +67,12 @@ export function ModifierModal({
     onApplyModifiers(appliedModifiers, specialRequests.trim() === '' ? undefined : specialRequests.trim());
     onClose();
   };
+  
+  const formatModifierPriceChange = (priceChange: number) => {
+    if (priceChange === 0) return '';
+    const sign = priceChange > 0 ? '+' : '-';
+    return ` (${sign}${currency.symbol}${Math.abs(priceChange).toFixed(2)})`;
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -89,7 +97,7 @@ export function ModifierModal({
                     {modifier.name}
                     </Label>
                     <span className="text-sm text-muted-foreground">
-                       {modifier.priceChange !== 0 && ` (${modifier.priceChange > 0 ? '+' : '-'} $${Math.abs(modifier.priceChange).toFixed(2)})`}
+                       {formatModifierPriceChange(modifier.priceChange)}
                     </span>
                 </div>
                 ))}

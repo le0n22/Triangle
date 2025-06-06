@@ -13,6 +13,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface CurrentOrderSummaryProps {
   order: Order | null;
@@ -20,7 +21,7 @@ interface CurrentOrderSummaryProps {
   onUpdateItemQuantity: (itemId: string, newQuantity: number) => void;
   onRemoveItem: (itemId: string) => void;
   onEditItemModifiers: (item: OrderItem) => void;
-  isSaving: boolean; // To disable interactions while saving
+  isSaving: boolean; 
 }
 
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
@@ -40,6 +41,8 @@ export function CurrentOrderSummary({
   onEditItemModifiers,
   isSaving 
 }: CurrentOrderSummaryProps) {
+  const { formatCurrency, currency } = useCurrency(); // Use the hook
+
   if (!order) {
     return (
       <div className="p-6 text-center text-muted-foreground h-full flex flex-col justify-center items-center">
@@ -53,16 +56,15 @@ export function CurrentOrderSummary({
   const isOrderPersisted = order.id && !order.id.startsWith('temp-ord-');
   const isOrderClosed = order.status === 'PAID' || order.status === 'CANCELLED';
 
-  const formatModifiers = (modifiers: Modifier[]) => {
+  const formatModifiersText = (modifiers: Modifier[]) => {
     if (!modifiers || modifiers.length === 0) return null;
-    // VERIFICATION COMMENT: Ensure this comment and the corrected line below are present after update.
-    // The line below has the leading backslash removed from the template literal.
     return modifiers.map(m => {
       let modifierString = m.name;
       if (m.priceChange !== 0) {
         const sign = m.priceChange > 0 ? '+' : '-';
-        const amount = Math.abs(m.priceChange).toFixed(2);
-        modifierString += ` (${sign}$${amount})`;
+        // Use currency.symbol directly here if formatCurrency is only for amounts
+        const amount = `${currency.symbol}${Math.abs(m.priceChange).toFixed(2)}`;
+        modifierString += ` (${sign}${amount})`;
       }
       return modifierString;
     }).join(', ');
@@ -120,11 +122,11 @@ export function CurrentOrderSummary({
                     <div>
                       <p className="font-semibold text-sm">{item.menuItemName}</p>
                       <p className="text-xs text-muted-foreground">
-                        ${item.unitPrice.toFixed(2)} x {item.quantity} = ${item.totalPrice.toFixed(2)}
+                        {formatCurrency(item.unitPrice)} x {item.quantity} = {formatCurrency(item.totalPrice)}
                       </p>
                       {item.selectedModifiers && item.selectedModifiers.length > 0 && (
                         <p className="text-xs text-primary mt-1">
-                          Modifiers: {formatModifiers(item.selectedModifiers)}
+                          Modifiers: {formatModifiersText(item.selectedModifiers)}
                         </p>
                       )}
                       {item.specialRequests && (
@@ -166,15 +168,15 @@ export function CurrentOrderSummary({
           <div className="space-y-1 text-sm mb-4">
             <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>${order.subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(order.subtotal)}</span>
             </div>
             <div className="flex justify-between">
               <span>Tax ({(order.taxRate * 100).toFixed(0)}%):</span>
-              <span>${order.taxAmount.toFixed(2)}</span>
+              <span>{formatCurrency(order.taxAmount)}</span>
             </div>
             <div className="flex justify-between font-bold text-base text-primary">
               <span>Total:</span>
-              <span>${order.totalAmount.toFixed(2)}</span>
+              <span>{formatCurrency(order.totalAmount)}</span>
             </div>
           </div>
         </>
@@ -214,5 +216,3 @@ function ShoppingCartIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
-
-  

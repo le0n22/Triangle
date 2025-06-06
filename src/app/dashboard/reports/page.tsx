@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 import { addDays, format } from 'date-fns';
 import { useState, useMemo } from 'react';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 // Mock Data
 const mockOverallStats = {
@@ -43,9 +44,8 @@ const mockPaymentMethodsData = [
   { name: 'Mobile', value: 1500.00, fill: 'var(--color-chart-3)' },
 ];
 
-const chartConfig = {
+const chartConfigBase = {
   sales: { label: 'Sales', color: 'hsl(var(--chart-1))' },
-  // Keys for payment methods if needed for custom legend/tooltip behavior
   Cash: { label: 'Cash', color: 'hsl(var(--chart-1))' },
   Card: { label: 'Card', color: 'hsl(var(--chart-2))' },
   Mobile: { label: 'Mobile', color: 'hsl(var(--chart-3))' },
@@ -57,12 +57,30 @@ export default function ReportsPage() {
     from: addDays(new Date(), -29),
     to: new Date(),
   });
+  const { formatCurrency, currency } = useCurrency(); // Use the hook
 
-  // In a real app, this data would be fetched/filtered based on dateRange
+  const chartConfig = useMemo(() => ({
+    ...chartConfigBase,
+    sales: { label: `Sales (${currency.symbol})`, color: 'hsl(var(--chart-1))' },
+  }), [currency.symbol]);
+
   const filteredSalesByCategory = useMemo(() => mockSalesByCategoryData, [dateRange]);
   const filteredTopSellingItems = useMemo(() => mockTopSellingItemsData, [dateRange]);
   const filteredPaymentMethods = useMemo(() => mockPaymentMethodsData, [dateRange]);
   const overallStats = useMemo(() => mockOverallStats, [dateRange]);
+
+  const yAxisTickFormatter = (value: number) => `${currency.symbol}${Number(value/1000).toFixed(0)}k`;
+  
+  const barChartTooltipFormatter = (value: number, name: string, props: any) => {
+    if (name === 'sales') {
+      return [formatCurrency(value), `Sales`];
+    }
+    return [value, name];
+  };
+
+  const pieChartTooltipFormatter = (value: number, name: string) => {
+    return [formatCurrency(value), name];
+  };
 
 
   return (
@@ -115,7 +133,7 @@ export default function ReportsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${overallStats.totalSales.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            <div className="text-2xl font-bold">{formatCurrency(overallStats.totalSales)}</div>
             <p className="text-xs text-muted-foreground">+20.1% from last month (mock)</p>
           </CardContent>
         </Card>
@@ -135,7 +153,7 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${overallStats.averageOrderValue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(overallStats.averageOrderValue)}</div>
             <p className="text-xs text-muted-foreground">+5.2% from last month (mock)</p>
           </CardContent>
         </Card>
@@ -163,10 +181,10 @@ export default function ReportsPage() {
               <BarChart accessibilityLayer data={filteredSalesByCategory} margin={{ top: 5, right: 30, left: 20, bottom: 40 }}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" />
                 <XAxis dataKey="category" tickLine={false} tickMargin={10} angle={-35} textAnchor="end" interval={0} style={{ fontSize: '12px' }} />
-                <YAxis tickFormatter={(value) => `$${Number(value/1000).toFixed(0)}k`} style={{ fontSize: '12px' }} />
+                <YAxis tickFormatter={yAxisTickFormatter} style={{ fontSize: '12px' }} />
                 <ChartTooltip 
                   cursor={{fill: 'hsl(var(--muted)/0.5)'}}
-                  content={<ChartTooltipContent indicator="dot" />} 
+                  content={<ChartTooltipContent indicator="dot" formatter={barChartTooltipFormatter} />} 
                 />
                 <Bar dataKey="sales" fill="var(--color-sales)" radius={4} />
               </BarChart>
@@ -180,24 +198,24 @@ export default function ReportsPage() {
             <CardTitle>Payment Methods</CardTitle>
             <CardDescription>Distribution of payment methods used.</CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-center pt-6"> {/* Added pt-6 for better spacing */}
-            <ChartContainer config={chartConfig} className="h-[300px] w-full max-w-[350px]"> {/* Adjusted max-width */}
+          <CardContent className="flex items-center justify-center pt-6">
+            <ChartContainer config={chartConfig} className="h-[300px] w-full max-w-[350px]">
               <PieChart accessibilityLayer>
-                <RechartsTooltip content={<ChartTooltipContent hideLabel nameKey="name" />} />
+                <RechartsTooltip content={<ChartTooltipContent hideLabel nameKey="name" formatter={pieChartTooltipFormatter} />} />
                 <Pie 
                   data={filteredPaymentMethods} 
                   dataKey="value" 
                   nameKey="name" 
                   cx="50%" 
                   cy="50%" 
-                  outerRadius={90}  // Slightly reduced radius
+                  outerRadius={90}
                   labelLine={false} 
                   label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }) => {
                     const RADIAN = Math.PI / 180;
-                    const radius = innerRadius + (outerRadius - innerRadius) * 0.4; // Adjusted label position
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.4;
                     const x = cx + radius * Math.cos(-midAngle * RADIAN);
                     const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                    if ((percent * 100) < 5) return null; // Hide label for very small slices
+                    if ((percent * 100) < 5) return null; 
                     return (
                       <text x={x} y={y} fill="hsl(var(--primary-foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize="10px" fontWeight="medium">
                         {`${(percent * 100).toFixed(0)}%`}
@@ -206,7 +224,7 @@ export default function ReportsPage() {
                   }}
                 >
                   {filteredPaymentMethods.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} stroke={'hsl(var(--card))'} /> // Added stroke for better separation
+                    <Cell key={`cell-${index}`} fill={entry.fill} stroke={'hsl(var(--card))'} />
                   ))}
                 </Pie>
                 <ChartLegend content={<ChartLegendContent nameKey="name" className="text-xs"/>} />
@@ -238,7 +256,7 @@ export default function ReportsPage() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell className="text-center">{item.quantitySold.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">${item.revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.revenue)}</TableCell>
                 </TableRow>
               ))
               ) : (
@@ -253,4 +271,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-

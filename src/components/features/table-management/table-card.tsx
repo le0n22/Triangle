@@ -8,6 +8,7 @@ import { CircleCheck, CalendarClock, Trash2, UsersRound, Utensils, DollarSign } 
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import React from 'react'; 
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface TableCardProps {
   table: Table;
@@ -39,6 +40,7 @@ const statusText: Record<TableStatus, string> = {
 export function TableCard({ table, position, onTableDragStart }: TableCardProps) {
   const Icon = statusIcons[table.status] || Utensils;
   const title = table.name ? `${table.name} (${table.number})` : `Table ${table.number}`;
+  const { formatCurrency } = useCurrency(); // Use the hook
 
   const handleDragStartInternal = (e: React.DragEvent<HTMLDivElement>) => {
     onTableDragStart(e, table.id);
@@ -83,7 +85,7 @@ export function TableCard({ table, position, onTableDragStart }: TableCardProps)
             {typeof table.currentOrderTotal === 'number' && (
               <div className="flex items-center text-sm font-semibold text-accent">
                 <DollarSign className="h-3.5 w-3.5 mr-1" />
-                {table.currentOrderTotal.toFixed(2)}
+                {formatCurrency(table.currentOrderTotal)} {/* Use formatCurrency */}
               </div>
             )}
           </div>

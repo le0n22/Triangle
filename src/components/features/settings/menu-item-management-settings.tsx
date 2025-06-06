@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 import { 
   getAllMenuItemsAction, 
   createMenuItemAction, 
@@ -71,6 +72,7 @@ export function MenuItemManagementSettings() {
   const [menuItemToDelete, setMenuItemToDelete] = useState<AppMenuItem | null>(null);
   
   const { toast } = useToast();
+  const { formatCurrency, currency } = useCurrency(); // Use the hook
 
   const initialFormState = {
     name: '',
@@ -258,6 +260,11 @@ export function MenuItemManagementSettings() {
       setIsMutating(false);
     }
   };
+  
+  const formatModifierPriceChange = (priceChange: number) => {
+    const sign = priceChange >= 0 ? '+' : '-';
+    return `${sign}${currency.symbol}${Math.abs(priceChange).toFixed(2)}`;
+  };
 
   const renderFormFields = () => (
     <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -323,7 +330,7 @@ export function MenuItemManagementSettings() {
                   onCheckedChange={(checked) => handleModifierToggle(modifier.id, !!checked)}
                 />
                 <Label htmlFor={`mod-${modifier.id}`} className="font-normal">
-                  {modifier.name} ({modifier.priceChange >= 0 ? `+$${modifier.priceChange.toFixed(2)}` : `-$${Math.abs(modifier.priceChange).toFixed(2)}`})
+                  {modifier.name} ({formatModifierPriceChange(modifier.priceChange)})
                 </Label>
               </div>
             ))
@@ -407,7 +414,7 @@ export function MenuItemManagementSettings() {
                   </TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{getCategoryName(item.categoryId)}</TableCell>
-                  <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
                   <TableCell className="text-xs">
                     {item.availableModifiers && item.availableModifiers.length > 0 
                       ? item.availableModifiers.map(m => m.name).join(', ') 

@@ -8,12 +8,15 @@ import { Separator } from '@/components/ui/separator';
 import { Phone, MapPin, CheckCircle, XCircle, Info, Edit3 } from 'lucide-react';
 import { platformIconMap } from './platform-icons';
 import { format, parseISO } from 'date-fns';
+import { useCurrency } from '@/hooks/useCurrency'; // Import useCurrency
 
 interface OrderDetailPanelProps {
   order: ExternalOrder | null;
 }
 
 export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
+  const { formatCurrency, currency } = useCurrency(); // Use the hook
+
   if (!order) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-card text-muted-foreground rounded-r-lg p-6">
@@ -88,7 +91,8 @@ export function OrderDetailPanel({ order }: OrderDetailPanelProps) {
             {order.items.map((item) => (
               <li key={item.id} className="flex justify-between items-center text-xs pb-0.5 border-b border-border/50 last:border-b-0">
                 <span className="truncate pr-2">{item.quantity}x {item.name}</span>
-                <span className="font-medium whitespace-nowrap">₺{item.totalPrice.toFixed(2)}</span>
+                {/* Using currency.symbol directly here as formatCurrency adds it */}
+                <span className="font-medium whitespace-nowrap">{currency.symbol}{item.totalPrice.toFixed(2)}</span>
               </li>
             ))}
              {order.items.length === 0 && <p className="text-xs text-muted-foreground">No items in this order.</p>}
