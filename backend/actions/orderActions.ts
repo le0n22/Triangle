@@ -2,13 +2,13 @@
 'use server';
 
 import prisma from '@backend/lib/prisma';
-import { Prisma } from '@prisma/client'; // Value import for Prisma namespace
+import { Prisma } from '@prisma/client';
 import type { 
   Order as PrismaOrder, 
   OrderItem as PrismaOrderItem, 
   Table as PrismaTable,
   OrderStatus as PrismaOrderStatus,
-  Modifier as PrismaModifier // Ensure Modifier is imported if used for typing selectedModifiers
+  Modifier as PrismaModifier 
 } from '@prisma/client';
 import { updateTableOrderDetailsAction } from './tableActions';
 
@@ -19,7 +19,7 @@ export interface AppOrderItem {
   menuItemName: string;
   quantity: number;
   unitPrice: number;
-  selectedModifiers: { id: string; name: string; priceChange: number }[]; // Changed from Prisma.JsonValue to specific type
+  selectedModifiers: { id: string; name: string; priceChange: number }[];
   specialRequests?: string | null;
   totalPrice: number;
 }
@@ -44,7 +44,7 @@ export interface OrderItemInput {
   menuItemName: string; 
   quantity: number;
   unitPrice: number;    
-  selectedModifiers: Prisma.JsonValue; // Keep as JsonValue for Prisma create/update
+  selectedModifiers: Prisma.JsonValue; 
   specialRequests?: string;
   totalPrice: number; 
 }
@@ -58,22 +58,26 @@ export interface CreateOrderInput {
   totalAmount: number;
 }
 
-// Helper to safely parse selectedModifiers from JSON
 function parseSelectedModifiers(jsonData: Prisma.JsonValue): { id: string; name: string; priceChange: number }[] {
   if (Array.isArray(jsonData)) {
     return jsonData.map(mod => {
       if (typeof mod === 'object' && mod !== null && 'id' in mod && 'name' in mod && 'priceChange' in mod) {
         const priceChange = typeof mod.priceChange === 'number' ? mod.priceChange : parseFloat(String(mod.priceChange));
+        if (isNaN(priceChange)) {
+            console.warn('Malformed modifier data in JSON (priceChange is NaN):', mod);
+            return { id: String(mod.id), name: String(mod.name), priceChange: 0 }; // Fallback for NaN priceChange
+        }
         return {
           id: String(mod.id),
           name: String(mod.name),
-          priceChange: isNaN(priceChange) ? 0 : priceChange, // Ensure valid number
+          priceChange: priceChange,
         };
       }
-      console.warn('Malformed modifier data in JSON:', mod);
-      return { id: 'unknown', name: 'Unknown Modifier', priceChange: 0 }; // Fallback for malformed data
-    }).filter(mod => mod.id !== 'unknown'); // Filter out malformed ones
+      console.warn('Malformed modifier data in JSON (missing fields or not an object):', mod);
+      return { id: 'unknown', name: 'Unknown Modifier', priceChange: 0 }; 
+    }).filter(mod => mod.id !== 'unknown');
   }
+  console.log('parseSelectedModifiers: jsonData is not an array or is null, returning empty array. jsonData:', jsonData);
   return [];
 }
 
@@ -85,7 +89,7 @@ function mapPrismaOrderItemToAppOrderItem(item: PrismaOrderItem): AppOrderItem {
     menuItemName: item.menuItemName,
     quantity: item.quantity,
     unitPrice: item.unitPrice.toNumber(),
-    selectedModifiers: parseSelectedModifiers(item.selectedModifiers), // Use helper for safe parsing
+    selectedModifiers: parseSelectedModifiers(item.selectedModifiers),
     specialRequests: item.specialRequests,
     totalPrice: item.totalPrice.toNumber(),
   };
@@ -123,6 +127,9 @@ export async function createOrderAction(input: CreateOrderInput): Promise<AppOrd
         return { error: `Cannot create order for table ${tableExists.number} because it is ${tableExists.status.toLowerCase()}.` };
     }
 
+    console.log("--- ACTION: createOrderAction - Preparing to create order with items: ---");
+    items.forEach(item => console.log(JSON.stringify(item, null, 2)));
+
     const newOrder = await prisma.order.create({
       data: {
         table: { connect: { id: tableId } },
@@ -149,17 +156,16 @@ export async function createOrderAction(input: CreateOrderInput): Promise<AppOrd
       },
     });
 
+    console.log("--- ACTION: createOrderAction - Order created successfully, ID:", newOrder.id);
     await updateTableOrderDetailsAction(tableId, newOrder.id, totalAmount);
 
     return mapPrismaOrderToAppOrder(newOrder);
   } catch (error) {
     console.error('Error creating order:', error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') { 
-             return { error: 'Failed to create order. Related record (e.g., table or menu item) not found.' };
-        }
+    const typedError = error as Error & { code?: string; meta?: any };
+    if (typedError.code === 'P2025') { 
+         return { error: 'Failed to create order. Related record (e.g., table or menu item) not found.' };
     }
-    const typedError = error as Error;
     return { error: `Failed to create order. ${typedError.message || 'Please check server logs.'}` };
   }
 }
@@ -202,24 +208,32 @@ export async function getOpenOrderByTableIdAction(tableId: string): Promise<AppO
 
 export async function getAppOrderByIdAction(orderId: string): Promise<AppOrder | null | { error: string }> {
   try {
-    if (!orderId) {
-      return { error: 'Order ID is required.' };
+    if (!orderId || typeof orderId !== 'string' || orderId.trim() === "") {
+      console.error(`--- ACTION: getAppOrderByIdAction - INVALID orderId received: >>${orderId}<< ---`);
+      return { error: 'Order ID is required and must be a valid string.' };
     }
-    console.log(`--- ACTION: getAppOrderByIdAction called for orderId: ${orderId} ---`);
-    const order = await prisma.order.findUnique({
+    console.log(`--- ACTION: getAppOrderByIdAction called for orderId: >>${orderId}<< ---`);
+    
+    const prismaOrder = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        items: true, // Eager load items
-        table: true,   // Eager load table
+        items: true, 
+        table: true,   
       },
     });
 
-    if (!order) {
-      console.log(`--- ACTION: Order with ID ${orderId} not found. ---`);
+    if (!prismaOrder) {
+      console.log(`--- ACTION: Order with ID >>${orderId}<< not found in DB. ---`);
       return null; 
     }
-    console.log(`--- ACTION: Order found for ID ${orderId}, mapping to AppOrder. ---`);
-    return mapPrismaOrderToAppOrder(order);
+
+    console.log(`--- ACTION: For orderId >>${orderId}<<, fetched ${prismaOrder.items.length} items from DB:`);
+    prismaOrder.items.forEach(item => {
+      console.log(`  - DB Item ID: ${item.id}, Name: ${item.menuItemName}, Qty: ${item.quantity}, Belongs to Order ID: ${item.orderId}`);
+    });
+    
+    console.log(`--- ACTION: Order found for ID >>${orderId}<<, mapping to AppOrder. ---`);
+    return mapPrismaOrderToAppOrder(prismaOrder);
   } catch (error) {
     console.error(`Error fetching order by ID ${orderId}:`, error);
     const typedError = error as Error;
@@ -241,14 +255,15 @@ export async function updateOrderItemsAction(
     if (orderToUpdate.status === 'PAID' || orderToUpdate.status === 'CANCELLED') {
         return { error: `Cannot update items for an order that is already ${orderToUpdate.status.toLowerCase()}.` };
     }
+    
+    console.log("--- ACTION: updateOrderItemsAction - Preparing to update order ID:", orderId, "with items:");
+    items.forEach(item => console.log(JSON.stringify(item, null, 2)));
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      // Delete existing items first
       await tx.orderItem.deleteMany({
         where: { orderId: orderId },
       });
 
-      // Then update the order with new items and totals
       const orderWithNewItems = await tx.order.update({
         where: { id: orderId },
         data: {
@@ -276,17 +291,16 @@ export async function updateOrderItemsAction(
       return orderWithNewItems;
     });
     
+    console.log("--- ACTION: updateOrderItemsAction - Order updated successfully, ID:", updatedOrder.id);
     await updateTableOrderDetailsAction(updatedOrder.tableId, orderId, totals.totalAmount);
 
     return mapPrismaOrderToAppOrder(updatedOrder);
   } catch (error) {
     console.error(`Error updating items for order ${orderId}:`, error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') { 
-             return { error: 'Failed to update order items. Order or related menu item not found.' };
-        }
+    const typedError = error as Error & { code?: string; meta?: any };
+    if (typedError.code === 'P2025') { 
+         return { error: 'Failed to update order items. Order or related menu item not found.' };
     }
-    const typedError = error as Error;
     return { error: `Failed to update items for order ${orderId}. ${typedError.message || ''}` };
   }
 }
@@ -317,22 +331,18 @@ export async function updateOrderStatusAction(orderId: string, status: PrismaOrd
     });
 
     if (status === 'PAID' || status === 'CANCELLED') {
-      // Clear order details from table
       await updateTableOrderDetailsAction(updatedOrder.tableId, null, null);
     } else if (status === 'DONE' || status === 'IN_PROGRESS' || status === 'OPEN') {
-      // Ensure table status reflects an active order
       await updateTableOrderDetailsAction(updatedOrder.tableId, updatedOrder.id, updatedOrder.totalAmount.toNumber());
     }
 
     return mapPrismaOrderToAppOrder(updatedOrder);
   } catch (error) {
     console.error(`Error updating status for order ${orderId}:`, error);
-     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') { 
-             return { error: 'Failed to update order status. Order not found.' };
-        }
+    const typedError = error as Error & { code?: string; meta?: any };
+     if (typedError.code === 'P2025') { 
+         return { error: 'Failed to update order status. Order not found.' };
     }
-    const typedError = error as Error;
     return { error: `Failed to update status for order ${orderId}. ${typedError.message || ''}` };
   }
 }
