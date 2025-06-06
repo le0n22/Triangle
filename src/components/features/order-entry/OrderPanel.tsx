@@ -76,10 +76,10 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       if (tableIdParam.startsWith('t') && tableNumberMatch) {
         tableNumber = parseInt(tableNumberMatch[0], 10);
       } else {
-         console.warn(`OrderPanel: Could not parse table number from tableIdParam: ${tableIdParam}.`);
+         console.warn(\`OrderPanel: Could not parse table number from tableIdParam: \${tableIdParam}.\`);
       }
       const newTempOrder: Order = {
-        id: `temp-ord-${Date.now()}`,
+        id: \`temp-ord-\${Date.now()}\`,
         tableId: tableIdParam,
         tableNumber: tableNumber,
         items: [],
@@ -140,14 +140,14 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       };
       const newOrderItem: OrderItem = {
         ...newOrderItemBase,
-        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        id: \`item-\${Date.now()}-\${Math.random().toString(36).substr(2, 5)}\`,
         totalPrice: calculateOrderItemTotal(newOrderItemBase),
       };
       updatedItems = [...currentOrder.items, newOrderItem];
       itemToPotentiallyOpenModalFor = newOrderItem;
     }
     updateOrderAndRecalculate(updatedItems);
-    toast({ title: `${menuItem.name} added to order.` });
+    toast({ title: \`\${menuItem.name} added to order.\` });
     if (itemToPotentiallyOpenModalFor && menuItem.availableModifiers && menuItem.availableModifiers.length > 0) {
         handleEditItemModifiers(itemToPotentiallyOpenModalFor);
     }
@@ -217,7 +217,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
   const formatModifiersForKOT = (modifiers: Modifier[]): string[] => {
     if (!modifiers || modifiers.length === 0) return [];
-    return modifiers.map(m => `${m.name}${m.priceChange !== 0 ? ` (${m.priceChange > 0 ? '+' : '-'}$${Math.abs(m.priceChange).toFixed(2)})` : ''}`);
+    return modifiers.map(m => \`\${m.name}\${m.priceChange !== 0 ? \` (\${m.priceChange > 0 ? '+' : '-'}$\${Math.abs(m.priceChange).toFixed(2)})\` : ''}\`);
   };
 
   const handleConfirmOrder = async () => {
@@ -284,9 +284,9 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-green-600 text-white" });
         let queryString = '';
         if (deltaItemsForKOT.length > 0) {
-          queryString = `?delta=${encodeURIComponent(JSON.stringify(deltaItemsForKOT))}`;
+          queryString = \`?delta=\${encodeURIComponent(JSON.stringify(deltaItemsForKOT))}\`;
         }
-        router.push(`/dashboard/kot/${result.id}${queryString}`);
+        router.push(\`/dashboard/kot/\${result.id}\${queryString}\`);
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred while saving the order.", variant: "destructive" });
@@ -315,7 +315,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(statusUpdateResult)));
         orderForPayment = statusUpdateResult;
       }
-      router.push(`/dashboard/payment/${orderForPayment.id}`);
+      router.push(\`/dashboard/payment/\${orderForPayment.id}\`);
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred.", variant: "destructive" });
     } finally {
@@ -331,7 +331,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       let tableNumber = 0;
        if (tableIdParam.startsWith('t') && tableNumberMatch) tableNumber = parseInt(tableNumberMatch[0], 10);
       setCurrentOrder({
-        id: `temp-ord-${Date.now()}`, tableId: tableIdParam, tableNumber: tableNumber, items: [],
+        id: \`temp-ord-\${Date.now()}\`, tableId: tableIdParam, tableNumber: tableNumber, items: [],
         status: 'OPEN', subtotal: 0, taxRate: 0.08, taxAmount: 0, totalAmount: 0,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       });
@@ -344,7 +344,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       } else {
         setCurrentOrder(result);
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(result)));
-        toast({ title: "Order Cancelled", description: `Order ${result.id.substring(0,8)} has been cancelled.`, variant: "destructive" });
+        toast({ title: "Order Cancelled", description: \`Order \${result.id.substring(0,8)} has been cancelled.\`, variant: "destructive" });
         router.push('/dashboard/tables');
       }
     }

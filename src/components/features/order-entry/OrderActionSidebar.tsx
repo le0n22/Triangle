@@ -54,13 +54,14 @@ export function OrderActionSidebar({
   const isOrderPersisted = order.id && !order.id.startsWith('temp-ord-');
   const isOrderClosed = order.status === 'PAID' || order.status === 'CANCELLED';
   const allItemsQuantityZero = order.items.every(item => item.quantity === 0);
+  // An order is effectively empty for action disabling if it has no items OR if it's persisted and all its items have been zeroed out.
   const effectiveNoItemsForActions = noItemsCurrentlyInOrder || (isOrderPersisted && allItemsQuantityZero);
   
   // Disable most actions if order is closed, or if saving, or if no items for certain actions
   const baseActionDisabled = effectiveNoItemsForActions || isSaving || isOrderClosed;
   const confirmDisabled = baseActionDisabled || isSaving || isOrderClosed;
   const paymentDisabled = baseActionDisabled || isSaving || !isOrderPersisted || isOrderClosed;
-  const cancelDisabled = isSaving || isOrderClosed; // Cancel might be possible even with no items if order is persisted
+  const cancelDisabled = isSaving || isOrderClosed; // Cancel might be possible even with no items if order is persisted and not yet cancelled
   const backToTablesDisabled = isSaving;
 
   const actionButtons = [
@@ -98,7 +99,7 @@ export function OrderActionSidebar({
           className="w-full h-14 bg-accent hover:bg-accent/90 text-accent-foreground"
           disabled={confirmDisabled}
         >
-          {isSaving && (currentOrder.id.startsWith('temp-ord-') || !isOrderClosed) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+          {isSaving && (order.id.startsWith('temp-ord-') || (isOrderPersisted && !isOrderClosed)) ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
           {isOrderPersisted ? 'Update & KOT' : 'Confirm & KOT'}
         </Button>
         <Button
@@ -107,7 +108,7 @@ export function OrderActionSidebar({
           className="w-full h-14 bg-green-600 hover:bg-green-700 text-white"
           disabled={paymentDisabled}
         >
-          {isSaving && isOrderPersisted && !isOrderClosed ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+          {isSaving && isOrderPersisted && !isOrderClosed && order.status !== 'PAID' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
           Proceed to Payment
         </Button>
         <Button
@@ -117,7 +118,7 @@ export function OrderActionSidebar({
           className="w-full h-14"
           disabled={cancelDisabled}
         >
-          {isSaving && (currentOrder.id.startsWith('temp-ord-') || order.status !== 'CANCELLED') ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Ban className="mr-2 h-5 w-5" />}
+          {isSaving && (order.status !== 'CANCELLED') ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Ban className="mr-2 h-5 w-5" />}
           Cancel Order
         </Button>
         <Button
