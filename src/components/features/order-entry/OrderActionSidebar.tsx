@@ -32,6 +32,7 @@ interface OrderActionSidebarProps {
 
 interface ActionButtonConfig {
   label: string;
+  getLabel?: (order: Order | null) => string; // For dynamic labels
   icon: React.ElementType;
   onClick: () => void | Promise<void>;
   isDisabled: (order: Order | null, isSaving: boolean) => boolean;
@@ -68,23 +69,31 @@ export function OrderActionSidebar({
   ];
   
   const navigationAndPrimaryActions: ActionButtonConfig[] = [
-     { label: 'Back to Tables', icon: ChevronLeft, onClick: onBackToTables, isDisabled: (o, s) => s, variant: 'outline', className: "h-14 text-sm" },
      { 
-      label: isOrderPersisted ? 'Update & KOT' : 'Confirm & KOT', 
+      label: '< Back', 
+      icon: ChevronLeft, 
+      onClick: onBackToTables, 
+      isDisabled: (o, s) => s, 
+      variant: 'outline', 
+      className: "h-12 text-xs px-3" 
+    },
+     { 
+      getLabel: (o) => (o && o.id && !o.id.startsWith('temp-ord-')) ? 'Update' : 'Confirm', 
+      label: '', // Will be overridden by getLabel
       icon: Save, 
       onClick: onConfirmOrder, 
       isDisabled: (o, s) => effectiveNoItemsForActions || s || !!isOrderClosed, 
       variant: 'default',
-      className: "bg-primary hover:bg-primary/90 text-primary-foreground h-14 text-sm",
+      className: "bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-xs px-3",
       showSpinner: true 
     },
     { 
-      label: 'To Payment', 
+      label: 'Payment', 
       icon: CreditCard, 
       onClick: onGoToPayment, 
-      isDisabled: (o, s) => effectiveNoItemsForActions || s || !isOrderPersisted || !!isOrderClosed, 
+      isDisabled: (o, s) => effectiveNoItemsForActions || s || !(o && o.id && !o.id.startsWith('temp-ord-')) || !!isOrderClosed, 
       variant: 'success', 
-      className: "bg-accent hover:bg-accent/90 text-accent-foreground h-14 text-sm", // Updated to use accent colors from theme
+      className: "bg-accent hover:bg-accent/90 text-accent-foreground h-12 text-xs px-3",
       showSpinner: true 
     },
   ];
@@ -110,7 +119,7 @@ export function OrderActionSidebar({
               onClick={btn.onClick}
               disabled={btn.isDisabled(order, isSaving)}
               className={cn(
-                "w-full flex flex-col items-center justify-center p-1 text-xs leading-tight h-auto py-2.5 px-3", // Compact style
+                "w-full flex flex-col items-center justify-center p-1 text-xs leading-tight h-auto py-2.5 px-3", 
                 btn.className
               )}
             >
@@ -121,21 +130,24 @@ export function OrderActionSidebar({
         </div>
       </ScrollArea>
       <div className="pt-1.5 mt-auto space-y-1.5 border-t border-border">
-        {navigationAndPrimaryActions.map((btn) => (
-           <Button
-              key={btn.label}
+        {navigationAndPrimaryActions.map((btn) => {
+           const currentLabel = btn.getLabel ? btn.getLabel(order) : btn.label;
+           return (
+            <Button
+              key={currentLabel} // Use currentLabel for key if getLabel exists
               variant={btn.variant === 'success' ? 'default' : (btn.variant || 'default')}
               onClick={btn.onClick}
               disabled={btn.isDisabled(order, isSaving)}
               className={cn(
-                "w-full", // Default height and text size from buttonVariants
+                "w-full", 
                 btn.className 
               )}
             >
-              {isSaving && btn.showSpinner ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <btn.icon className="mr-2 h-5 w-5" />}
-              {btn.label}
+              {isSaving && btn.showSpinner ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <btn.icon className="mr-2 h-4 w-4" />}
+              {currentLabel}
             </Button>
-        ))}
+           );
+        })}
       </div>
        {isOrderClosed && (
         <p className="text-center text-xs text-muted-foreground py-2 mt-1 border-t border-border">
@@ -145,3 +157,4 @@ export function OrderActionSidebar({
     </div>
   );
 }
+    

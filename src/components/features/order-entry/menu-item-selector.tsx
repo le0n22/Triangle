@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 interface MenuItemSelectorProps {
   categories: MenuCategory[];
   onSelectItem: (item: MenuItem, modifiers: Modifier[]) => void;
-  isSaving: boolean; // Added to disable selection during save
+  isSaving: boolean; 
 }
 
 export function MenuItemSelector({ categories: initialCategories, onSelectItem, isSaving }: MenuItemSelectorProps) {
@@ -35,7 +35,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
   }, [initialCategories]); 
 
   const handleItemClick = (item: MenuItem) => {
-    if (isSaving) return; // Prevent adding items while saving
+    if (isSaving) return; 
     onSelectItem(item, []); 
   };
 
@@ -53,7 +53,7 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
   }, [selectedCategory, searchTerm]);
 
   return (
-    <div className="flex flex-col h-full border-r border-border bg-card text-card-foreground p-4 space-y-4">
+    <div className="flex flex-col h-full border-r border-border bg-card text-card-foreground p-3 space-y-3">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -152,3 +152,4 @@ export function MenuItemSelector({ categories: initialCategories, onSelectItem, 
     </div>
   );
 }
+    

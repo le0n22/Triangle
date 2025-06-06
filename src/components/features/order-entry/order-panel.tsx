@@ -62,7 +62,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   const [isModifierModalOpen, setIsModifierModalOpen] = useState(false);
   const [editingOrderItem, setEditingOrderItem] = useState<OrderItem | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  // const [testVisibility, setTestVisibility] = useState(true); // Test flag
+  // const [testVisibility, setTestVisibility] = useState(false); // Test flag removed
 
   const { toast } = useToast();
   const router = useRouter();
@@ -137,11 +137,11 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         quantity: 1,
         unitPrice: menuItem.price,
         selectedModifiers: selectedModifiers,
-        specialRequests: '', // Start with empty special requests
+        specialRequests: '', 
       };
       const newOrderItem: OrderItem = {
         ...newOrderItemBase,
-        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, // Unique ID for new item instance
+        id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, 
         totalPrice: calculateOrderItemTotal(newOrderItemBase),
       };
       updatedItems = [...currentOrder.items, newOrderItem];
@@ -158,11 +158,10 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     if (!currentOrder || currentOrder.status === 'PAID' || currentOrder.status === 'CANCELLED' || isSaving) return;
     let updatedItems;
     if (newQuantity <= 0) {
-      // If item is a new (temp) item, remove it. If it's an existing DB item, mark quantity as 0.
       const itemToUpdate = currentOrder.items.find(item => item.id === orderItemId);
-      if (itemToUpdate && itemToUpdate.id.startsWith('item-')) { // Temp item
+      if (itemToUpdate && itemToUpdate.id.startsWith('item-')) { 
         updatedItems = currentOrder.items.filter(item => item.id !== orderItemId);
-      } else { // Existing item from DB
+      } else { 
          updatedItems = currentOrder.items.map(item =>
           item.id === orderItemId ? { ...item, quantity: 0, totalPrice: 0 } : item
         );
@@ -172,7 +171,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         item.id === orderItemId ? { ...item, quantity: newQuantity, totalPrice: calculateOrderItemTotal({...item, quantity: newQuantity}) } : item
       );
     }
-    // Filter out temp items with 0 quantity, but keep persisted items with 0 quantity (they will be handled by backend)
     updateOrderAndRecalculate(updatedItems.filter(item => item.quantity > 0 || !item.id.startsWith('item-')));
   };
 
@@ -182,14 +180,14 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     if (!itemToRemove) return;
 
     let updatedItems;
-    if (itemToRemove.id.startsWith('item-')) { // If it's a new, unsaved item, just remove it from the list
+    if (itemToRemove.id.startsWith('item-')) { 
         updatedItems = currentOrder.items.filter(item => item.id !== orderItemId);
-    } else { // If it's an item that was loaded from the DB, mark its quantity as 0
+    } else { 
         updatedItems = currentOrder.items.map(item =>
             item.id === orderItemId ? { ...item, quantity: 0, totalPrice: 0 } : item
         );
     }
-    updateOrderAndRecalculate(updatedItems.filter(item => item.quantity > 0 || !item.id.startsWith('item-'))); // Keep persisted items with 0 qty for now
+    updateOrderAndRecalculate(updatedItems.filter(item => item.quantity > 0 || !item.id.startsWith('item-'))); 
     toast({ title: "Item marked for removal or removed.", variant: "destructive" });
   };
 
@@ -197,7 +195,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     if (currentOrder?.status === 'PAID' || currentOrder?.status === 'CANCELLED' || isSaving) return;
     const menuItemDetails = menuCategories.flatMap(c => c.items).find(mi => mi.id === itemToEdit.menuItemId);
     if (menuItemDetails) {
-      setEditingOrderItem({ ...itemToEdit, menuItemName: menuItemDetails.name }); // Ensure menuItemName is set
+      setEditingOrderItem({ ...itemToEdit, menuItemName: menuItemDetails.name }); 
       setIsModifierModalOpen(true);
     } else {
       toast({ title: "Error", description: "Could not find menu item details to edit modifiers.", variant: "destructive" });
@@ -227,11 +225,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   const handleConfirmOrder = async () => {
     if (!currentOrder || isSaving) return;
 
-    // Filter out items that were persisted but now have quantity 0
-    // and also new (temp) items that have quantity 0 (though they should already be filtered by handleUpdateItemQuantity)
     const activeItemsForBackend = currentOrder.items.filter(item => item.quantity > 0);
 
-    // If after filtering, no items are left, AND there was no initial order or initial order was also empty
     if (activeItemsForBackend.length === 0 && (!initialOrderSnapshot || initialOrderSnapshot.items.every(item => currentOrder.items.find(ci => ci.id === item.id)?.quantity === 0))) {
         toast({ title: "Cannot confirm empty or fully removed order", variant: "destructive" });
         return;
@@ -240,15 +235,14 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     setIsSaving(true);
     const deltaItemsForKOT: QueryDeltaItem[] = [];
 
-    // Calculate delta for KOT
     if (currentOrder) {
       currentOrder.items.forEach(currentItem => {
         const snapshotItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === currentItem.id);
-        if (!snapshotItem && currentItem.quantity > 0) { // New item added
+        if (!snapshotItem && currentItem.quantity > 0) { 
           deltaItemsForKOT.push({ n: currentItem.menuItemName, q: currentItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'new' });
-        } else if (snapshotItem && currentItem.quantity === 0 && snapshotItem.quantity > 0) { // Item quantity reduced to 0 (effectively deleted from current view of active items)
+        } else if (snapshotItem && currentItem.quantity === 0 && snapshotItem.quantity > 0) { 
           deltaItemsForKOT.push({ n: currentItem.menuItemName, q: 0, oq: snapshotItem.quantity, st: 'deleted' });
-        } else if (snapshotItem && currentItem.quantity > 0) { // Item exists in both, check for modifications
+        } else if (snapshotItem && currentItem.quantity > 0) { 
           const qtyChanged = currentItem.quantity !== snapshotItem.quantity;
           const modsChanged = !areModifierArraysEqual(currentItem.selectedModifiers, snapshotItem.selectedModifiers);
           const reqsChanged = currentItem.specialRequests !== snapshotItem.specialRequests;
@@ -257,10 +251,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           }
         }
       });
-      // Check for items that were in snapshot but completely removed (not just quantity to 0)
       initialOrderSnapshot?.items.forEach(snapItem => {
         if (snapItem.quantity > 0 && !currentOrder.items.some(currItem => currItem.id === snapItem.id && currItem.quantity > 0)) {
-          // Ensure it wasn't already marked as deleted (e.g. by setting quantity to 0)
           if (!deltaItemsForKOT.some(di => di.n === snapItem.menuItemName && (di.st === 'deleted' || (di.st === 'modified' && di.q === 0)))) {
             deltaItemsForKOT.push({ n: snapItem.menuItemName, q: 0, oq: snapItem.quantity, st: 'deleted' });
           }
@@ -284,14 +276,14 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
     try {
       let result: AppOrder | { error: string };
-      if (currentOrder.id.startsWith('temp-ord-')) { // This is a brand new order
-        if (orderItemsInput.length === 0) { // Should be caught by earlier check, but as a safeguard
+      if (currentOrder.id.startsWith('temp-ord-')) { 
+        if (orderItemsInput.length === 0) { 
           toast({ title: "Cannot create an empty order", variant: "destructive" });
           setIsSaving(false); return;
         }
         const createOrderData: CreateOrderInput = { tableId: currentOrder.tableId, items: orderItemsInput, ...finalTotals };
         result = await createOrderAction(createOrderData);
-      } else { // This is an existing order being updated
+      } else { 
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, finalTotals);
       }
 
@@ -299,7 +291,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
       } else {
         setCurrentOrder(result);
-        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); // Update snapshot to new saved state
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); 
         toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-accent text-accent-foreground" });
         let queryString = '';
         if (deltaItemsForKOT.length > 0) {
@@ -325,14 +317,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     try {
       let orderForPayment = currentOrder;
       if (currentOrder.status !== 'DONE' && currentOrder.status !== 'PAID' && currentOrder.status !== 'CANCELLED') {
-        // Update status to DONE before going to payment if it's still OPEN or IN_PROGRESS
         const statusUpdateResult = await updateOrderStatusAction(currentOrder.id, 'DONE');
         if ('error' in statusUpdateResult) {
           toast({ title: "Error Updating Status", description: statusUpdateResult.error, variant: "destructive" });
           setIsSaving(false); return;
         }
-        setCurrentOrder(statusUpdateResult); // Update local state
-        setInitialOrderSnapshot(JSON.parse(JSON.stringify(statusUpdateResult))); // Update snapshot
+        setCurrentOrder(statusUpdateResult); 
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(statusUpdateResult))); 
         orderForPayment = statusUpdateResult;
       }
       router.push(`/dashboard/payment/${orderForPayment.id}`);
@@ -347,7 +338,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     if (!currentOrder || isSaving) return;
     setIsSaving(true);
     if (currentOrder.id.startsWith('temp-ord-')) {
-      // For a temporary, unsaved order, just reset it
       const tableNumberMatch = tableIdParam.match(/\d+/);
       let tableNumber = 0;
        if (tableIdParam.startsWith('t') && tableNumberMatch) tableNumber = parseInt(tableNumberMatch[0], 10);
@@ -356,24 +346,22 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         status: 'OPEN', subtotal: 0, taxRate: 0.08, taxAmount: 0, totalAmount: 0,
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       });
-      setInitialOrderSnapshot(null); // No snapshot for a new temp order
+      setInitialOrderSnapshot(null); 
       toast({ title: "Order Cleared", description: "The unsaved order has been cleared." });
     } else {
-      // For a persisted order, call the backend to cancel it
       const result = await updateOrderStatusAction(currentOrder.id, 'CANCELLED');
       if ('error' in result) {
         toast({ title: "Error Cancelling Order", description: result.error, variant: "destructive" });
       } else {
-        setCurrentOrder(result); // Update local state
-        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); // Update snapshot
+        setCurrentOrder(result); 
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); 
         toast({ title: "Order Cancelled", description: `Order ${result.id.substring(0,8)} has been cancelled.`, variant: "destructive" });
-        router.push('/dashboard/tables'); // Redirect after cancelling a persisted order
+        router.push('/dashboard/tables'); 
       }
     }
     setIsSaving(false);
   };
 
-  // Placeholder functions for other actions
   const handleBackToTables = () => { if (isSaving) return; router.push('/dashboard/tables'); };
   const handleSplitBill = () => { if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0 || isSaving) return; toast({ title: 'Split Bill', description: 'This feature is not yet implemented.' }); };
   const handlePrintBill = () => { if (!currentOrder || currentOrder.items.filter(i => i.quantity > 0).length === 0 || isSaving) return; toast({ title: 'Print Bill', description: 'This feature is not yet implemented.' }); };
@@ -392,9 +380,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] bg-background text-foreground relative">
-      {/* {testVisibility && <h1 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl text-red-500 z-50">ORDER PANEL TEST VISIBLE</h1>} */}
       {/* Left Column: Menu Item Selector - Wider */}
-      <div className="w-full md:w-1/2 lg:w-7/12 xl:w-2/3 h-1/2 md:h-full border-r border-border">
+      <div className="w-full md:w-9/12 h-1/2 md:h-full border-r border-border">
         <MenuItemSelector
           categories={menuCategories}
           onSelectItem={handleSelectItem}
@@ -422,7 +409,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       </div>
 
       {/* Right Column: Action Sidebar - Fixed Width, Narrower */}
-      <div className="w-full md:w-28 md:flex-none h-auto md:h-full order-last md:order-none">
+      <div className="w-full md:w-24 md:flex-none h-auto md:h-full order-last md:order-none">
          <OrderActionSidebar
             order={currentOrder}
             isSaving={isSaving}
