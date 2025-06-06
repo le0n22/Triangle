@@ -24,6 +24,7 @@ interface CurrentOrderSummaryProps {
   isSaving: boolean; // To disable inputs during save
 }
 
+// Helper function to compare modifier arrays by their IDs and count
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
   if (!arr1 && !arr2) return true;
   if (!arr1 || !arr2) return false;
@@ -90,7 +91,7 @@ export function CurrentOrderSummary({
                 )) {
                     itemState = 'modified';
                 } else if (!initialItem && !item.id.startsWith('item-')) { // Persisted item, but not in snapshot (should not happen with correct snapshot logic, but as fallback)
-                    itemState = 'new';
+                    itemState = 'new'; 
                 }
                 
                 const itemClasses = cn(

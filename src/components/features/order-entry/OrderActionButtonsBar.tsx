@@ -16,6 +16,7 @@ import {
   Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface OrderActionButtonsBarProps {
   order: Order | null;
@@ -53,7 +54,7 @@ export function OrderActionButtonsBar({
 
 
   return (
-    <div className="flex flex-col h-full bg-background p-3 space-y-2 overflow-y-auto">
+    <div className="flex flex-col h-full bg-background p-3 space-y-2 overflow-y-auto border-r border-border">
       <div className="grid grid-cols-2 gap-2">
         <ActionButton
           Icon={SplitSquareHorizontal}
@@ -77,15 +78,17 @@ export function OrderActionButtonsBar({
           Icon={ArrowRightLeft}
           label="Transfer Table"
           onClick={onTransferTable}
-          disabled={effectiveNoItems || isSaving || isOrderClosed}
+          disabled={effectiveNoItems || isSaving || isOrderClosed} // Simplified: disable if no items to prevent accidental transfer of empty order
         />
         <ActionButton
-          Icon={isSaving ? Loader2 : Ban}
+          Icon={isSaving ? Loader2 : Ban} // Show loader if isSaving and cancel is pressed
           label="Cancel Order"
           onClick={onCancelOrder}
-          disabled={isSaving}
-          className={isSaving ? "animate-spin" : "text-destructive border-destructive hover:bg-destructive/10"}
-          iconClassName={isSaving ? "animate-spin" : "text-destructive"}
+          disabled={isSaving && !order.id.startsWith('temp-ord-')} // Disable if saving a persisted order, allow for temp
+          className={cn(
+            (isSaving && order.id.startsWith('temp-ord-')) ? "animate-spin" : "text-destructive border-destructive hover:bg-destructive/10"
+          )}
+          iconClassName={(isSaving && order.id.startsWith('temp-ord-')) ? "animate-spin" : "text-destructive"}
         />
          <ActionButton
           Icon={ChevronLeft}
@@ -108,15 +111,15 @@ export function OrderActionButtonsBar({
             iconClassName={(isSaving && order.id.startsWith('temp-ord-')) ? "animate-spin" : ""}
         />
         <ActionButton
-            Icon={isSaving && !order.id.startsWith('temp-ord-') ? Loader2 : CreditCard}
+            Icon={isSaving && isOrderPersisted ? Loader2 : CreditCard}
             label="Go to Payment"
             onClick={onGoToPayment}
             disabled={effectiveNoItems || isSaving || !isOrderPersisted || isOrderClosed}
             className={cn(
               "bg-primary hover:bg-primary/90 text-primary-foreground w-full h-20",
-              (isSaving && !order.id.startsWith('temp-ord-')) && "animate-spin"
+              (isSaving && isOrderPersisted) && "animate-spin" // Loader if saving a persisted order before payment
             )}
-            iconClassName={(isSaving && !order.id.startsWith('temp-ord-')) ? "animate-spin" : ""}
+            iconClassName={(isSaving && isOrderPersisted) ? "animate-spin" : ""}
         />
       </div>
     </div>

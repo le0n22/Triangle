@@ -18,6 +18,7 @@ import {
   type AppOrder
 } from '@backend/actions/orderActions';
 import { Prisma } from '@prisma/client';
+import { Loader2 } from 'lucide-react'; // Added Loader2
 
 interface OrderPanelProps {
   tableIdParam: string; 
@@ -25,9 +26,10 @@ interface OrderPanelProps {
   menuCategories: MenuCategory[];
 }
 
+// Helper to compare modifier arrays by their IDs and count
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
-  if (!arr1 && !arr2) return true;
-  if (!arr1 || !arr2) return false;
+  if (!arr1 && !arr2) return true; // Both null/undefined
+  if (!arr1 || !arr2) return false; // One is null/undefined
   if (arr1.length !== arr2.length) return false;
   const ids1 = arr1.map(m => m.id).sort();
   const ids2 = arr2.map(m => m.id).sort();
@@ -47,12 +49,12 @@ const calculateOrderTotals = (items: OrderItem[], taxRate: number = 0.08): Pick<
 };
 
 interface QueryDeltaItem {
-  n: string; 
-  q: number; 
-  oq?: number; 
-  m?: string[]; 
-  s?: string; 
-  st: 'new' | 'modified' | 'deleted'; 
+  n: string; // menuItemName
+  q: number; // quantity (current quantity)
+  oq?: number; // oldQuantity (if changed)
+  m?: string[]; // selectedModifiers (formatted string list)
+  s?: string; // specialRequests
+  st: 'new' | 'modified' | 'deleted'; // status of the item in delta
 }
 
 
@@ -76,8 +78,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       if (tableIdParam.startsWith('t') && tableNumberMatch) {
          tableNumber = parseInt(tableNumberMatch[0], 10);
       } else {
-         // For CUIDs, we would ideally fetch table details if not embedded in initialOrder
-         // For now, we'll just use 0 or rely on the initialOrder having the correct table number
          console.warn(`OrderPanel: Could not parse table number from tableIdParam: ${tableIdParam}. Defaulting to 0 if not in initialOrder.`);
       }
       
@@ -242,29 +242,33 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
     const deltaItemsForKOT: QueryDeltaItem[] = [];
     if (initialOrderSnapshot) {
+      // Check for new or modified items in currentOrder
       currentOrder.items.forEach(currentItem => {
         const snapshotItem = initialOrderSnapshot.items.find(si => si.id === currentItem.id);
         if (!snapshotItem && currentItem.quantity > 0) { // New item
           deltaItemsForKOT.push({ n: currentItem.menuItemName, q: currentItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'new' });
-        } else if (snapshotItem && currentItem.quantity === 0 && snapshotItem.quantity > 0) { // Deleted item
-          deltaItemsForKOT.push({ n: currentItem.menuItemName, q: 0, oq: snapshotItem.quantity, st: 'deleted' });
-        } else if (snapshotItem && currentItem.quantity > 0) { // Potentially modified
+        } else if (snapshotItem) { // Existing item, check if modified or deleted (quantity 0)
           const qtyChanged = currentItem.quantity !== snapshotItem.quantity;
           const modsChanged = !areModifierArraysEqual(currentItem.selectedModifiers, snapshotItem.selectedModifiers);
           const reqsChanged = currentItem.specialRequests !== snapshotItem.specialRequests;
-          if (qtyChanged || modsChanged || reqsChanged) {
+
+          if (currentItem.quantity === 0 && snapshotItem.quantity > 0) { // Deleted item
+             deltaItemsForKOT.push({ n: currentItem.menuItemName, q: 0, oq: snapshotItem.quantity, st: 'deleted' });
+          } else if (currentItem.quantity > 0 && (qtyChanged || modsChanged || reqsChanged)) { // Modified item
             deltaItemsForKOT.push({ n: currentItem.menuItemName, q: currentItem.quantity, oq: snapshotItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'modified' });
           }
         }
       });
+      // Check for items that were in snapshot but completely removed (not just qty 0)
       initialOrderSnapshot.items.forEach(snapItem => {
-        if (!currentOrder.items.some(ci => ci.id === snapItem.id && ci.quantity > 0)) { // Item in snapshot but not in current (or qty 0)
-           if (!deltaItemsForKOT.some(di => di.n === snapItem.menuItemName && di.st === 'deleted')) { // Avoid double-adding deleted
+        if (snapItem.quantity > 0 && !currentOrder.items.some(ci => ci.id === snapItem.id && ci.quantity > 0)) {
+           if (!deltaItemsForKOT.some(di => di.n === snapItem.menuItemName && (di.st === 'deleted' || (di.st === 'modified' && di.q === 0) ))) {
             deltaItemsForKOT.push({ n: snapItem.menuItemName, q: 0, oq: snapItem.quantity, st: 'deleted' });
            }
         }
       });
-    } else { // No snapshot, so all current items are new for KOT
+
+    } else { // No snapshot, all current (active) items are new for KOT
       activeItems.forEach(item => {
         deltaItemsForKOT.push({ n: item.menuItemName, q: item.quantity, m: formatModifiersForKOT(item.selectedModifiers), s: item.specialRequests, st: 'new' });
       });
@@ -292,8 +296,10 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           return;
         }
         const createOrderData: CreateOrderInput = { tableId: currentOrder.tableId, items: orderItemsInput, ...finalTotals };
+        console.log("--- OrderPanel: Creating new order with data: ---", JSON.stringify(createOrderData, null, 2));
         result = await createOrderAction(createOrderData);
       } else { 
+        console.log(`--- OrderPanel: Updating existing order ${currentOrder.id} with items: ---`, JSON.stringify(orderItemsInput, null, 2));
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, finalTotals);
       }
 
@@ -395,14 +401,14 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
   }
 
   return (
-    <div className="flex h-[calc(100vh-var(--header-height,4rem))] bg-background text-foreground">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem))] bg-background text-foreground">
       {/* Left Column: Menu Item Selector */}
-      <div className="w-1/3 lg:w-2/5 xl:w-1/3 border-r border-border">
+      <div className="w-full md:w-1/3 lg:w-2/5 xl:w-1/3 h-1/2 md:h-full">
         <MenuItemSelector categories={menuCategories} onSelectItem={handleSelectItem} />
       </div>
       
       {/* Middle Column: Action Buttons Bar */}
-      <div className="w-64 flex-none border-r border-border">
+      <div className="w-full md:w-64 md:flex-none h-auto md:h-full order-last md:order-none"> {/* Order last on mobile */}
         {currentOrder && (
           <OrderActionButtonsBar
             order={currentOrder}
@@ -420,7 +426,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       </div>
 
       {/* Right Column: Current Order Summary */}
-      <div className="flex-grow">
+      <div className="w-full md:flex-grow h-1/2 md:h-full order-first md:order-none"> {/* Order first on mobile */}
         {currentOrder ? (
           <CurrentOrderSummary 
             order={currentOrder}
