@@ -48,7 +48,6 @@ import {
 
 
 export function ModifierManagementSettings() {
-  console.log('FRONTEND: ModifierManagementSettings component RENDERED');
   const [modifiers, setModifiers] = useState<AppModifier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false); // For add/edit/delete operations
@@ -64,44 +63,35 @@ export function ModifierManagementSettings() {
   const { toast } = useToast();
 
   const fetchModifiers = async () => {
-    console.log('FRONTEND: ModifierManagementSettings: fetchModifiers called.');
     setIsLoading(true);
     try {
-      console.log('FRONTEND: ModifierManagementSettings: Attempting to call getAllModifiersAction...');
       const dbModifiers = await getAllModifiersAction();
-      console.log('FRONTEND: ModifierManagementSettings: getAllModifiersAction RESPONSE:', dbModifiers);
       
       if (Array.isArray(dbModifiers)) {
         setModifiers(dbModifiers.sort((a, b) => a.name.localeCompare(b.name)));
-        console.log('FRONTEND: ModifierManagementSettings: Modifiers state HAS BEEN SET with data from action.');
       } else if (dbModifiers && typeof dbModifiers === 'object' && 'error' in dbModifiers) {
         toast({ title: 'Error Fetching Modifiers', description: (dbModifiers as {error: string}).error, variant: 'destructive' });
-        console.error("FRONTEND: ModifierManagementSettings: Error from getAllModifiersAction:", (dbModifiers as {error: string}).error);
-        setModifiers([]); // Set to empty array on error to clear dummy data
+        console.error("Error from getAllModifiersAction:", (dbModifiers as {error: string}).error);
+        setModifiers([]); 
       } else {
-        console.error("FRONTEND: ModifierManagementSettings: Unexpected response from getAllModifiersAction:", dbModifiers);
+        console.error("Unexpected response from getAllModifiersAction:", dbModifiers);
         toast({ title: 'Error', description: 'Unexpected response when fetching modifiers.', variant: 'destructive' });
-        setModifiers([]); // Clear dummy data
+        setModifiers([]); 
       }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to fetch modifiers. See console for details.', variant: 'destructive' });
-      console.error("FRONTEND: ModifierManagementSettings: CRITICAL ERROR calling getAllModifiersAction:", error);
-      setModifiers([]); // Clear dummy data
+      console.error("CRITICAL ERROR calling getAllModifiersAction:", error);
+      setModifiers([]); 
     } finally {
       setIsLoading(false);
-      console.log('FRONTEND: ModifierManagementSettings: fetchModifiers finished. isLoading set to false.');
     }
   };
 
   useEffect(() => {
-    console.log('FRONTEND: ModifierManagementSettings: useEffect triggered to call fetchModifiers. Current isLoading state:', isLoading);
-    // Removed isLoading from dependency array to ensure it runs once on mount, 
-    // and then only when explicitly refreshed.
     fetchModifiers();
-  }, []); // Runs once on mount
+  }, []); 
 
   const handleAddModifier = async () => {
-    console.log('FRONTEND: ModifierManagementSettings: handleAddModifier called with form:', addForm);
     if (!addForm.name || addForm.priceChange === '') {
       toast({ title: 'Validation Error', description: 'Modifier name and price change are required.', variant: 'destructive' });
       return;
@@ -115,7 +105,6 @@ export function ModifierManagementSettings() {
         return;
       }
       const result = await createModifierAction({ name: addForm.name, priceChange: price });
-      console.log('FRONTEND: ModifierManagementSettings: createModifierAction result:', result);
 
       if ('error' in result) {
         toast({ title: 'Error Adding Modifier', description: result.error, variant: 'destructive' });
@@ -126,7 +115,7 @@ export function ModifierManagementSettings() {
         await fetchModifiers(); 
       }
     } catch (error) {
-      console.error("FRONTEND: ModifierManagementSettings: Error in handleAddModifier:", error);
+      console.error("Error in handleAddModifier:", error);
       toast({ title: 'Unexpected Error', description: 'Could not add modifier.', variant: 'destructive' });
     } finally {
       setIsMutating(false);
@@ -140,7 +129,6 @@ export function ModifierManagementSettings() {
   };
 
   const handleUpdateModifier = async () => {
-    console.log('FRONTEND: ModifierManagementSettings: handleUpdateModifier called with form:', editForm);
     if (!editForm.name || editForm.priceChange === '' || !editingModifier) {
       toast({ title: 'Validation Error', description: 'Modifier name and price change are required.', variant: 'destructive' });
       return;
@@ -154,7 +142,6 @@ export function ModifierManagementSettings() {
         return;
       }
       const result = await updateModifierAction(editingModifier.id, { name: editForm.name, priceChange: price });
-      console.log('FRONTEND: ModifierManagementSettings: updateModifierAction result:', result);
 
       if ('error' in result) {
         toast({ title: 'Error Updating Modifier', description: result.error, variant: 'destructive' });
@@ -165,7 +152,7 @@ export function ModifierManagementSettings() {
         await fetchModifiers();
       }
     } catch (error) {
-      console.error("FRONTEND: ModifierManagementSettings: Error in handleUpdateModifier:", error);
+      console.error("Error in handleUpdateModifier:", error);
       toast({ title: 'Unexpected Error', description: 'Could not update modifier.', variant: 'destructive' });
     } finally {
       setIsMutating(false);
@@ -178,11 +165,9 @@ export function ModifierManagementSettings() {
 
   const handleDeleteModifier = async () => {
     if (!modifierToDelete) return;
-    console.log('FRONTEND: ModifierManagementSettings: handleDeleteModifier called for:', modifierToDelete.name);
     setIsMutating(true);
     try {
       const result = await deleteModifierAction(modifierToDelete.id);
-      console.log('FRONTEND: ModifierManagementSettings: deleteModifierAction result:', result);
 
       if (result.success) {
         toast({ title: 'Modifier Deleted', description: `Modifier "${modifierToDelete.name}" has been deleted.` });
@@ -191,7 +176,7 @@ export function ModifierManagementSettings() {
         toast({ title: 'Error Deleting Modifier', description: result.error || 'Failed to delete modifier.', variant: 'destructive' });
       }
     } catch (error) {
-      console.error("FRONTEND: ModifierManagementSettings: Error in handleDeleteModifier:", error);
+      console.error("Error in handleDeleteModifier:", error);
       toast({ title: 'Unexpected Error', description: 'Could not delete modifier.', variant: 'destructive' });
     } finally {
       setModifierToDelete(null);
@@ -243,7 +228,7 @@ export function ModifierManagementSettings() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading && modifiers.length === 0 ? ( // Show loading only if modifiers array is empty during initial load
+        {isLoading && modifiers.length === 0 ? ( 
           <div className="text-center py-10">
             <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
             <p className="mt-2 text-muted-foreground">Loading modifiers...</p>
