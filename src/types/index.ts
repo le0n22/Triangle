@@ -27,7 +27,7 @@ export interface MenuItem {
   dataAiHint?: string; // For placeholder images
   availableModifiers?: Modifier[]; // Modifiers that can be applied to this item
   categoryId: string; 
-  defaultPrinterRole?: PrinterRole; 
+  defaultPrinterRole?: PrinterRole | null; // Updated to allow null
 }
 
 export interface OrderItem {

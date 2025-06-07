@@ -2,7 +2,8 @@
 'use server';
 
 import prisma from '@backend/lib/prisma';
-import type { MenuItem as PrismaMenuItem, MenuCategory as PrismaMenuCategory, Modifier as PrismaModifier } from '@prisma/client';
+import type { MenuItem as PrismaMenuItem, MenuCategory as PrismaMenuCategory, Modifier as PrismaModifier, PrinterRole as PrismaPrinterRole } from '@prisma/client';
+import type { PrinterRole } from '@/types'; // Import frontend PrinterRole
 
 // Frontend'in kullanacağı MenuItem tipi
 // Kategori ve modifier detaylarını da içerebilir
@@ -16,6 +17,7 @@ export interface AppMenuItem {
   categoryId: string;
   categoryName: string; // Kategori adını göstermek için
   availableModifiers: { id: string; name: string; priceChange: number }[]; // priceChange should be number
+  defaultPrinterRole?: PrinterRole | null; // Added field
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,6 +31,7 @@ export interface MenuItemFormData {
   dataAiHint?: string;
   categoryId: string;
   availableModifierIds?: string[]; // Sadece ID'ler
+  defaultPrinterRole?: PrinterRole | null; // Added field for form data consistency, though not directly used in create/update yet via UI
 }
 
 function mapPrismaMenuItemToAppMenuItem(
@@ -48,6 +51,7 @@ function mapPrismaMenuItemToAppMenuItem(
       name: mod.name,
       priceChange: mod.priceChange.toNumber(), // Convert Decimal to number
     })),
+    defaultPrinterRole: prismaMenuItem.defaultPrinterRole ? prismaMenuItem.defaultPrinterRole as PrinterRole : null, // Map the role
     createdAt: prismaMenuItem.createdAt,
     updatedAt: prismaMenuItem.updatedAt,
   };
@@ -102,6 +106,7 @@ export async function createMenuItemAction(data: MenuItemFormData): Promise<AppM
               connect: data.availableModifierIds.map(id => ({ id })),
             }
           : undefined,
+        defaultPrinterRole: data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : null, // Add to create
       },
       include: {
         category: true,
@@ -148,9 +153,12 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
         category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
         availableModifiers: data.availableModifierIds !== undefined // Check if it's explicitly passed
           ? {
-              set: data.availableModifierIds.map(modId => ({ id: modId })), 
+              set: data.availableModifierIds.map(modId => ({ id: modId })),
             }
-          : undefined, 
+          : undefined,
+        defaultPrinterRole: data.defaultPrinterRole === null
+          ? null
+          : (data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : undefined), // Add to update
       },
       include: {
         category: true,
@@ -164,7 +172,7 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
     if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('name') && data.name) {
       return { error: `Another menu item with name "${data.name}" already exists.` };
     }
-    if (prismaError.code === 'P2025') { 
+    if (prismaError.code === 'P2025') {
         if (prismaError.meta?.cause?.includes('record to update not found')) {
              return { error: 'Menu item to update not found.'};
         }
@@ -186,10 +194,10 @@ export async function deleteMenuItemAction(id: string): Promise<{ success: boole
   } catch (error) {
     console.error('Error deleting menu item:', error);
     const prismaError = error as { code?: string, meta?: { cause?: string } };
-    if (prismaError.code === 'P2025') { 
+    if (prismaError.code === 'P2025') {
          return { success: false, error: 'Menu item not found or already deleted.' };
     }
-    if (prismaError.code === 'P2003') { 
+    if (prismaError.code === 'P2003') {
         return { success: false, error: 'Cannot delete menu item. It is part of one or more existing orders.' };
     }
     return { success: false, error: 'Failed to delete menu item. Please check server logs.' };

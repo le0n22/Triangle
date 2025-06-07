@@ -1,5 +1,5 @@
 
-import type { MenuCategory, Order as AppOrder } from '@/types';
+import type { MenuCategory, Order as AppOrder, PrinterRole } from '@/types';
 import { OrderPanel } from '@/components/features/order-entry/order-panel';
 import { getAllCategoriesAction, type AppMenuCategory as BackendMenuCategory } from '@backend/actions/categoryActions';
 import { getAllMenuItemsAction, type AppMenuItem as BackendMenuItem } from '@backend/actions/menuItemActions';
@@ -36,6 +36,8 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
         name: mod.name,
         priceChange: mod.priceChange,
       })),
+      categoryId: dbItem.categoryId,
+      defaultPrinterRole: dbItem.defaultPrinterRole, // Pass item's default printer role
     };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -44,6 +46,7 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
     name: 'All',
     iconName: 'List',
     items: allFrontendMenuItems,
+    defaultPrinterRole: null, // "All" category doesn't have a specific default role
   };
 
   const mappedDbCategories: MenuCategory[] = dbCategories.map(dbCategory => {
@@ -63,6 +66,8 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
             name: mod.name,
             priceChange: mod.priceChange,
           })),
+          categoryId: dbItem.categoryId,
+          defaultPrinterRole: dbItem.defaultPrinterRole, // Pass item's default printer role
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -72,6 +77,7 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
       name: dbCategory.name,
       iconName: dbCategory.iconName,
       items: itemsForThisCategory,
+      defaultPrinterRole: dbCategory.defaultPrinterRole, // Pass category's default printer role
     };
   }).sort((a,b) => a.name.localeCompare(b.name));
   
