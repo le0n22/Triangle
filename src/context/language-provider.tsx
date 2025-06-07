@@ -35,14 +35,17 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     myAccount: 'My Account',
     profile: 'Profile',
     logout: 'Logout',
-    restaurantSettings: 'Restaurant Details',
+    restaurantSettings: 'Restaurant', // Tab title for settings
+    restaurantDetails: 'Restaurant Details', // Card title
+    manageRestaurantNameLogo: "Manage your restaurant's name and logo.", // Card description
+    saveChanges: 'Save Changes', // Button for restaurant details
     appearanceSettings: 'Appearance Settings',
     tableManagementSettings: 'Table Management',
     categoryManagementSettings: 'Category Management',
     menuItemManagementSettings: 'Menu Item Management',
     modifierManagementSettings: 'Modifier Management',
     orderPlatformSettings: 'Order Platform Integrations',
-    restaurant: 'Restaurant',
+    restaurant: 'Restaurant', // General key, also used as tab title
     appearance: 'Appearance',
     categories: 'Categories',
     menu_items: 'Menu Items',
@@ -73,6 +76,13 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     error: 'Error',
     defaultPrinterRole: 'Default Printer Role',
     selectDefaultPrinterRole: 'Select Default Printer Role',
+    localPrintServerSettings: 'Local Print Server Settings',
+    printServerURL: 'Print Server URL',
+    configurePrintServerUrl: 'Configure the URL for your local print server (e.g., Electron app).',
+    settingsSaved: 'Settings Saved',
+    printServerUrlUpdated: 'Print server URL has been updated.',
+    restaurantDetailsUpdated: 'Restaurant details have been updated.',
+    saveSettings: 'Save Settings', // Generic, can be used for Print Server URL save
   },
   tr: {
     dashboard: 'Kontrol Paneli',
@@ -90,14 +100,17 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     myAccount: 'Hesabım',
     profile: 'Profil',
     logout: 'Çıkış Yap',
-    restaurantSettings: 'Restoran Detayları',
+    restaurantSettings: 'Restoran', // Sekme başlığı
+    restaurantDetails: 'Restoran Detayları', // Kart başlığı
+    manageRestaurantNameLogo: "Restoranınızın adını ve logosunu yönetin.", // Kart açıklaması
+    saveChanges: 'Değişiklikleri Kaydet', // Restoran detayları için buton
     appearanceSettings: 'Görünüm Ayarları',
     tableManagementSettings: 'Masa Yönetimi',
     categoryManagementSettings: 'Kategori Yönetimi',
     menuItemManagementSettings: 'Menü Öğesi Yönetimi',
     modifierManagementSettings: 'Ek Malzeme Yönetimi',
     orderPlatformSettings: 'Sipariş Platform Entegrasyonları',
-    restaurant: 'Restoran',
+    restaurant: 'Restoran', // Genel anahtar, sekme başlığı olarak da kullanılır
     appearance: 'Görünüm',
     categories: 'Kategoriler',
     menu_items: 'Menü Öğeleri',
@@ -128,13 +141,20 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     error: 'Hata',
     defaultPrinterRole: 'Varsayılan Yazıcı Rolü',
     selectDefaultPrinterRole: 'Varsayılan Yazıcı Rolü Seçin',
+    localPrintServerSettings: 'Yerel Yazdırma Sunucusu Ayarları',
+    printServerURL: 'Yazdırma Sunucusu Adresi',
+    configurePrintServerUrl: 'Yerel yazdırma sunucusu uygulamanızın (örn: Electron) adresini yapılandırın.',
+    settingsSaved: 'Ayarlar Kaydedildi',
+    printServerUrlUpdated: 'Yazdırma sunucusu adresi güncellendi.',
+    restaurantDetailsUpdated: 'Restoran detayları güncellendi.',
+    saveSettings: 'Ayarları Kaydet', // Genel, Yazdırma Sunucusu URL kaydetmek için kullanılabilir
   },
 };
 
 const initialState: LanguageProviderState = {
-  locale: 'en', // This is the key: server and initial client render will use this default
+  locale: 'en', 
   setLocale: () => null,
-  t: (key: TranslationKey) => translations.en[key] || key.toString(), // Default t function
+  t: (key: TranslationKey) => translations.en[key] || key.toString(), 
 };
 
 export const LanguageContext = createContext<LanguageProviderState>(initialState);
