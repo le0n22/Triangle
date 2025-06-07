@@ -26,17 +26,15 @@ interface OrderPanelProps {
   menuCategories: MenuCategory[];
 }
 
-// Helper type for KOT items intended for printing
 interface KotPrintItem {
   name: string;
   quantity: number;
-  modifiers?: string[]; // Formatted modifier strings
+  modifiers?: string[];
   specialRequests?: string;
 }
 
-// Helper type for a KOT payload destined for a specific printer/role
 interface KotForPrinter {
-  printerRole: PrinterRole | 'NO_ROLE_DEFINED'; // Target printer role
+  printerRole: PrinterRole | 'NO_ROLE_DEFINED';
   orderId: string;
   tableNumber: number;
   items: KotPrintItem[];
@@ -135,7 +133,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     const existingItemIndex = currentOrder.items.findIndex(
       (item) => item.menuItemId === menuItem.id &&
                  areModifierArraysEqual(item.selectedModifiers, selectedModifiers) &&
-                 !item.specialRequests // Only group if no special requests
+                 !item.specialRequests 
     );
     let updatedItems;
     let itemToPotentiallyOpenModalFor: OrderItem | undefined;
@@ -250,9 +248,8 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     }
 
     setIsSaving(true);
-    const deltaItemsForKOTPageDisplay: QueryDeltaItem[] = []; // For the KOT display page
+    const deltaItemsForKOTPageDisplay: QueryDeltaItem[] = []; 
 
-    // Calculate delta for KOT display page
     if (currentOrder) {
       currentOrder.items.forEach(currentItem => {
         const snapshotItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === currentItem.id);
@@ -311,27 +308,29 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         const savedOrder = result;
         setCurrentOrder(savedOrder);
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(savedOrder))); 
-        toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-accent text-accent-foreground" });
-
-        // --- Start: Logic for preparing KOTs for different printer roles ---
+        
         const kotsByRole = new Map<PrinterRole | 'NO_ROLE_DEFINED', KotPrintItem[]>();
         
         for (const orderItem of savedOrder.items) {
-          if (orderItem.quantity === 0) continue; // Skip items marked for removal or with zero quantity
-
+          if (orderItem.quantity === 0) continue; 
           const menuItemDetails = menuCategories
             .flatMap(c => c.items)
             .find(mi => mi.id === orderItem.menuItemId);
           
           let categoryOfItem: MenuCategory | undefined;
+          let itemPrinterRole: PrinterRole | 'NO_ROLE_DEFINED' = 'NO_ROLE_DEFINED';
+
           if (menuItemDetails) {
             categoryOfItem = menuCategories.find(cat => cat.id === menuItemDetails.categoryId);
+            if (menuItemDetails.defaultPrinterRole) { // Item specific role takes precedence
+                itemPrinterRole = menuItemDetails.defaultPrinterRole;
+            } else if (categoryOfItem?.defaultPrinterRole) { // Then category role
+                itemPrinterRole = categoryOfItem.defaultPrinterRole;
+            }
           }
-          
-          const printerRole = categoryOfItem?.defaultPrinterRole || 'NO_ROLE_DEFINED';
-          
-          if (!kotsByRole.has(printerRole)) {
-            kotsByRole.set(printerRole, []);
+                    
+          if (!kotsByRole.has(itemPrinterRole)) {
+            kotsByRole.set(itemPrinterRole, []);
           }
           
           const kotPrintItem: KotPrintItem = {
@@ -340,7 +339,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
             modifiers: formatModifiersForKOT(orderItem.selectedModifiers),
             specialRequests: orderItem.specialRequests || undefined,
           };
-          kotsByRole.get(printerRole)?.push(kotPrintItem);
+          kotsByRole.get(itemPrinterRole)?.push(kotPrintItem);
         }
 
         const kotsToSendToElectron: KotForPrinter[] = [];
@@ -358,19 +357,36 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
         if (kotsToSendToElectron.length > 0) {
           console.log("--- KOTs Prepared for Electron App ---");
-          kotsToSendToElectron.forEach(kotPayload => {
-            console.log(`Role: ${kotPayload.printerRole}, OrderID: ${kotPayload.orderId}, Table: ${kotPayload.tableNumber}, Items: ${kotPayload.items.length}`);
-            // In future, replace console.log with:
-            // await sendToLocalPrintServerAction(kotPayload);
-            // or fetch('http://localhost:YOUR_ELECTRON_PORT/print-kot', { method: 'POST', body: JSON.stringify(kotPayload), headers: {'Content-Type': 'application/json'} });
-          });
+          const printServerUrl = localStorage.getItem('orderflow-print-server-url') || 'http://localhost:3001/print-kot';
+          console.log(`Target Print Server URL: ${printServerUrl}`);
+
+          for (const kotPayload of kotsToSendToElectron) {
+            console.log(`Preparing to send KOT for Role: ${kotPayload.printerRole}, OrderID: ${kotPayload.orderId}, Table: ${kotPayload.tableNumber}, Items: ${kotPayload.items.length}`);
+            console.log("KOT Payload:", JSON.stringify(kotPayload, null, 2));
+            toast({ title: `Sending KOT for ${kotPayload.printerRole}`, description: `Order ${savedOrder.id.substring(0,6)}... Table ${savedOrder.tableNumber}` });
+            try {
+              const response = await fetch(printServerUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(kotPayload),
+              });
+              const responseBody = await response.text();
+              console.log(`Response from Print Server for ${kotPayload.printerRole} KOT: Status ${response.status}, Body: ${responseBody}`);
+              if (response.ok) {
+                toast({ title: `KOT Sent: ${kotPayload.printerRole}`, description: `Order ${savedOrder.id.substring(0,6)}... sent successfully.`, className: "bg-accent text-accent-foreground" });
+              } else {
+                toast({ title: `KOT Send Error: ${kotPayload.printerRole}`, description: `Server responded with ${response.status}. ${responseBody.substring(0, 100)}`, variant: "destructive" });
+              }
+            } catch (fetchError: any) {
+              console.error(`Failed to send KOT for ${kotPayload.printerRole}:`, fetchError);
+              toast({ title: `KOT Send Failed: ${kotPayload.printerRole}`, description: `Network error: ${fetchError.message}. Check console & print server.`, variant: "destructive" });
+            }
+          }
           console.log("------------------------------------");
-          toast({ title: "KOTs Processed", description: `${kotsToSendToElectron.length} KOT(s) prepared for printing roles. (Logged to console)`});
         } else {
           console.log("No KOTs to send to Electron app based on current roles.");
+          toast({ title: "Order Saved", description: "No KOTs generated as no items matched printer roles.", className: "bg-accent text-accent-foreground"});
         }
-        // --- End: Logic for preparing KOTs ---
-
 
         let queryString = '';
         if (deltaItemsForKOTPageDisplay.length > 0) {
@@ -459,7 +475,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,4rem)-2*theme(spacing.6))] bg-background text-foreground relative">
-      {/* Left Column: Menu Item Selector - Wider */}
       <div className="w-full md:w-9/12 h-1/2 md:h-full border-r border-border">
         <MenuItemSelector
           categories={menuCategories}
@@ -468,7 +483,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         />
       </div>
 
-      {/* Middle Column: Current Order Summary - Narrower */}
       <div className="w-full md:flex-grow h-1/2 md:h-full">
         {currentOrder ? (
           <CurrentOrderSummary
@@ -487,7 +501,6 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         )}
       </div>
 
-      {/* Right Column: Action Sidebar - Fixed Width, Narrower */}
       <div className="w-full md:w-28 md:flex-none h-auto md:h-full order-last md:order-none">
          <OrderActionSidebar
             order={currentOrder}
