@@ -14,7 +14,7 @@ function mapPrismaTableToAppTable(prismaTable: PrismaTable): AppTable {
     name: prismaTable.name ?? undefined,
     status: prismaTable.status.toLowerCase() as TableStatus, // Ensure status is lowercase
     currentOrderId: prismaTable.currentOrderId ?? undefined,
-    currentOrderTotal: prismaTable.currentOrderTotal ?? undefined,
+    currentOrderTotal: prismaTable.currentOrderTotal ? prismaTable.currentOrderTotal.toNumber() : undefined,
   };
 }
 
@@ -150,14 +150,15 @@ export async function updateTableStatusAction(tableId: string, status: TableStat
 export async function updateTableOrderDetailsAction(
     tableId: string, 
     orderId: string | null, 
-    orderTotal: number | null
+    orderTotal: number | null // This should be a number, as it's coming from AppOrder
 ): Promise<AppTable | { error: string }> {
   try {
     const updatedTable = await prisma.table.update({
       where: { id: tableId },
       data: {
         currentOrderId: orderId,
-        currentOrderTotal: orderTotal,
+        // Prisma handles number to Decimal conversion here if currentOrderTotal is set
+        currentOrderTotal: orderTotal, 
         status: orderId ? ('OCCUPIED' as PrismaTableStatus) : ('AVAILABLE' as PrismaTableStatus),
       },
     });
