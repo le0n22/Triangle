@@ -1,4 +1,3 @@
-
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -12,16 +11,16 @@ datasource db {
 }
 
 model Table {
-  id                 String   @id @default(cuid())
-  name               String?
-  number             Int      @unique
-  capacity           Int
-  status             TableStatus @default(AVAILABLE)
-  orders             Order[]
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  currentOrderId     String?  // To store the ID of the current open order, if any
-  currentOrderTotal  Decimal? // To store the total of the current open order
+  id                String      @id @default(cuid())
+  name              String?
+  number            Int         @unique
+  capacity          Int
+  status            TableStatus @default(AVAILABLE)
+  orders            Order[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  currentOrderId    String? // To store the ID of the current open order, if any
+  currentOrderTotal Decimal? // To store the total of the current open order
 }
 
 enum TableStatus {
@@ -32,37 +31,37 @@ enum TableStatus {
 }
 
 model MenuCategory {
-  id                 String      @id @default(cuid())
-  name               String      @unique
+  id                 String       @id @default(cuid())
+  name               String       @unique
   iconName           String?
   menuItems          MenuItem[]
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
   defaultPrinterRole PrinterRole? // Added default printer role
 }
 
 model MenuItem {
-  id                   String          @id @default(cuid())
-  name                 String          @unique
-  description          String?
-  price                Decimal
-  imageUrl             String?
-  dataAiHint           String?         @map("data_ai_hint")
-  category             MenuCategory    @relation(fields: [categoryId], references: [id])
-  categoryId           String
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  availableModifiers   Modifier[]      @relation("MenuItemModifiers")
-  orderItems           OrderItem[]     // Relation to OrderItem (added/ensured)
+  id                 String       @id @default(cuid())
+  name               String       @unique
+  description        String?
+  price              Decimal
+  imageUrl           String?
+  dataAiHint         String?      @map("data_ai_hint")
+  category           MenuCategory @relation(fields: [categoryId], references: [id])
+  categoryId         String
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  availableModifiers Modifier[]   @relation("MenuItemModifiers")
+  orderItems         OrderItem[] // Relation to OrderItem (added/ensured)
 }
 
 model Modifier {
-  id                 String     @id @default(cuid())
-  name               String     @unique
-  priceChange        Decimal    @map("price_change") // How much this modifier changes the item's price
-  menuItems          MenuItem[] @relation("MenuItemModifiers")
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  id          String     @id @default(cuid())
+  name        String     @unique
+  priceChange Decimal    @map("price_change") // How much this modifier changes the item's price
+  menuItems   MenuItem[] @relation("MenuItemModifiers")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Order {
@@ -84,13 +83,13 @@ model OrderItem {
   order             Order    @relation(fields: [orderId], references: [id])
   orderId           String
   menuItem          MenuItem @relation(fields: [menuItemId], references: [id]) // Added relation field to MenuItem
-  menuItemId        String   // Foreign key to MenuItem
-  menuItemName      String   // Denormalized for easier display in KOT/receipts
+  menuItemId        String // Foreign key to MenuItem
+  menuItemName      String // Denormalized for easier display in KOT/receipts
   quantity          Int
   unitPrice         Decimal
-  selectedModifiers Json?    // JSON array of selected modifier objects { id, name, priceChange }
+  selectedModifiers Json? // JSON array of selected modifier objects { id, name, priceChange }
   specialRequests   String?
-  totalPrice        Decimal  // Calculated: (unitPrice + sum_of_modifier_price_changes) * quantity
+  totalPrice        Decimal // Calculated: (unitPrice + sum_of_modifier_price_changes) * quantity
 }
 
 enum OrderStatus {
@@ -103,13 +102,13 @@ enum OrderStatus {
 
 // Printer Configuration Model
 model PrinterConfiguration {
-  id             String                 @id @default(cuid())
-  name           String                 @unique
+  id             String                @id @default(cuid())
+  name           String                @unique
   connectionType PrinterConnectionType
   connectionInfo String
   roles          PrinterRole[]
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 }
 
 enum PrinterConnectionType {

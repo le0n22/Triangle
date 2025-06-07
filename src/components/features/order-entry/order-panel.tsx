@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { MenuCategory, MenuItem, Order, OrderItem, Modifier } from '@/types';
+import type { MenuCategory, MenuItem, Order, OrderItem, Modifier, PrinterRole } from '@/types';
 import { MenuItemSelector } from './menu-item-selector';
 import { CurrentOrderSummary } from './CurrentOrderSummary';
 import { OrderActionSidebar } from './OrderActionSidebar';
@@ -25,6 +25,24 @@ interface OrderPanelProps {
   initialOrder: Order | null;
   menuCategories: MenuCategory[];
 }
+
+// Helper type for KOT items intended for printing
+interface KotPrintItem {
+  name: string;
+  quantity: number;
+  modifiers?: string[]; // Formatted modifier strings
+  specialRequests?: string;
+}
+
+// Helper type for a KOT payload destined for a specific printer/role
+interface KotForPrinter {
+  printerRole: PrinterRole | 'NO_ROLE_DEFINED'; // Target printer role
+  orderId: string;
+  tableNumber: number;
+  items: KotPrintItem[];
+  timestamp: string;
+}
+
 
 const areModifierArraysEqual = (arr1: Modifier[], arr2: Modifier[]): boolean => {
   if (!arr1 && !arr2) return true;
@@ -232,33 +250,34 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
     }
 
     setIsSaving(true);
-    const deltaItemsForKOT: QueryDeltaItem[] = [];
+    const deltaItemsForKOTPageDisplay: QueryDeltaItem[] = []; // For the KOT display page
 
+    // Calculate delta for KOT display page
     if (currentOrder) {
       currentOrder.items.forEach(currentItem => {
         const snapshotItem = initialOrderSnapshot?.items.find(snapItem => snapItem.id === currentItem.id);
         if (!snapshotItem && currentItem.quantity > 0) { 
-          deltaItemsForKOT.push({ n: currentItem.menuItemName, q: currentItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'new' });
+          deltaItemsForKOTPageDisplay.push({ n: currentItem.menuItemName, q: currentItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'new' });
         } else if (snapshotItem && currentItem.quantity === 0 && snapshotItem.quantity > 0) { 
-          deltaItemsForKOT.push({ n: currentItem.menuItemName, q: 0, oq: snapshotItem.quantity, st: 'deleted' });
+          deltaItemsForKOTPageDisplay.push({ n: currentItem.menuItemName, q: 0, oq: snapshotItem.quantity, st: 'deleted' });
         } else if (snapshotItem && currentItem.quantity > 0) { 
           const qtyChanged = currentItem.quantity !== snapshotItem.quantity;
           const modsChanged = !areModifierArraysEqual(currentItem.selectedModifiers, snapshotItem.selectedModifiers);
           const reqsChanged = currentItem.specialRequests !== snapshotItem.specialRequests;
           if (qtyChanged || modsChanged || reqsChanged) {
-            deltaItemsForKOT.push({ n: currentItem.menuItemName, q: currentItem.quantity, oq: snapshotItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'modified' });
+            deltaItemsForKOTPageDisplay.push({ n: currentItem.menuItemName, q: currentItem.quantity, oq: snapshotItem.quantity, m: formatModifiersForKOT(currentItem.selectedModifiers), s: currentItem.specialRequests, st: 'modified' });
           }
         }
       });
       initialOrderSnapshot?.items.forEach(snapItem => {
         if (snapItem.quantity > 0 && !currentOrder.items.some(currItem => currItem.id === snapItem.id && currItem.quantity > 0)) {
-          if (!deltaItemsForKOT.some(di => di.n === snapItem.menuItemName && (di.st === 'deleted' || (di.st === 'modified' && di.q === 0)))) {
-            deltaItemsForKOT.push({ n: snapItem.menuItemName, q: 0, oq: snapItem.quantity, st: 'deleted' });
+          if (!deltaItemsForKOTPageDisplay.some(di => di.n === snapItem.menuItemName && (di.st === 'deleted' || (di.st === 'modified' && di.q === 0)))) {
+            deltaItemsForKOTPageDisplay.push({ n: snapItem.menuItemName, q: 0, oq: snapItem.quantity, st: 'deleted' });
           }
         }
       });
     }
-    console.log("--- OrderPanel: Calculated deltaItemsForKOT for KOT page: ---", JSON.stringify(deltaItemsForKOT, null, 2));
+    console.log("--- OrderPanel: Calculated deltaItemsForKOT for KOT page display: ---", JSON.stringify(deltaItemsForKOTPageDisplay, null, 2));
 
 
     const orderItemsInput: OrderItemInput[] = activeItemsForBackend.map(item => ({
@@ -289,14 +308,75 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
       } else {
-        setCurrentOrder(result);
-        setInitialOrderSnapshot(JSON.parse(JSON.stringify(result))); 
+        const savedOrder = result;
+        setCurrentOrder(savedOrder);
+        setInitialOrderSnapshot(JSON.parse(JSON.stringify(savedOrder))); 
         toast({ title: "Order Saved!", description: "KOT will be generated.", className: "bg-accent text-accent-foreground" });
-        let queryString = '';
-        if (deltaItemsForKOT.length > 0) {
-          queryString = `?delta=${encodeURIComponent(JSON.stringify(deltaItemsForKOT))}`;
+
+        // --- Start: Logic for preparing KOTs for different printer roles ---
+        const kotsByRole = new Map<PrinterRole | 'NO_ROLE_DEFINED', KotPrintItem[]>();
+        
+        for (const orderItem of savedOrder.items) {
+          if (orderItem.quantity === 0) continue; // Skip items marked for removal or with zero quantity
+
+          const menuItemDetails = menuCategories
+            .flatMap(c => c.items)
+            .find(mi => mi.id === orderItem.menuItemId);
+          
+          let categoryOfItem: MenuCategory | undefined;
+          if (menuItemDetails) {
+            categoryOfItem = menuCategories.find(cat => cat.id === menuItemDetails.categoryId);
+          }
+          
+          const printerRole = categoryOfItem?.defaultPrinterRole || 'NO_ROLE_DEFINED';
+          
+          if (!kotsByRole.has(printerRole)) {
+            kotsByRole.set(printerRole, []);
+          }
+          
+          const kotPrintItem: KotPrintItem = {
+            name: orderItem.menuItemName,
+            quantity: orderItem.quantity,
+            modifiers: formatModifiersForKOT(orderItem.selectedModifiers),
+            specialRequests: orderItem.specialRequests || undefined,
+          };
+          kotsByRole.get(printerRole)?.push(kotPrintItem);
         }
-        router.push(`/dashboard/kot/${result.id}${queryString}`);
+
+        const kotsToSendToElectron: KotForPrinter[] = [];
+        kotsByRole.forEach((items, role) => {
+          if (items.length > 0) {
+            kotsToSendToElectron.push({
+              printerRole: role,
+              orderId: savedOrder.id,
+              tableNumber: savedOrder.tableNumber,
+              items: items,
+              timestamp: new Date().toISOString(),
+            });
+          }
+        });
+
+        if (kotsToSendToElectron.length > 0) {
+          console.log("--- KOTs Prepared for Electron App ---");
+          kotsToSendToElectron.forEach(kotPayload => {
+            console.log(`Role: ${kotPayload.printerRole}, OrderID: ${kotPayload.orderId}, Table: ${kotPayload.tableNumber}, Items: ${kotPayload.items.length}`);
+            // In future, replace console.log with:
+            // await sendToLocalPrintServerAction(kotPayload);
+            // or fetch('http://localhost:YOUR_ELECTRON_PORT/print-kot', { method: 'POST', body: JSON.stringify(kotPayload), headers: {'Content-Type': 'application/json'} });
+          });
+          console.log("------------------------------------");
+          toast({ title: "KOTs Processed", description: `${kotsToSendToElectron.length} KOT(s) prepared for printing roles. (Logged to console)`});
+        } else {
+          console.log("No KOTs to send to Electron app based on current roles.");
+        }
+        // --- End: Logic for preparing KOTs ---
+
+
+        let queryString = '';
+        if (deltaItemsForKOTPageDisplay.length > 0) {
+          queryString = `?delta=${encodeURIComponent(JSON.stringify(deltaItemsForKOTPageDisplay))}`;
+        }
+        router.push(`/dashboard/kot/${savedOrder.id}${queryString}`);
       }
     } catch (e: any) {
       toast({ title: "Error", description: e.message || "An unexpected error occurred while saving the order.", variant: "destructive" });
