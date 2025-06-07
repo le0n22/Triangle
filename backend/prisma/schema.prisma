@@ -1,3 +1,4 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -10,57 +11,58 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Table {
-  id                  String    @id @default(cuid())
-  number              Int       @unique
-  name                String?
-  capacity            Int
-  status              TableStatus @default(AVAILABLE)
-  orders              Order[]
-  currentOrderId      String?   // To quickly fetch the current active order
-  currentOrderTotal   Decimal?  // To display on the table card
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-}
-
-enum TableStatus {
-  AVAILABLE
-  OCCUPIED
-  RESERVED
-  DIRTY
-}
-
 model MenuCategory {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  iconName  String?    // For Lucide icon name
-  menuItems MenuItem[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id                 String     @id @default(cuid())
+  name               String     @unique
+  iconName           String?
+  items              MenuItem[]
+  defaultPrinterRole PrinterRole? // Added field for default printer role
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model MenuItem {
-  id                 String         @id @default(cuid())
-  name               String         @unique
+  id                 String      @id @default(cuid())
+  name               String      @unique
   description        String?
-  price              Decimal        @db.Decimal(10, 2)
+  price              Decimal     @db.Decimal(10, 2)
   imageUrl           String?
-  dataAiHint         String?        // For AI image search suggestions
-  category           MenuCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  dataAiHint         String?
+  category           MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   categoryId         String
-  availableModifiers Modifier[]     @relation("MenuItemModifiers")
-  orderItems         OrderItem[]
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  availableModifiers Modifier[]  @relation("MenuItemModifiers")
+  orderItems         OrderItem[] // Relation to OrderItem
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
 }
 
 model Modifier {
-  id             String     @id @default(cuid())
-  name           String     @unique
-  priceChange    Decimal    @db.Decimal(10, 2) // Can be positive or negative
-  menuItems      MenuItem[] @relation("MenuItemModifiers")
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id           String     @id @default(cuid())
+  name         String     @unique
+  priceChange  Decimal    @db.Decimal(10, 2) // e.g., +1.50 for extra cheese, -0.50 for no onions
+  menuItems    MenuItem[] @relation("MenuItemModifiers")
+  // selectedInOrderItems OrderItem[] @relation("OrderItemModifiers") // This relation might be complex if storing selected modifiers directly
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Table {
+  id                 String    @id @default(cuid())
+  name               String?
+  number             Int       @unique
+  capacity           Int
+  status             TableStatus @default(AVAILABLE)
+  currentOrderId     String?   // Optional: Store the ID of the current active order
+  currentOrderTotal  Decimal?  @db.Decimal(10, 2) // Optional: Store the total of the current active order
+  orders             Order[]   // Relation to Order
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Order {
@@ -73,55 +75,72 @@ model Order {
   taxRate     Decimal     @db.Decimal(5, 4) // e.g., 0.0800 for 8%
   taxAmount   Decimal     @db.Decimal(10, 2)
   totalAmount Decimal     @db.Decimal(10, 2)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tableId])
 }
 
 model OrderItem {
-  id                String    @id @default(cuid())
-  order             Order     @relation(fields: [orderId], references: [id])
+  id                String  @id @default(cuid())
+  order             Order   @relation(fields: [orderId], references: [id])
   orderId           String
-  menuItem          MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Prevent deleting menu item if in an order
-  menuItemId        String
-  menuItemName      String    // Denormalized for KOT and display
+  menuItemId        String  // Store ID of the MenuItem
+  menuItemName      String  // Denormalized for easy display
   quantity          Int
-  unitPrice         Decimal   @db.Decimal(10, 2) // Price at the time of order
-  selectedModifiers Json      // Store as JSON: [{ id: "modId", name: "Extra Cheese", priceChange: 1.50 }, ...]
+  unitPrice         Decimal @db.Decimal(10, 2) // Price of one unit at the time of order
+  selectedModifiers Json?   // Store selected modifiers as JSON: [{ id: "mod1", name: "Extra Cheese", priceChange: 1.50 }, ...]
   specialRequests   String?
-  totalPrice        Decimal   @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-}
+  totalPrice        Decimal @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
 
-enum OrderStatus {
-  OPEN       // Order created, items can be added/modified
-  IN_PROGRESS // Kitchen has started preparing
-  DONE       // Kitchen has finished, ready for payment/delivery
-  PAID       // Payment completed
-  CANCELLED  // Order cancelled
-}
+  // Optional: If you want a direct relation to MenuItem (can be complex with pricing changes over time)
+  // menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // This might cause issues if menu items are deleted
 
-// New Printer Configuration Model
-enum PrinterConnectionType {
-  NETWORK
-  BLUETOOTH
-  USB
-  OTHER
-}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-enum PrinterRole {
-  KITCHEN_KOT
-  BAR_KOT
-  RECEIPT
-  REPORT
+  @@index([orderId])
+  @@index([menuItemId])
 }
 
 model PrinterConfiguration {
-  id             String                @id @default(cuid())
-  name           String                @unique
+  id             String                 @id @default(cuid())
+  name           String                 @unique
   connectionType PrinterConnectionType
-  connectionInfo String
-  roles          PrinterRole[]
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  connectionInfo String                 // e.g., IP address, Bluetooth MAC, USB port identifier
+  roles          PrinterRole[]          // List of roles this printer can fulfill
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  DIRTY
+}
+
+enum OrderStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  PAID
+  CANCELLED
+}
+
+// Enum for Printer Connection Types
+enum PrinterConnectionType {
+  NETWORK // TCP/IP based network printer
+  BLUETOOTH
+  USB
+  OTHER // For any other connection types or future integrations
+}
+
+// Enum for Printer Roles
+enum PrinterRole {
+  KITCHEN_KOT // For kitchen order tickets
+  BAR_KOT     // For bar order tickets (drinks, etc.)
+  RECEIPT     // For customer receipts/bills
+  REPORT      // For printing system reports
 }

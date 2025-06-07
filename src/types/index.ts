@@ -1,5 +1,4 @@
 
-
 export type TableStatus = 'available' | 'occupied' | 'reserved' | 'dirty';
 
 export interface Table {
@@ -23,10 +22,11 @@ export interface MenuItem {
   name: string;
   description: string;
   price: number;
-  category: string;
+  category: string; // Category name, might change to categoryId if needed for filtering
   imageUrl?: string;
   dataAiHint?: string; // For placeholder images
   availableModifiers?: Modifier[]; // Modifiers that can be applied to this item
+  categoryId: string; // Added to ensure we always have the ID
 }
 
 export interface OrderItem {
@@ -75,6 +75,7 @@ export interface MenuCategory {
   name: string;
   iconName?: string; // Key for a lucide icon or custom SVG
   items: MenuItem[];
+  defaultPrinterRole?: PrinterRole; // Added optional default printer role
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'mobile';
@@ -183,7 +184,10 @@ export type TranslationKey =
   | 'receiptPrinting'
   | 'reportPrinting'
   | 'refresh'
-  | 'error';
+  | 'error'
+  | 'defaultPrinterRole' // New translation key
+  | 'selectDefaultPrinterRole'; // New translation key
+
 
 export interface CurrencyConfig {
   symbol: string;

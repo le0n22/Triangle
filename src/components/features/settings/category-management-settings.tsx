@@ -2,7 +2,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { MenuCategory as AppMenuCategory } from '@/types'; // Renamed to avoid conflict
+import type { MenuCategory as AppMenuCategory, PrinterRole } from '@/types'; // Renamed to avoid conflict
+import { printerRoles } from '@/types'; // Import printerRoles array
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -12,6 +13,7 @@ import {
   DialogFooter,
   DialogDescription,
   DialogTrigger,
+  DialogClose,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -26,6 +28,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit2, Trash2, RefreshCw } from 'lucide-react';
 import {
@@ -38,13 +41,13 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// Using relative path to bypass potential alias issues
 import { 
   getAllCategoriesAction, 
   createCategoryAction, 
   updateCategoryAction, 
   deleteCategoryAction 
 } from '../../../../backend/actions/categoryActions';
+import { useLanguage } from '@/hooks/use-language'; // Import useLanguage
 
 export function CategoryManagementSettings() {
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
@@ -56,10 +59,11 @@ export function CategoryManagementSettings() {
   const [editingCategory, setEditingCategory] = useState<AppMenuCategory | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<AppMenuCategory | null>(null);
 
-  const [addForm, setAddForm] = useState({ name: '', iconName: '' });
-  const [editForm, setEditForm] = useState({ id: '', name: '', iconName: '' });
+  const [addForm, setAddForm] = useState({ name: '', iconName: '', defaultPrinterRole: '' as PrinterRole | '' });
+  const [editForm, setEditForm] = useState({ id: '', name: '', iconName: '', defaultPrinterRole: '' as PrinterRole | '' });
   
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const fetchCategories = async () => {
     console.log('CategoryManagementSettings: fetchCategories called');
@@ -79,6 +83,7 @@ export function CategoryManagementSettings() {
   useEffect(() => {
     console.log('CategoryManagementSettings: useEffect running, calling fetchCategories.');
     fetchCategories();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleAddCategory = async () => {
@@ -92,6 +97,7 @@ export function CategoryManagementSettings() {
       const result = await createCategoryAction({
         name: addForm.name,
         iconName: addForm.iconName || undefined,
+        defaultPrinterRole: addForm.defaultPrinterRole || undefined,
       });
       console.log('CategoryManagementSettings: createCategoryAction result:', result);
 
@@ -99,7 +105,7 @@ export function CategoryManagementSettings() {
         toast({ title: 'Error Adding Category', description: result.error, variant: 'destructive' });
       } else {
         toast({ title: 'Category Added', description: `Category "${result.name}" has been added.` });
-        setAddForm({ name: '', iconName: '' });
+        setAddForm({ name: '', iconName: '', defaultPrinterRole: '' });
         setIsAddDialogOpen(false);
         await fetchCategories(); 
       }
@@ -113,7 +119,12 @@ export function CategoryManagementSettings() {
   
   const openEditDialog = (category: AppMenuCategory) => {
     setEditingCategory(category);
-    setEditForm({ id: category.id, name: category.name, iconName: category.iconName || '' });
+    setEditForm({ 
+      id: category.id, 
+      name: category.name, 
+      iconName: category.iconName || '', 
+      defaultPrinterRole: category.defaultPrinterRole || '' 
+    });
     setIsEditDialogOpen(true);
   };
 
@@ -128,6 +139,7 @@ export function CategoryManagementSettings() {
       const result = await updateCategoryAction(editingCategory.id, {
         name: editForm.name,
         iconName: editForm.iconName || undefined,
+        defaultPrinterRole: editForm.defaultPrinterRole || null, // Send null to unset
       });
       console.log('CategoryManagementSettings: updateCategoryAction result:', result);
 
@@ -174,12 +186,54 @@ export function CategoryManagementSettings() {
     }
   };
 
+  const getRoleDisplayName = (roleValue?: PrinterRole): string => {
+    if (!roleValue) return 'N/A';
+    const roleMap: Record<PrinterRole, TranslationKey> = {
+      KITCHEN_KOT: 'kitchenKOT',
+      BAR_KOT: 'barKOT',
+      RECEIPT: 'receiptPrinting',
+      REPORT: 'reportPrinting',
+    };
+    return t(roleMap[roleValue]);
+  };
+
+  const renderCategoryFormFields = (formState: typeof addForm | typeof editForm, setFormState: any) => (
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="categoryFormName" className="text-right">Name*</Label>
+        <Input id="categoryFormName" value={formState.name} onChange={(e) => setFormState({...formState, name: e.target.value})} className="col-span-3" />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="categoryFormIcon" className="text-right">Icon Name</Label>
+        <Input id="categoryFormIcon" value={formState.iconName} onChange={(e) => setFormState({...formState, iconName: e.target.value})} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="categoryFormPrinterRole" className="text-right">{t('defaultPrinterRole')}</Label>
+        <Select
+          value={formState.defaultPrinterRole || ''}
+          onValueChange={(value) => setFormState({ ...formState, defaultPrinterRole: value as PrinterRole | '' })}
+        >
+          <SelectTrigger id="categoryFormPrinterRole" className="col-span-3">
+            <SelectValue placeholder={t('selectDefaultPrinterRole')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">No Default Role</SelectItem>
+            {printerRoles.map(role => (
+              <SelectItem key={role} value={role}>{getRoleDisplayName(role)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row justify-between items-center">
         <div>
           <CardTitle className="font-headline">Category Management</CardTitle>
-          <CardDescription>Manage your menu categories from the database.</CardDescription>
+          <CardDescription>Manage your menu categories and their default printer roles.</CardDescription>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchCategories} disabled={isFetching || isMutating}>
@@ -197,18 +251,11 @@ export function CategoryManagementSettings() {
                 <DialogTitle>Add New Category</DialogTitle>
                 <DialogDescription>Enter details for the new menu category.</DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="addCategoryName" className="text-right">Name*</Label>
-                  <Input id="addCategoryName" value={addForm.name} onChange={(e) => setAddForm({...addForm, name: e.target.value})} className="col-span-3" />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="addCategoryIcon" className="text-right">Icon Name</Label>
-                  <Input id="addCategoryIcon" value={addForm.iconName} onChange={(e) => setAddForm({...addForm, iconName: e.target.value})} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
-                </div>
-              </div>
+              {renderCategoryFormFields(addForm, setAddForm)}
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isMutating}>Cancel</Button>
+                <DialogClose asChild>
+                  <Button variant="outline" disabled={isMutating}>Cancel</Button>
+                </DialogClose>
                 <Button onClick={handleAddCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   {isMutating ? 'Adding...' : 'Add Category'}
                 </Button>
@@ -230,6 +277,7 @@ export function CategoryManagementSettings() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Icon Name</TableHead>
+                <TableHead>{t('defaultPrinterRole')}</TableHead>
                 <TableHead className="text-right w-[150px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -238,6 +286,7 @@ export function CategoryManagementSettings() {
                 <TableRow key={category.id}>
                   <TableCell className="font-medium">{category.name}</TableCell>
                   <TableCell>{category.iconName || 'N/A'}</TableCell>
+                  <TableCell>{getRoleDisplayName(category.defaultPrinterRole)}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)} className="mr-2" disabled={isMutating || isFetching}>
                       <Edit2 className="h-4 w-4" />
@@ -269,7 +318,7 @@ export function CategoryManagementSettings() {
               ))}
               {!isFetching && categories.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center text-muted-foreground py-6">No categories found in the database. Add some!</TableCell>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">No categories found in the database. Add some!</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -277,24 +326,17 @@ export function CategoryManagementSettings() {
         )}
       </CardContent>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {if (!open) setIsEditDialogOpen(false);}}>
         <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
           <DialogHeader>
             <DialogTitle>Edit Category: {editingCategory?.name}</DialogTitle>
             <DialogDescription>Update the details for this category.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editCategoryName" className="text-right">Name*</Label>
-              <Input id="editCategoryName" value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="editCategoryIcon" className="text-right">Icon Name</Label>
-              <Input id="editCategoryIcon" value={editForm.iconName} onChange={(e) => setEditForm({...editForm, iconName: e.target.value})} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
-            </div>
-          </div>
+          {editingCategory && renderCategoryFormFields(editForm, setEditForm)}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isMutating}>Cancel</Button>
+            <DialogClose asChild>
+                <Button variant="outline" disabled={isMutating}>Cancel</Button>
+            </DialogClose>
             <Button onClick={handleUpdateCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
              {isMutating ? 'Saving...' : 'Save Changes'}
             </Button>
@@ -304,5 +346,3 @@ export function CategoryManagementSettings() {
     </Card>
   );
 }
-
-    

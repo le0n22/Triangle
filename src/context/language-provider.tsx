@@ -71,6 +71,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     reportPrinting: 'Report Printing',
     refresh: 'Refresh',
     error: 'Error',
+    defaultPrinterRole: 'Default Printer Role',
+    selectDefaultPrinterRole: 'Select Default Printer Role',
   },
   tr: {
     dashboard: 'Kontrol Paneli',
@@ -124,6 +126,8 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     reportPrinting: 'Rapor Yazdırma',
     refresh: 'Yenile',
     error: 'Hata',
+    defaultPrinterRole: 'Varsayılan Yazıcı Rolü',
+    selectDefaultPrinterRole: 'Varsayılan Yazıcı Rolü Seçin',
   },
 };
 
