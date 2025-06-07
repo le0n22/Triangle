@@ -11,107 +11,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model MenuCategory {
-  id                 String     @id @default(cuid())
-  name               String     @unique
-  iconName           String?
-  items              MenuItem[]
-  defaultPrinterRole PrinterRole? // Added field for default printer role
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model MenuItem {
-  id                 String      @id @default(cuid())
-  name               String      @unique
-  description        String?
-  price              Decimal     @db.Decimal(10, 2)
-  imageUrl           String?
-  dataAiHint         String?
-  category           MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId         String
-  availableModifiers Modifier[]  @relation("MenuItemModifiers")
-  orderItems         OrderItem[] // Relation to OrderItem
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([categoryId])
-}
-
-model Modifier {
-  id           String     @id @default(cuid())
-  name         String     @unique
-  priceChange  Decimal    @db.Decimal(10, 2) // e.g., +1.50 for extra cheese, -0.50 for no onions
-  menuItems    MenuItem[] @relation("MenuItemModifiers")
-  // selectedInOrderItems OrderItem[] @relation("OrderItemModifiers") // This relation might be complex if storing selected modifiers directly
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
 model Table {
-  id                 String    @id @default(cuid())
+  id                 String   @id @default(cuid())
   name               String?
-  number             Int       @unique
+  number             Int      @unique
   capacity           Int
   status             TableStatus @default(AVAILABLE)
-  currentOrderId     String?   // Optional: Store the ID of the current active order
-  currentOrderTotal  Decimal?  @db.Decimal(10, 2) // Optional: Store the total of the current active order
-  orders             Order[]   // Relation to Order
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Order {
-  id          String      @id @default(cuid())
-  table       Table       @relation(fields: [tableId], references: [id])
-  tableId     String
-  items       OrderItem[]
-  status      OrderStatus @default(OPEN)
-  subtotal    Decimal     @db.Decimal(10, 2)
-  taxRate     Decimal     @db.Decimal(5, 4) // e.g., 0.0800 for 8%
-  taxAmount   Decimal     @db.Decimal(10, 2)
-  totalAmount Decimal     @db.Decimal(10, 2)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tableId])
-}
-
-model OrderItem {
-  id                String  @id @default(cuid())
-  order             Order   @relation(fields: [orderId], references: [id])
-  orderId           String
-  menuItemId        String  // Store ID of the MenuItem
-  menuItemName      String  // Denormalized for easy display
-  quantity          Int
-  unitPrice         Decimal @db.Decimal(10, 2) // Price of one unit at the time of order
-  selectedModifiers Json?   // Store selected modifiers as JSON: [{ id: "mod1", name: "Extra Cheese", priceChange: 1.50 }, ...]
-  specialRequests   String?
-  totalPrice        Decimal @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
-
-  // Optional: If you want a direct relation to MenuItem (can be complex with pricing changes over time)
-  // menuItem MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // This might cause issues if menu items are deleted
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([orderId])
-  @@index([menuItemId])
-}
-
-model PrinterConfiguration {
-  id             String                 @id @default(cuid())
-  name           String                 @unique
-  connectionType PrinterConnectionType
-  connectionInfo String                 // e.g., IP address, Bluetooth MAC, USB port identifier
-  roles          PrinterRole[]          // List of roles this printer can fulfill
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  orders             Order[]
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  currentOrderId     String?  // To store the ID of the current open order, if any
+  currentOrderTotal  Decimal? // To store the total of the current open order
 }
 
 enum TableStatus {
@@ -121,26 +31,97 @@ enum TableStatus {
   DIRTY
 }
 
+model MenuCategory {
+  id                 String      @id @default(cuid())
+  name               String      @unique
+  iconName           String?
+  menuItems          MenuItem[]
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  defaultPrinterRole PrinterRole? // Added default printer role
+}
+
+model MenuItem {
+  id                   String          @id @default(cuid())
+  name                 String          @unique
+  description          String?
+  price                Decimal
+  imageUrl             String?
+  dataAiHint           String?         @map("data_ai_hint")
+  category             MenuCategory    @relation(fields: [categoryId], references: [id])
+  categoryId           String
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  availableModifiers   Modifier[]      @relation("MenuItemModifiers")
+  orderItems           OrderItem[]     // Relation to OrderItem (added/ensured)
+}
+
+model Modifier {
+  id                 String     @id @default(cuid())
+  name               String     @unique
+  priceChange        Decimal    @map("price_change") // How much this modifier changes the item's price
+  menuItems          MenuItem[] @relation("MenuItemModifiers")
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  table       Table       @relation(fields: [tableId], references: [id])
+  tableId     String
+  items       OrderItem[]
+  status      OrderStatus @default(OPEN)
+  subtotal    Decimal
+  taxRate     Decimal     @map("tax_rate")
+  taxAmount   Decimal     @map("tax_amount")
+  totalAmount Decimal     @map("total_amount")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model OrderItem {
+  id                String   @id @default(cuid())
+  order             Order    @relation(fields: [orderId], references: [id])
+  orderId           String
+  menuItem          MenuItem @relation(fields: [menuItemId], references: [id]) // Added relation field to MenuItem
+  menuItemId        String   // Foreign key to MenuItem
+  menuItemName      String   // Denormalized for easier display in KOT/receipts
+  quantity          Int
+  unitPrice         Decimal
+  selectedModifiers Json?    // JSON array of selected modifier objects { id, name, priceChange }
+  specialRequests   String?
+  totalPrice        Decimal  // Calculated: (unitPrice + sum_of_modifier_price_changes) * quantity
+}
+
 enum OrderStatus {
   OPEN
   IN_PROGRESS
-  DONE
+  DONE // Order prepared, ready for payment or serving completely
   PAID
   CANCELLED
 }
 
-// Enum for Printer Connection Types
-enum PrinterConnectionType {
-  NETWORK // TCP/IP based network printer
-  BLUETOOTH
-  USB
-  OTHER // For any other connection types or future integrations
+// Printer Configuration Model
+model PrinterConfiguration {
+  id             String                 @id @default(cuid())
+  name           String                 @unique
+  connectionType PrinterConnectionType
+  connectionInfo String
+  roles          PrinterRole[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
 }
 
-// Enum for Printer Roles
+enum PrinterConnectionType {
+  NETWORK
+  BLUETOOTH
+  USB
+  OTHER
+}
+
 enum PrinterRole {
-  KITCHEN_KOT // For kitchen order tickets
-  BAR_KOT     // For bar order tickets (drinks, etc.)
-  RECEIPT     // For customer receipts/bills
-  REPORT      // For printing system reports
+  KITCHEN_KOT
+  BAR_KOT
+  RECEIPT
+  REPORT
 }
