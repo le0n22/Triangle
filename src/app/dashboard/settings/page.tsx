@@ -10,7 +10,8 @@ import { ModifierManagementSettings } from '@/components/features/settings/modif
 import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings';
 import { ThemeSettings } from '@/components/features/settings/theme-settings';
 import { LanguageSettings } from '@/components/features/settings/language-settings';
-import { CurrencySettings } from '@/components/features/settings/CurrencySettings'; // New import
+import { CurrencySettings } from '@/components/features/settings/CurrencySettings';
+import { PrinterSettings } from '@/components/features/settings/printer-settings'; // New import
 import type { TranslationKey } from '@/types'; 
 import { useLanguage } from '@/hooks/use-language';
 
@@ -25,6 +26,7 @@ export default function SettingsPage() {
     { value: 'categories', labelKey: 'categories' },
     { value: 'menu_items', labelKey: 'menu_items' },
     { value: 'modifiers', labelKey: 'modifiers' },
+    { value: 'printers', labelKey: 'printers' }, // New tab
     { value: 'order_platforms', labelKey: 'order_platforms' },
   ];
 
@@ -33,7 +35,7 @@ export default function SettingsPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">{t('settings')}</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 mb-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-2 mb-6"> {/* Adjusted grid for more items */}
            {settingsTabs.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
           ))}
@@ -42,14 +44,14 @@ export default function SettingsPage() {
           <RestaurantSettings />
         </TabsContent>
         <TabsContent value="appearance">
-          <div className="flex flex-wrap gap-8 justify-start"> {/* Use flex-wrap for card layout */}
-            <div className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.07rem)] xl:w-[calc(33.333%-1.07rem)]"> {/* Adjust width for responsiveness */}
+          <div className="flex flex-wrap gap-8 justify-start">
+            <div className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.07rem)] xl:w-[calc(33.333%-1.07rem)]">
               <ThemeSettings />
             </div>
             <div className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.07rem)] xl:w-[calc(33.333%-1.07rem)]">
               <LanguageSettings />
             </div>
-            <div className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.07rem)] xl:w-[calc(33.333%-1.07rem)]"> {/* New card for currency */}
+            <div className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.07rem)] xl:w-[calc(33.333%-1.07rem)]">
               <CurrencySettings />
             </div>
           </div>
@@ -61,14 +63,15 @@ export default function SettingsPage() {
           <CategoryManagementSettings />
         </TabsContent>
         <TabsContent value="menu_items">
-          {/* Pass mock data or ensure it fetches from backend actions */}
           <MenuItemManagementSettings /> 
         </TabsContent>
         <TabsContent value="modifiers">
           <ModifierManagementSettings />
         </TabsContent>
+        <TabsContent value="printers"> {/* New content */}
+          <PrinterSettings />
+        </TabsContent>
         <TabsContent value="order_platforms">
-          {/* Pass mock data or ensure it fetches from backend actions */}
           <OrderPlatformSettings initialPlatforms={[]} /> 
         </TabsContent>
       </Tabs>

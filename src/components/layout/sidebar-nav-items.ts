@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Grid, ClipboardList, Route, ChefHat, Settings, BookOpenText, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Grid, ClipboardList, Route, ChefHat, Settings, BookOpenText, BarChart3, Printer } from 'lucide-react'; // Added Printer
 import type { TranslationKey } from '@/types';
 
 export interface NavItemDef {

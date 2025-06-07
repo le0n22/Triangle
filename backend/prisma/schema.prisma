@@ -1,97 +1,28 @@
-
-// Datasource and Generator remain unchanged
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
-// Models
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
 model Table {
-  id        String  @id @default(cuid())
-  number    Int     @unique // Table number
-  name      String? // Optional name like "Window Seat 1"
-  capacity  Int
-  status    TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
-  orders    Order[] // A table can have multiple orders over time
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // For quickly knowing the current active order on a table
-  currentOrderId    String?  @unique
-  currentOrderTotal Float?
+  id                  String    @id @default(cuid())
+  number              Int       @unique
+  name                String?
+  capacity            Int
+  status              TableStatus @default(AVAILABLE)
+  orders              Order[]
+  currentOrderId      String?   // To quickly fetch the current active order
+  currentOrderTotal   Decimal?  // To display on the table card
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
-model MenuCategory {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  iconName  String?    // Lucide icon name or custom SVG identifier
-  items     MenuItem[] // A category can have multiple menu items
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-}
-
-model MenuItem {
-  id                 String        @id @default(cuid())
-  name               String        @unique
-  description        String?
-  price              Decimal       @db.Decimal(10, 2) // Price with 2 decimal places
-  imageUrl           String?
-  dataAiHint         String?       // For Unsplash/AI image generation hints
-  category           MenuCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId         String
-  orderItems         OrderItem[]   // Menu item can be part of many order items
-  availableModifiers Modifier[]    @relation("MenuItemAvailableModifiers") // Modifiers available for this item
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-}
-
-model Modifier {
-  id                 String     @id @default(cuid())
-  name               String     @unique
-  priceChange        Decimal    @db.Decimal(10, 2) // Can be positive or negative
-  menuItems          MenuItem[] @relation("MenuItemAvailableModifiers") // Menu items this modifier is available for
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-  // orderItems OrderItem[] @relation("OrderItemAppliedModifiers") // If tracking applied modifiers as direct relation
-}
-
-model Order {
-  id          String      @id @default(cuid())
-  table       Table       @relation(fields: [tableId], references: [id])
-  tableId     String
-  items       OrderItem[] @relation("OrderToOrderItems") // Corrected: This side just defines the list, name is optional
-  status      OrderStatus @default(OPEN) // OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
-  subtotal    Decimal     @db.Decimal(10, 2)
-  taxRate     Decimal     @db.Decimal(4, 2) @default(0.08) // e.g., 0.08 for 8%
-  taxAmount   Decimal     @db.Decimal(10, 2)
-  totalAmount Decimal     @db.Decimal(10, 2)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  // Potentially add customer details, payment info later
-}
-
-model OrderItem {
-  id                String   @id @default(cuid())
-  order             Order    @relation("OrderToOrderItems", fields: [orderId], references: [id], onDelete: Cascade) // Corrected: This side defines keys and onDelete
-  orderId           String
-  menuItem          MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Restrict deletion of MenuItem if in an order
-  menuItemId        String
-  menuItemName      String   // Denormalized name at the time of order
-  quantity          Int
-  unitPrice         Decimal  @db.Decimal(10, 2) // Denormalized price at the time of order
-  selectedModifiers Json?    // Store selected modifiers as a JSON blob (e.g., [{ name: "Extra Cheese", priceChange: 1.50 }])
-  specialRequests   String?
-  totalPrice        Decimal  @db.Decimal(10, 2) // quantity * (unitPrice + sum_of_modifier_price_changes)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-}
-
-// Enums
 enum TableStatus {
   AVAILABLE
   OCCUPIED
@@ -99,10 +30,98 @@ enum TableStatus {
   DIRTY
 }
 
+model MenuCategory {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  iconName  String?    // For Lucide icon name
+  menuItems MenuItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model MenuItem {
+  id                 String         @id @default(cuid())
+  name               String         @unique
+  description        String?
+  price              Decimal        @db.Decimal(10, 2)
+  imageUrl           String?
+  dataAiHint         String?        // For AI image search suggestions
+  category           MenuCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId         String
+  availableModifiers Modifier[]     @relation("MenuItemModifiers")
+  orderItems         OrderItem[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+}
+
+model Modifier {
+  id             String     @id @default(cuid())
+  name           String     @unique
+  priceChange    Decimal    @db.Decimal(10, 2) // Can be positive or negative
+  menuItems      MenuItem[] @relation("MenuItemModifiers")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  table       Table       @relation(fields: [tableId], references: [id])
+  tableId     String
+  items       OrderItem[]
+  status      OrderStatus @default(OPEN)
+  subtotal    Decimal     @db.Decimal(10, 2)
+  taxRate     Decimal     @db.Decimal(5, 4) // e.g., 0.0800 for 8%
+  taxAmount   Decimal     @db.Decimal(10, 2)
+  totalAmount Decimal     @db.Decimal(10, 2)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model OrderItem {
+  id                String    @id @default(cuid())
+  order             Order     @relation(fields: [orderId], references: [id])
+  orderId           String
+  menuItem          MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Prevent deleting menu item if in an order
+  menuItemId        String
+  menuItemName      String    // Denormalized for KOT and display
+  quantity          Int
+  unitPrice         Decimal   @db.Decimal(10, 2) // Price at the time of order
+  selectedModifiers Json      // Store as JSON: [{ id: "modId", name: "Extra Cheese", priceChange: 1.50 }, ...]
+  specialRequests   String?
+  totalPrice        Decimal   @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
 enum OrderStatus {
-  OPEN        // Order created, items being added, not yet sent to kitchen
-  IN_PROGRESS // Order sent to kitchen, being prepared
-  DONE        // Kitchen has marked order as ready
-  PAID        // Payment completed
-  CANCELLED   // Order cancelled by user or restaurant
+  OPEN       // Order created, items can be added/modified
+  IN_PROGRESS // Kitchen has started preparing
+  DONE       // Kitchen has finished, ready for payment/delivery
+  PAID       // Payment completed
+  CANCELLED  // Order cancelled
+}
+
+// New Printer Configuration Model
+enum PrinterConnectionType {
+  NETWORK
+  BLUETOOTH
+  USB
+  OTHER
+}
+
+enum PrinterRole {
+  KITCHEN_KOT
+  BAR_KOT
+  RECEIPT
+  REPORT
+}
+
+model PrinterConfiguration {
+  id             String                @id @default(cuid())
+  name           String                @unique
+  connectionType PrinterConnectionType
+  connectionInfo String
+  roles          PrinterRole[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 }

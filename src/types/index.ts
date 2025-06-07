@@ -168,7 +168,22 @@ export type TranslationKey =
   | 'euro'
   | 'customCurrency'
   | 'currencySymbol'
-  | 'currencyName';
+  | 'currencyName'
+  | 'printers'
+  | 'printerName'
+  | 'connectionType'
+  | 'connectionInfo'
+  | 'printerRoles'
+  | 'network'
+  | 'bluetooth'
+  | 'usb'
+  | 'other_connection'
+  | 'kitchenKOT'
+  | 'barKOT'
+  | 'receiptPrinting'
+  | 'reportPrinting'
+  | 'refresh'
+  | 'error';
 
 export interface CurrencyConfig {
   symbol: string;
@@ -182,3 +197,19 @@ export interface CurrencyProviderState {
   formatCurrency: (amount: number) => string;
 }
 
+// Printer Configuration Types
+export type PrinterConnectionType = 'NETWORK' | 'BLUETOOTH' | 'USB' | 'OTHER';
+export const printerConnectionTypes: PrinterConnectionType[] = ['NETWORK', 'BLUETOOTH', 'USB', 'OTHER'];
+
+export type PrinterRole = 'KITCHEN_KOT' | 'BAR_KOT' | 'RECEIPT' | 'REPORT';
+export const printerRoles: PrinterRole[] = ['KITCHEN_KOT', 'BAR_KOT', 'RECEIPT', 'REPORT'];
+
+export interface PrinterConfiguration {
+  id: string;
+  name: string;
+  connectionType: PrinterConnectionType;
+  connectionInfo: string;
+  roles: PrinterRole[];
+  createdAt: string; // ISO Date string
+  updatedAt: string; // ISO Date string
+}
