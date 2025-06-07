@@ -48,6 +48,9 @@ import {
   deleteCategoryAction 
 } from '../../../../backend/actions/categoryActions';
 import { useLanguage } from '@/hooks/use-language'; // Import useLanguage
+import type { TranslationKey } from '@/types';
+
+const NO_ROLE_VALUE = "_NONE_"; // Special value for "No Default Role"
 
 export function CategoryManagementSettings() {
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
@@ -59,8 +62,8 @@ export function CategoryManagementSettings() {
   const [editingCategory, setEditingCategory] = useState<AppMenuCategory | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<AppMenuCategory | null>(null);
 
-  const [addForm, setAddForm] = useState({ name: '', iconName: '', defaultPrinterRole: '' as PrinterRole | '' });
-  const [editForm, setEditForm] = useState({ id: '', name: '', iconName: '', defaultPrinterRole: '' as PrinterRole | '' });
+  const [addForm, setAddForm] = useState({ name: '', iconName: '', defaultPrinterRole: null as PrinterRole | null });
+  const [editForm, setEditForm] = useState({ id: '', name: '', iconName: '', defaultPrinterRole: null as PrinterRole | null });
   
   const { toast } = useToast();
   const { t } = useLanguage();
@@ -105,7 +108,7 @@ export function CategoryManagementSettings() {
         toast({ title: 'Error Adding Category', description: result.error, variant: 'destructive' });
       } else {
         toast({ title: 'Category Added', description: `Category "${result.name}" has been added.` });
-        setAddForm({ name: '', iconName: '', defaultPrinterRole: '' });
+        setAddForm({ name: '', iconName: '', defaultPrinterRole: null });
         setIsAddDialogOpen(false);
         await fetchCategories(); 
       }
@@ -123,7 +126,7 @@ export function CategoryManagementSettings() {
       id: category.id, 
       name: category.name, 
       iconName: category.iconName || '', 
-      defaultPrinterRole: category.defaultPrinterRole || '' 
+      defaultPrinterRole: category.defaultPrinterRole || null 
     });
     setIsEditDialogOpen(true);
   };
@@ -139,7 +142,7 @@ export function CategoryManagementSettings() {
       const result = await updateCategoryAction(editingCategory.id, {
         name: editForm.name,
         iconName: editForm.iconName || undefined,
-        defaultPrinterRole: editForm.defaultPrinterRole || null, // Send null to unset
+        defaultPrinterRole: editForm.defaultPrinterRole, // Pass null directly if that's the state
       });
       console.log('CategoryManagementSettings: updateCategoryAction result:', result);
 
@@ -186,7 +189,7 @@ export function CategoryManagementSettings() {
     }
   };
 
-  const getRoleDisplayName = (roleValue?: PrinterRole): string => {
+  const getRoleDisplayName = (roleValue?: PrinterRole | null): string => {
     if (!roleValue) return 'N/A';
     const roleMap: Record<PrinterRole, TranslationKey> = {
       KITCHEN_KOT: 'kitchenKOT',
@@ -197,27 +200,32 @@ export function CategoryManagementSettings() {
     return t(roleMap[roleValue]);
   };
 
-  const renderCategoryFormFields = (formState: typeof addForm | typeof editForm, setFormState: any) => (
+  const renderCategoryFormFields = (
+    formState: typeof addForm | typeof editForm, 
+    setFormState: React.Dispatch<React.SetStateAction<typeof addForm>> | React.Dispatch<React.SetStateAction<typeof editForm>>
+  ) => (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="categoryFormName" className="text-right">Name*</Label>
-        <Input id="categoryFormName" value={formState.name} onChange={(e) => setFormState({...formState, name: e.target.value})} className="col-span-3" />
+        <Input id="categoryFormName" value={formState.name} onChange={(e) => setFormState(prev => ({...prev, name: e.target.value}))} className="col-span-3" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="categoryFormIcon" className="text-right">Icon Name</Label>
-        <Input id="categoryFormIcon" value={formState.iconName} onChange={(e) => setFormState({...formState, iconName: e.target.value})} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
+        <Input id="categoryFormIcon" value={formState.iconName} onChange={(e) => setFormState(prev => ({...prev, iconName: e.target.value}))} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="categoryFormPrinterRole" className="text-right">{t('defaultPrinterRole')}</Label>
         <Select
-          value={formState.defaultPrinterRole || ''}
-          onValueChange={(value) => setFormState({ ...formState, defaultPrinterRole: value as PrinterRole | '' })}
+          value={formState.defaultPrinterRole || NO_ROLE_VALUE}
+          onValueChange={(value) => {
+            setFormState(prev => ({ ...prev, defaultPrinterRole: value === NO_ROLE_VALUE ? null : value as PrinterRole }))
+          }}
         >
           <SelectTrigger id="categoryFormPrinterRole" className="col-span-3">
             <SelectValue placeholder={t('selectDefaultPrinterRole')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No Default Role</SelectItem>
+            <SelectItem value={NO_ROLE_VALUE}>{t('noDefaultRole') || 'No Default Role'}</SelectItem>
             {printerRoles.map(role => (
               <SelectItem key={role} value={role}>{getRoleDisplayName(role)}</SelectItem>
             ))}
@@ -240,7 +248,10 @@ export function CategoryManagementSettings() {
             <RefreshCw className={`mr-2 h-4 w-4 ${isFetching && !isAddDialogOpen && !isEditDialogOpen ? 'animate-spin' : ''}`} /> 
             {isFetching ? 'Refreshing...' : 'Refresh'}
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+              setIsAddDialogOpen(open);
+              if (!open) setAddForm({ name: '', iconName: '', defaultPrinterRole: null });
+            }}>
             <DialogTrigger asChild>
               <Button disabled={isMutating || isFetching}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Category
@@ -251,7 +262,7 @@ export function CategoryManagementSettings() {
                 <DialogTitle>Add New Category</DialogTitle>
                 <DialogDescription>Enter details for the new menu category.</DialogDescription>
               </DialogHeader>
-              {renderCategoryFormFields(addForm, setAddForm)}
+              {renderCategoryFormFields(addForm, setAddForm as React.Dispatch<React.SetStateAction<typeof addForm>>)}
               <DialogFooter>
                 <DialogClose asChild>
                   <Button variant="outline" disabled={isMutating}>Cancel</Button>
@@ -326,13 +337,15 @@ export function CategoryManagementSettings() {
         )}
       </CardContent>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {if (!open) setIsEditDialogOpen(false);}}>
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+          if (!open) setIsEditDialogOpen(false);
+        }}>
         <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
           <DialogHeader>
             <DialogTitle>Edit Category: {editingCategory?.name}</DialogTitle>
             <DialogDescription>Update the details for this category.</DialogDescription>
           </DialogHeader>
-          {editingCategory && renderCategoryFormFields(editForm, setEditForm)}
+          {editingCategory && renderCategoryFormFields(editForm, setEditForm as React.Dispatch<React.SetStateAction<typeof editForm>>)}
           <DialogFooter>
             <DialogClose asChild>
                 <Button variant="outline" disabled={isMutating}>Cancel</Button>

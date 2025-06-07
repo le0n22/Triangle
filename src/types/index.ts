@@ -76,7 +76,7 @@ export interface MenuCategory {
   name: string;
   iconName?: string; // Key for a lucide icon or custom SVG
   items: MenuItem[];
-  defaultPrinterRole?: PrinterRole; 
+  defaultPrinterRole?: PrinterRole | null; // Can be null if no role is set
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'mobile';
@@ -150,17 +150,17 @@ export type TranslationKey =
   | 'myAccount'
   | 'profile'
   | 'logout'
-  | 'restaurantSettings' // This key means "Restaurant" tab title or general settings page title
-  | 'restaurantDetails' // New: For the card title "Restaurant Details"
-  | 'manageRestaurantNameLogo' // New: For the description of the restaurant details card
-  | 'saveChanges' // New: For the button in the restaurant details card
+  | 'restaurantSettings' 
+  | 'restaurantDetails' 
+  | 'manageRestaurantNameLogo' 
+  | 'saveChanges' 
   | 'appearanceSettings'
   | 'tableManagementSettings'
   | 'categoryManagementSettings'
   | 'menuItemManagementSettings'
   | 'modifierManagementSettings'
   | 'orderPlatformSettings'
-  | 'restaurant' // This is often used as a tab title
+  | 'restaurant' 
   | 'appearance'
   | 'categories'
   | 'menu_items'
@@ -191,13 +191,19 @@ export type TranslationKey =
   | 'error'
   | 'defaultPrinterRole'
   | 'selectDefaultPrinterRole'
-  | 'localPrintServerSettings' // New or re-affirmed
-  | 'printServerURL' // New or re-affirmed
-  | 'configurePrintServerUrl' // New or re-affirmed
-  | 'settingsSaved' // New or re-affirmed (toast title)
-  | 'printServerUrlUpdated' // New or re-affirmed (toast description)
-  | 'restaurantDetailsUpdated' // New (toast description for restaurant details)
-  | 'saveSettings'; // New or re-affirmed (generic save button, or specifically for print server)
+  | 'noDefaultRole'
+  | 'localPrintServerSettings' 
+  | 'printServerURL' 
+  | 'configurePrintServerUrl' 
+  | 'settingsSaved' 
+  | 'printServerUrlUpdated' 
+  | 'restaurantDetailsUpdated' 
+  | 'saveSettings'
+  | 'restaurantName'
+  | 'yourRestaurantNamePlaceholder'
+  | 'logoUrl'
+  | 'logoUrlPlaceholder'
+  | 'restaurantLogoPreviewAlt';
 
 
 export interface CurrencyConfig {

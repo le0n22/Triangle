@@ -76,13 +76,17 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     error: 'Error',
     defaultPrinterRole: 'Default Printer Role',
     selectDefaultPrinterRole: 'Select Default Printer Role',
+    noDefaultRole: 'No Default Role', // New translation key
     localPrintServerSettings: 'Local Print Server Settings',
     printServerURL: 'Print Server URL',
     configurePrintServerUrl: 'Configure the URL for your local print server (e.g., Electron app).',
     settingsSaved: 'Settings Saved',
     printServerUrlUpdated: 'Print server URL has been updated.',
     restaurantDetailsUpdated: 'Restaurant details have been updated.',
-    saveSettings: 'Save Settings', // Generic, can be used for Print Server URL save
+    saveSettings: 'Save Settings', 
+    yourRestaurantNamePlaceholder: 'Your Restaurant Name',
+    logoUrlPlaceholder: 'https://example.com/logo.png',
+    restaurantLogoPreviewAlt: 'Restaurant Logo Preview',
   },
   tr: {
     dashboard: 'Kontrol Paneli',
@@ -141,13 +145,17 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     error: 'Hata',
     defaultPrinterRole: 'Varsayılan Yazıcı Rolü',
     selectDefaultPrinterRole: 'Varsayılan Yazıcı Rolü Seçin',
+    noDefaultRole: 'Varsayılan Rol Yok', // New translation key
     localPrintServerSettings: 'Yerel Yazdırma Sunucusu Ayarları',
     printServerURL: 'Yazdırma Sunucusu Adresi',
     configurePrintServerUrl: 'Yerel yazdırma sunucusu uygulamanızın (örn: Electron) adresini yapılandırın.',
     settingsSaved: 'Ayarlar Kaydedildi',
     printServerUrlUpdated: 'Yazdırma sunucusu adresi güncellendi.',
     restaurantDetailsUpdated: 'Restoran detayları güncellendi.',
-    saveSettings: 'Ayarları Kaydet', // Genel, Yazdırma Sunucusu URL kaydetmek için kullanılabilir
+    saveSettings: 'Ayarları Kaydet',
+    yourRestaurantNamePlaceholder: 'Restoran Adınız',
+    logoUrlPlaceholder: 'https://ornek.com/logo.png',
+    restaurantLogoPreviewAlt: 'Restoran Logo Önizlemesi',
   },
 };
 
