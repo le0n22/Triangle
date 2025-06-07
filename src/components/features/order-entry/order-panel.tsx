@@ -239,11 +239,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
   const handleConfirmOrder = async () => {
     if (!currentOrder || isSaving) return;
+    console.log("--- OrderPanel: handleConfirmOrder START ---");
 
     const activeItemsForBackend = currentOrder.items.filter(item => item.quantity > 0);
 
     if (activeItemsForBackend.length === 0 && (!initialOrderSnapshot || initialOrderSnapshot.items.every(item => currentOrder.items.find(ci => ci.id === item.id)?.quantity === 0))) {
         toast({ title: "Cannot confirm empty or fully removed order", variant: "destructive" });
+        console.log("--- OrderPanel: Confirm order aborted - empty or fully removed order. ---");
         return;
     }
 
@@ -291,16 +293,22 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
     try {
       let result: AppOrder | { error: string };
+      console.log("--- OrderPanel: Saving order to backend... ---");
       if (currentOrder.id.startsWith('temp-ord-')) { 
         if (orderItemsInput.length === 0) { 
           toast({ title: "Cannot create an empty order", variant: "destructive" });
-          setIsSaving(false); return;
+          setIsSaving(false); 
+          console.log("--- OrderPanel: Create order aborted - empty order. ---");
+          return;
         }
         const createOrderData: CreateOrderInput = { tableId: currentOrder.tableId, items: orderItemsInput, ...finalTotals };
+        console.log("--- OrderPanel: Calling createOrderAction with data: ---", JSON.stringify(createOrderData, null, 2));
         result = await createOrderAction(createOrderData);
       } else { 
+        console.log(`--- OrderPanel: Calling updateOrderItemsAction for order ID ${currentOrder.id} with items: ---`, JSON.stringify(orderItemsInput, null, 2));
         result = await updateOrderItemsAction(currentOrder.id, orderItemsInput, finalTotals);
       }
+      console.log("--- OrderPanel: Backend save result: ---", result);
 
       if ('error' in result) {
         toast({ title: "Error Saving Order", description: result.error, variant: "destructive" });
@@ -309,6 +317,7 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
         setCurrentOrder(savedOrder);
         setInitialOrderSnapshot(JSON.parse(JSON.stringify(savedOrder))); 
         
+        console.log("--- OrderPanel: Order saved successfully. Preparing KOTs. ---");
         const kotsByRole = new Map<PrinterRole | 'NO_ROLE_DEFINED', KotPrintItem[]>();
         
         for (const orderItem of savedOrder.items) {
@@ -322,12 +331,13 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
 
           if (menuItemDetails) {
             categoryOfItem = menuCategories.find(cat => cat.id === menuItemDetails.categoryId);
-            if (menuItemDetails.defaultPrinterRole) { // Item specific role takes precedence
+            if (menuItemDetails.defaultPrinterRole) { 
                 itemPrinterRole = menuItemDetails.defaultPrinterRole;
-            } else if (categoryOfItem?.defaultPrinterRole) { // Then category role
+            } else if (categoryOfItem?.defaultPrinterRole) { 
                 itemPrinterRole = categoryOfItem.defaultPrinterRole;
             }
           }
+          console.log(`--- OrderPanel: Item "${orderItem.menuItemName}" assigned to printer role: ${itemPrinterRole} ---`);
                     
           if (!kotsByRole.has(itemPrinterRole)) {
             kotsByRole.set(itemPrinterRole, []);
@@ -355,49 +365,54 @@ export function OrderPanel({ tableIdParam, initialOrder, menuCategories }: Order
           }
         });
 
-        if (kotsToSendToElectron.length > 0) {
-          console.log("--- KOTs Prepared for Electron App ---");
-          const printServerUrl = localStorage.getItem('orderflow-print-server-url') || 'http://localhost:3001/print-kot';
-          console.log(`Target Print Server URL: ${printServerUrl}`);
+        const printServerUrlFromStorage = localStorage.getItem('orderflow-print-server-url');
+        const printServerUrl = printServerUrlFromStorage || 'http://localhost:3001/print-kot';
+        console.log(`--- OrderPanel: Using Print Server URL: ${printServerUrl} (from localStorage: ${!!printServerUrlFromStorage}) ---`);
 
+        if (kotsToSendToElectron.length > 0) {
+          console.log("--- OrderPanel: KOTs Prepared for Electron App ---", kotsToSendToElectron);
+          
           for (const kotPayload of kotsToSendToElectron) {
-            console.log(`Preparing to send KOT for Role: ${kotPayload.printerRole}, OrderID: ${kotPayload.orderId}, Table: ${kotPayload.tableNumber}, Items: ${kotPayload.items.length}`);
-            console.log("KOT Payload:", JSON.stringify(kotPayload, null, 2));
-            toast({ title: `Sending KOT for ${kotPayload.printerRole}`, description: `Order ${savedOrder.id.substring(0,6)}... Table ${savedOrder.tableNumber}` });
+            console.log(`--- OrderPanel: Preparing to send KOT for Role: ${kotPayload.printerRole} to ${printServerUrl}. Payload: ---`, JSON.stringify(kotPayload, null, 2));
+            toast({ title: `Sending KOT for ${kotPayload.printerRole}`, description: `Order ${savedOrder.id.substring(0,6)}... Table ${savedOrder.tableNumber} to ${printServerUrl}` });
             try {
               const response = await fetch(printServerUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(kotPayload),
               });
-              const responseBody = await response.text();
-              console.log(`Response from Print Server for ${kotPayload.printerRole} KOT: Status ${response.status}, Body: ${responseBody}`);
+              const responseBody = await response.text(); 
+              console.log(`--- OrderPanel: Print Server Response for ${kotPayload.printerRole} KOT: Status ${response.status}, Body: ${responseBody.substring(0, 200)}... ---`);
+
               if (response.ok) {
-                toast({ title: `KOT Sent: ${kotPayload.printerRole}`, description: `Order ${savedOrder.id.substring(0,6)}... sent successfully.`, className: "bg-accent text-accent-foreground" });
+                toast({ title: `KOT Sent: ${kotPayload.printerRole}`, description: `Order ${savedOrder.id.substring(0,6)}... to ${printServerUrl} successful. Response: ${responseBody.substring(0,50)}...`, className: "bg-accent text-accent-foreground" });
               } else {
-                toast({ title: `KOT Send Error: ${kotPayload.printerRole}`, description: `Server responded with ${response.status}. ${responseBody.substring(0, 100)}`, variant: "destructive" });
+                toast({ title: `KOT Send Error: ${kotPayload.printerRole}`, description: `Server at ${printServerUrl} responded with ${response.status}. Body: ${responseBody.substring(0, 100)}...`, variant: "destructive" });
               }
             } catch (fetchError: any) {
-              console.error(`Failed to send KOT for ${kotPayload.printerRole}:`, fetchError);
-              toast({ title: `KOT Send Failed: ${kotPayload.printerRole}`, description: `Network error: ${fetchError.message}. Check console & print server.`, variant: "destructive" });
+              console.error(`--- OrderPanel: Failed to send KOT for ${kotPayload.printerRole} to ${printServerUrl}: ---`, fetchError);
+              toast({ title: `KOT Send Failed: ${kotPayload.printerRole}`, description: `Network error: ${fetchError.message}. Is print server at ${printServerUrl} running? Check console.`, variant: "destructive" });
             }
           }
-          console.log("------------------------------------");
+          console.log("--- OrderPanel: All KOT sending attempts finished. ---");
         } else {
-          console.log("No KOTs to send to Electron app based on current roles.");
-          toast({ title: "Order Saved", description: "No KOTs generated as no items matched printer roles.", className: "bg-accent text-accent-foreground"});
+          console.log("--- OrderPanel: No KOTs to send to Electron app based on current roles/items. ---");
+          toast({ title: "Order Saved", description: "No KOTs generated as no items matched printer roles or order was empty for KOTs.", className: "bg-accent text-accent-foreground"});
         }
 
         let queryString = '';
         if (deltaItemsForKOTPageDisplay.length > 0) {
           queryString = `?delta=${encodeURIComponent(JSON.stringify(deltaItemsForKOTPageDisplay))}`;
         }
+        console.log(`--- OrderPanel: Redirecting to KOT page: /dashboard/kot/${savedOrder.id}${queryString} ---`);
         router.push(`/dashboard/kot/${savedOrder.id}${queryString}`);
       }
     } catch (e: any) {
+      console.error("--- OrderPanel: CRITICAL ERROR in handleConfirmOrder: ---", e);
       toast({ title: "Error", description: e.message || "An unexpected error occurred while saving the order.", variant: "destructive" });
     } finally {
       setIsSaving(false);
+      console.log("--- OrderPanel: handleConfirmOrder END ---");
     }
   };
 
