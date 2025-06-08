@@ -1,4 +1,3 @@
-
 export type TableStatus = 'available' | 'occupied' | 'reserved' | 'dirty';
 
 export interface Table {
@@ -27,7 +26,7 @@ export interface MenuItem {
   dataAiHint?: string; // For placeholder images
   availableModifiers?: Modifier[]; // Modifiers that can be applied to this item
   categoryId: string;
-  defaultPrinterRole?: PrinterRole | null;
+  defaultPrinterRole?: PrinterRole | null; // Added field
 }
 
 export interface OrderItem {
@@ -172,15 +171,16 @@ export type TranslationKey =
   | 'customCurrency'
   | 'currencySymbol'
   | 'currencyName'
-  | 'printers'
-  | 'printerName'
-  | 'connectionType'
-  | 'connectionInfo'
-  | 'printerRoles'
-  | 'network'
-  | 'bluetooth'
-  | 'usb'
-  | 'other_connection'
+  // Printer related keys are removed as settings page is removed
+  // | 'printers'
+  // | 'printerName'
+  // | 'connectionType'
+  // | 'connectionInfo'
+  // | 'printerRoles'
+  // | 'network'
+  // | 'bluetooth'
+  // | 'usb'
+  // | 'other_connection'
   | 'kitchenKOT'
   | 'barKOT'
   | 'receiptPrinting'
@@ -275,5 +275,3 @@ export interface ElectronKotPayload {
   items: ElectronKotItem[];
   timestamp: string; // ISO Date string
 }
-
-    

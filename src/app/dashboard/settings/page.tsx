@@ -11,7 +11,7 @@ import { OrderPlatformSettings } from '@/components/features/settings/order-plat
 import { ThemeSettings } from '@/components/features/settings/theme-settings';
 import { LanguageSettings } from '@/components/features/settings/language-settings';
 import { CurrencySettings } from '@/components/features/settings/CurrencySettings';
-// import { PrinterSettings } from '@/components/features/settings/printer-settings'; // Removed import
+// PrinterSettings import is removed
 import type { TranslationKey } from '@/types'; 
 import { useLanguage } from '@/hooks/use-language';
 
@@ -26,7 +26,7 @@ export default function SettingsPage() {
     { value: 'categories', labelKey: 'categories' },
     { value: 'menu_items', labelKey: 'menu_items' },
     { value: 'modifiers', labelKey: 'modifiers' },
-    // { value: 'printers', labelKey: 'printers' }, // Removed tab
+    // { value: 'printers', labelKey: 'printers' }, // "Printers" tab removed
     { value: 'order_platforms', labelKey: 'order_platforms' },
   ];
 
@@ -69,6 +69,7 @@ export default function SettingsPage() {
           <ModifierManagementSettings />
         </TabsContent>
         {/* 
+        PrinterSettings TabsContent removed
         <TabsContent value="printers">
           <PrinterSettings />
         </TabsContent> 

@@ -31,7 +31,7 @@ export interface MenuItemFormData {
   dataAiHint?: string;
   categoryId: string;
   availableModifierIds?: string[]; // Sadece ID'ler
-  defaultPrinterRole?: PrinterRole | null; // Added field for form data consistency, though not directly used in create/update yet via UI
+  defaultPrinterRole?: PrinterRole | null; // Added field for form data
 }
 
 function mapPrismaMenuItemToAppMenuItem(
@@ -106,7 +106,7 @@ export async function createMenuItemAction(data: MenuItemFormData): Promise<AppM
               connect: data.availableModifierIds.map(id => ({ id })),
             }
           : undefined,
-        defaultPrinterRole: data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : null, // Add to create
+        defaultPrinterRole: data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : null,
       },
       include: {
         category: true,
@@ -156,9 +156,9 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
               set: data.availableModifierIds.map(modId => ({ id: modId })),
             }
           : undefined,
-        defaultPrinterRole: data.defaultPrinterRole === null
-          ? null
-          : (data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : undefined), // Add to update
+        defaultPrinterRole: data.defaultPrinterRole === null 
+          ? null 
+          : (data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : undefined),
       },
       include: {
         category: true,
