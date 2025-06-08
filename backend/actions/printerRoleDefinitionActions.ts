@@ -26,7 +26,7 @@ export async function getAllPrinterRoleDefinitionsAction(): Promise<AppPrinterRo
     return roles.map(mapPrismaRoleToAppRole);
   } catch (error) {
     console.error('Error fetching printer role definitions:', error);
-    return { error: 'Failed to fetch printer role definitions.' };
+    return { error: 'Failed to fetch printer role definitions. ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
 
@@ -38,11 +38,9 @@ export async function createPrinterRoleDefinitionAction(data: {
     if (!data.roleKey || !data.displayName) {
       return { error: 'Role Key and Display Name are required.' };
     }
-    // Validate roleKey format (e.g., uppercase, underscores)
     if (!/^[A-Z0-9_]+$/.test(data.roleKey)) {
         return { error: 'Role Key can only contain uppercase letters, numbers, and underscores.' };
     }
-
 
     const newRole = await prisma.printerRoleDefinition.create({
       data: {
@@ -58,7 +56,7 @@ export async function createPrinterRoleDefinitionAction(data: {
         return { error: `Printer role with key "${data.roleKey}" already exists.` };
       }
     }
-    return { error: 'Failed to create printer role definition.' };
+    return { error: 'Failed to create printer role definition. ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
 
@@ -74,7 +72,6 @@ export async function updatePrinterRoleDefinitionAction(
         return { error: 'Role Key can only contain uppercase letters, numbers, and underscores.' };
     }
     
-    // Check if new roleKey conflicts with an existing one (excluding the current record)
     if (data.roleKey) {
         const existingRole = await prisma.printerRoleDefinition.findUnique({
             where: { roleKey: data.roleKey }
@@ -87,7 +84,7 @@ export async function updatePrinterRoleDefinitionAction(
     const updatedRole = await prisma.printerRoleDefinition.update({
       where: { id },
       data: {
-        roleKey: data.roleKey,
+        // roleKey: data.roleKey, // roleKey should not be updatable after creation as per previous logic.
         displayName: data.displayName,
       },
     });
@@ -95,7 +92,7 @@ export async function updatePrinterRoleDefinitionAction(
   } catch (error) {
     console.error('Error updating printer role definition:', error);
      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002' && data.roleKey) {
+        if (error.code === 'P2002' && data.roleKey) { // This check might be redundant if roleKey is not updatable
             if ((error.meta?.target as string[])?.includes('roleKey')) {
                 return { error: `Printer role with key "${data.roleKey}" already exists.` };
             }
@@ -104,13 +101,12 @@ export async function updatePrinterRoleDefinitionAction(
              return { error: 'Printer role to update not found.' };
         }
     }
-    return { error: 'Failed to update printer role definition.' };
+    return { error: 'Failed to update printer role definition. ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
 
 export async function deletePrinterRoleDefinitionAction(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    // Check if this role is being used by any MenuCategory or MenuItem
     const categoriesUsingRole = await prisma.menuCategory.count({ where: { defaultPrinterRoleId: id } });
     const menuItemsUsingRole = await prisma.menuItem.count({ where: { defaultPrinterRoleId: id } });
 
@@ -131,6 +127,6 @@ export async function deletePrinterRoleDefinitionAction(id: string): Promise<{ s
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
         return { success: false, error: 'Printer role not found or already deleted.' };
     }
-    return { success: false, error: 'Failed to delete printer role definition.' };
+    return { success: false, error: 'Failed to delete printer role definition. ' + (error instanceof Error ? error.message : String(error)) };
   }
 }
