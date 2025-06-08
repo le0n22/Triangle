@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import type { MenuCategory as AppMenuCategory, PrinterRole } from '@/types'; // Renamed to avoid conflict
-import { printerRoles } from '@/types'; // Import printerRoles array
+import { useState, useEffect, useCallback } from 'react';
+import type { MenuCategory as AppMenuCategory, PrinterRole } from '@/types';
+import { printerRoles as staticPrinterRoles } from '@/types'; // Import static printerRoles as a fallback
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit2, Trash2, RefreshCw } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import {
   Table,
   TableHeader,
@@ -41,16 +41,21 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  getAllCategoriesAction, 
-  createCategoryAction, 
-  updateCategoryAction, 
-  deleteCategoryAction 
+import {
+  getAllCategoriesAction,
+  createCategoryAction,
+  updateCategoryAction,
+  deleteCategoryAction
 } from '../../../../backend/actions/categoryActions';
-import { useLanguage } from '@/hooks/use-language'; // Import useLanguage
+import { useLanguage } from '@/hooks/use-language';
 import type { TranslationKey } from '@/types';
 
-const NO_ROLE_VALUE = "_NONE_"; // Special value for "No Default Role"
+const NO_ROLE_VALUE = "_NONE_";
+
+interface ConfiguredPrinterRole {
+  role: PrinterRole;
+  displayName: string;
+}
 
 export function CategoryManagementSettings() {
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
@@ -64,35 +69,78 @@ export function CategoryManagementSettings() {
 
   const [addForm, setAddForm] = useState({ name: '', iconName: '', defaultPrinterRole: null as PrinterRole | null });
   const [editForm, setEditForm] = useState({ id: '', name: '', iconName: '', defaultPrinterRole: null as PrinterRole | null });
-  
+
+  const [configuredRoles, setConfiguredRoles] = useState<ConfiguredPrinterRole[]>([]);
+  const [isFetchingRoles, setIsFetchingRoles] = useState(true);
+  const [rolesFetchError, setRolesFetchError] = useState<string | null>(null);
+
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  const fetchCategories = async () => {
-    console.log('CategoryManagementSettings: fetchCategories called');
-    setIsFetching(true); 
-    try {
-      const dbCategories = await getAllCategoriesAction();
-      console.log('CategoryManagementSettings: Fetched categories from DB:', dbCategories);
-      setCategories(dbCategories.sort((a, b) => a.name.localeCompare(b.name)));
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to fetch categories.', variant: 'destructive' });
-      console.error("CategoryManagementSettings: Failed to fetch categories:", error);
+  const fetchPrintServerUrl = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('orderflow-print-server-url') || 'http://localhost:3001';
     }
-    setIsFetching(false); 
-    setIsLoading(false); 
-  };
-
-  useEffect(() => {
-    console.log('CategoryManagementSettings: useEffect running, calling fetchCategories.');
-    fetchCategories();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return 'http://localhost:3001';
   }, []);
 
+  const fetchConfiguredRoles = useCallback(async () => {
+    setIsFetchingRoles(true);
+    setRolesFetchError(null);
+    const printServerBaseUrl = fetchPrintServerUrl();
+    const rolesUrl = `${printServerBaseUrl.replace(/\/print-kot$/, '')}/configured-printer-roles`;
+
+    try {
+      const response = await fetch(rolesUrl);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(t('fetchRolesErrorDetailed', { status: response.status, url: rolesUrl, message: errorText.substring(0,100) }) as string);
+      }
+      const data: ConfiguredPrinterRole[] = await response.json();
+      setConfiguredRoles(data);
+      toast({
+        title: t('rolesFetchedTitle'),
+        description: t('rolesFetchedDesc', { count: data.length, url: rolesUrl }),
+      });
+    } catch (error: any) {
+      console.error("Failed to fetch configured printer roles:", error);
+      setRolesFetchError(error.message || t('fetchRolesErrorGeneric'));
+      toast({
+        title: t('fetchRolesErrorTitle'),
+        description: error.message || t('fetchRolesErrorGeneric'),
+        variant: 'destructive',
+        duration: 7000,
+      });
+      // Fallback to static roles if fetch fails
+      setConfiguredRoles([]);
+    } finally {
+      setIsFetchingRoles(false);
+    }
+  }, [fetchPrintServerUrl, t, toast]);
+
+
+  const fetchCategories = useCallback(async () => {
+    setIsFetching(true);
+    try {
+      const dbCategories = await getAllCategoriesAction();
+      setCategories(dbCategories.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (error) {
+      toast({ title: t('error'), description: t('fetchCategoriesError'), variant: 'destructive' });
+      console.error("Failed to fetch categories:", error);
+    }
+    setIsFetching(false);
+    setIsLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, toast]); // Added t to dependencies
+
+  useEffect(() => {
+    fetchCategories();
+    fetchConfiguredRoles();
+  }, [fetchCategories, fetchConfiguredRoles]);
+
   const handleAddCategory = async () => {
-    console.log('CategoryManagementSettings: handleAddCategory called with form:', addForm);
     if (!addForm.name) {
-      toast({ title: 'Error', description: 'Category name is required.', variant: 'destructive' });
+      toast({ title: t('error'), description: t('categoryNameRequired'), variant: 'destructive' });
       return;
     }
     setIsMutating(true);
@@ -102,39 +150,37 @@ export function CategoryManagementSettings() {
         iconName: addForm.iconName || undefined,
         defaultPrinterRole: addForm.defaultPrinterRole || undefined,
       });
-      console.log('CategoryManagementSettings: createCategoryAction result:', result);
 
       if ('error' in result) {
-        toast({ title: 'Error Adding Category', description: result.error, variant: 'destructive' });
+        toast({ title: t('addCategoryErrorTitle'), description: result.error, variant: 'destructive' });
       } else {
-        toast({ title: 'Category Added', description: `Category "${result.name}" has been added.` });
+        toast({ title: t('categoryAddedTitle'), description: t('categoryAddedDesc', { name: result.name }) });
         setAddForm({ name: '', iconName: '', defaultPrinterRole: null });
         setIsAddDialogOpen(false);
-        await fetchCategories(); 
+        await fetchCategories();
       }
     } catch (error) {
-      console.error("CategoryManagementSettings: Error in handleAddCategory:", error);
-      toast({ title: 'Unexpected Error', description: 'Could not add category.', variant: 'destructive' });
+      console.error("Error in handleAddCategory:", error);
+      toast({ title: t('unexpectedErrorTitle'), description: t('addCategoryErrorDesc'), variant: 'destructive' });
     } finally {
       setIsMutating(false);
     }
   };
-  
+
   const openEditDialog = (category: AppMenuCategory) => {
     setEditingCategory(category);
-    setEditForm({ 
-      id: category.id, 
-      name: category.name, 
-      iconName: category.iconName || '', 
-      defaultPrinterRole: category.defaultPrinterRole || null 
+    setEditForm({
+      id: category.id,
+      name: category.name,
+      iconName: category.iconName || '',
+      defaultPrinterRole: category.defaultPrinterRole || null
     });
     setIsEditDialogOpen(true);
   };
 
   const handleUpdateCategory = async () => {
-    console.log('CategoryManagementSettings: handleUpdateCategory called with form:', editForm);
     if (!editForm.name || !editingCategory) {
-      toast({ title: 'Error', description: 'Category name is required.', variant: 'destructive' });
+      toast({ title: t('error'), description: t('categoryNameRequired'), variant: 'destructive' });
       return;
     }
     setIsMutating(true);
@@ -142,21 +188,20 @@ export function CategoryManagementSettings() {
       const result = await updateCategoryAction(editingCategory.id, {
         name: editForm.name,
         iconName: editForm.iconName || undefined,
-        defaultPrinterRole: editForm.defaultPrinterRole, // Pass null directly if that's the state
+        defaultPrinterRole: editForm.defaultPrinterRole,
       });
-      console.log('CategoryManagementSettings: updateCategoryAction result:', result);
 
       if ('error' in result) {
-        toast({ title: 'Error Updating Category', description: result.error, variant: 'destructive' });
+        toast({ title: t('updateCategoryErrorTitle'), description: result.error, variant: 'destructive' });
       } else {
-        toast({ title: 'Category Updated', description: `Category "${result.name}" has been updated.` });
+        toast({ title: t('categoryUpdatedTitle'), description: t('categoryUpdatedDesc', { name: result.name }) });
         setIsEditDialogOpen(false);
         setEditingCategory(null);
         await fetchCategories();
       }
     } catch (error) {
-      console.error("CategoryManagementSettings: Error in handleUpdateCategory:", error);
-      toast({ title: 'Unexpected Error', description: 'Could not update category.', variant: 'destructive' });
+      console.error("Error in handleUpdateCategory:", error);
+      toast({ title: t('unexpectedErrorTitle'), description: t('updateCategoryErrorDesc'), variant: 'destructive' });
     } finally {
       setIsMutating(false);
     }
@@ -168,21 +213,19 @@ export function CategoryManagementSettings() {
 
   const handleDeleteCategory = async () => {
     if (!categoryToDelete) return;
-    console.log('CategoryManagementSettings: handleDeleteCategory called for:', categoryToDelete.name);
     setIsMutating(true);
     try {
       const result = await deleteCategoryAction(categoryToDelete.id);
-      console.log('CategoryManagementSettings: deleteCategoryAction result:', result);
 
       if (result.success) {
-        toast({ title: 'Category Deleted', description: `Category "${categoryToDelete.name}" has been deleted.` });
+        toast({ title: t('categoryDeletedTitle'), description: t('categoryDeletedDesc', { name: categoryToDelete.name }) });
         await fetchCategories();
       } else {
-        toast({ title: 'Error Deleting Category', description: result.error || 'Failed to delete category.', variant: 'destructive' });
+        toast({ title: t('deleteCategoryErrorTitle'), description: result.error || t('deleteCategoryErrorDesc'), variant: 'destructive' });
       }
     } catch (error) {
-      console.error("CategoryManagementSettings: Error in handleDeleteCategory:", error);
-      toast({ title: 'Unexpected Error', description: 'Could not delete category.', variant: 'destructive' });
+      console.error("Error in handleDeleteCategory:", error);
+      toast({ title: t('unexpectedErrorTitle'), description: t('deleteCategoryErrorDesc'), variant: 'destructive' });
     } finally {
       setCategoryToDelete(null);
       setIsMutating(false);
@@ -190,18 +233,22 @@ export function CategoryManagementSettings() {
   };
 
   const getRoleDisplayName = (roleValue?: PrinterRole | null): string => {
-    if (!roleValue) return 'N/A';
+    if (!roleValue) return t('noDefaultRole'); // Default to N/A if no roleValue
+    const dynamicRole = configuredRoles.find(r => r.role === roleValue);
+    if (dynamicRole) return dynamicRole.displayName;
+
+    // Fallback for static roles if not found in dynamic ones (e.g. during fetch error)
     const roleMap: Record<PrinterRole, TranslationKey> = {
       KITCHEN_KOT: 'kitchenKOT',
       BAR_KOT: 'barKOT',
       RECEIPT: 'receiptPrinting',
       REPORT: 'reportPrinting',
     };
-    return t(roleMap[roleValue]);
+    return t(roleMap[roleValue] || roleValue); // Use roleValue itself as a last resort
   };
 
   const renderCategoryFormFields = (
-    formState: typeof addForm | typeof editForm, 
+    formState: typeof addForm | typeof editForm,
     setFormState: React.Dispatch<React.SetStateAction<typeof addForm>> | React.Dispatch<React.SetStateAction<typeof editForm>>
   ) => (
     <div className="grid gap-4 py-4">
@@ -220,55 +267,69 @@ export function CategoryManagementSettings() {
           onValueChange={(value) => {
             setFormState(prev => ({ ...prev, defaultPrinterRole: value === NO_ROLE_VALUE ? null : value as PrinterRole }))
           }}
+          disabled={isFetchingRoles && configuredRoles.length === 0 && !rolesFetchError}
         >
           <SelectTrigger id="categoryFormPrinterRole" className="col-span-3">
             <SelectValue placeholder={t('selectDefaultPrinterRole')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_ROLE_VALUE}>{t('noDefaultRole') || 'No Default Role'}</SelectItem>
-            {printerRoles.map(role => (
-              <SelectItem key={role} value={role}>{getRoleDisplayName(role)}</SelectItem>
+            <SelectItem value={NO_ROLE_VALUE}>{t('noDefaultRole')}</SelectItem>
+            {(configuredRoles.length > 0 ? configuredRoles : staticPrinterRoles.map(r => ({ role: r, displayName: getRoleDisplayName(r) }))).map(item => (
+              <SelectItem key={item.role} value={item.role}>
+                {item.displayName || item.role}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
+       {isFetchingRoles && (
+        <div className="col-span-4 text-xs text-muted-foreground text-center">
+          <RefreshCw className="inline-block mr-1 h-3 w-3 animate-spin" />
+          {t('fetchingRoles')}...
+        </div>
+      )}
+      {rolesFetchError && !isFetchingRoles && (
+         <div className="col-span-4 text-xs text-destructive text-center p-2 border border-destructive/50 rounded-md">
+            <AlertTriangle className="inline-block mr-1 h-3 w-3" />
+            {t('rolesFetchErrorWarning')}: {rolesFetchError}
+         </div>
+      )}
     </div>
   );
-
 
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row justify-between items-center">
         <div>
-          <CardTitle className="font-headline">Category Management</CardTitle>
-          <CardDescription>Manage your menu categories and their default printer roles.</CardDescription>
+          <CardTitle className="font-headline">{t('categoryManagementSettings')}</CardTitle>
+          <CardDescription>{t('manageCategoriesDesc')}</CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchCategories} disabled={isFetching || isMutating}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isFetching && !isAddDialogOpen && !isEditDialogOpen ? 'animate-spin' : ''}`} /> 
-            {isFetching ? 'Refreshing...' : 'Refresh'}
+          <Button variant="outline" onClick={() => { fetchCategories(); fetchConfiguredRoles(); }} disabled={isFetching || isMutating || isFetchingRoles}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${(isFetching || isFetchingRoles) && !isAddDialogOpen && !isEditDialogOpen ? 'animate-spin' : ''}`} />
+            {isFetching || isFetchingRoles ? t('refreshing') : t('refresh')}
           </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
               setIsAddDialogOpen(open);
               if (!open) setAddForm({ name: '', iconName: '', defaultPrinterRole: null });
             }}>
             <DialogTrigger asChild>
-              <Button disabled={isMutating || isFetching}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Category
+              <Button disabled={isMutating || isFetching || isFetchingRoles}>
+                <PlusCircle className="mr-2 h-4 w-4" /> {t('addCategoryButton')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
               <DialogHeader>
-                <DialogTitle>Add New Category</DialogTitle>
-                <DialogDescription>Enter details for the new menu category.</DialogDescription>
+                <DialogTitle>{t('addNewCategoryTitle')}</DialogTitle>
+                <DialogDescription>{t('addNewCategoryDesc')}</DialogDescription>
               </DialogHeader>
               {renderCategoryFormFields(addForm, setAddForm as React.Dispatch<React.SetStateAction<typeof addForm>>)}
               <DialogFooter>
                 <DialogClose asChild>
-                  <Button variant="outline" disabled={isMutating}>Cancel</Button>
+                  <Button variant="outline" disabled={isMutating}>{t('cancelButton')}</Button>
                 </DialogClose>
                 <Button onClick={handleAddCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  {isMutating ? 'Adding...' : 'Add Category'}
+                  {isMutating ? t('addingButton') : t('addCategoryButton')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -279,47 +340,46 @@ export function CategoryManagementSettings() {
         {isFetching && categories.length === 0 ? (
           <div className="text-center py-10">
             <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-2 text-muted-foreground">Loading categories...</p>
+            <p className="mt-2 text-muted-foreground">{t('loadingCategories')}</p>
           </div>
         ) : (
           <Table>
-            <TableCaption>A list of your menu categories from the database.</TableCaption>
+            <TableCaption>{t('categoryListCaption')}</TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Icon Name</TableHead>
+                <TableHead>{t('nameColumn')}</TableHead>
+                <TableHead>{t('iconNameColumn')}</TableHead>
                 <TableHead>{t('defaultPrinterRole')}</TableHead>
-                <TableHead className="text-right w-[150px]">Actions</TableHead>
+                <TableHead className="text-right w-[150px]">{t('actionsColumn')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {categories.map((category) => (
                 <TableRow key={category.id}>
                   <TableCell className="font-medium">{category.name}</TableCell>
-                  <TableCell>{category.iconName || 'N/A'}</TableCell>
+                  <TableCell>{category.iconName || t('noneAbbreviation')}</TableCell>
                   <TableCell>{getRoleDisplayName(category.defaultPrinterRole)}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)} className="mr-2" disabled={isMutating || isFetching}>
+                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)} className="mr-2" disabled={isMutating || isFetching || isFetchingRoles}>
                       <Edit2 className="h-4 w-4" />
                     </Button>
                     <AlertDialog open={!!categoryToDelete && categoryToDelete.id === category.id} onOpenChange={(isOpen) => !isOpen && setCategoryToDelete(null)}>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteCategory(category)} disabled={isMutating || isFetching}>
+                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteCategory(category)} disabled={isMutating || isFetching || isFetchingRoles}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogTitle>{t('confirmDeleteTitle')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action will permanently delete the category "{categoryToDelete?.name}". 
-                            Menu items in this category will also be deleted.
+                            {t('confirmDeleteCategoryDesc', { name: categoryToDelete?.name || '' })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setCategoryToDelete(null)} disabled={isMutating}>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel onClick={() => setCategoryToDelete(null)} disabled={isMutating}>{t('cancelButton')}</AlertDialogCancel>
                           <AlertDialogAction onClick={handleDeleteCategory} disabled={isMutating} className="bg-destructive hover:bg-destructive/90">
-                            {isMutating ? 'Deleting...' : 'Delete'}
+                            {isMutating ? t('deletingButton') : t('deleteButton')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -329,7 +389,7 @@ export function CategoryManagementSettings() {
               ))}
               {!isFetching && categories.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">No categories found in the database. Add some!</TableCell>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">{t('noCategoriesFound')}</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -342,16 +402,16 @@ export function CategoryManagementSettings() {
         }}>
         <DialogContent className="sm:max-w-[425px] bg-card text-card-foreground">
           <DialogHeader>
-            <DialogTitle>Edit Category: {editingCategory?.name}</DialogTitle>
-            <DialogDescription>Update the details for this category.</DialogDescription>
+            <DialogTitle>{t('editCategoryTitle', { name: editingCategory?.name || '' })}</DialogTitle>
+            <DialogDescription>{t('editCategoryDesc')}</DialogDescription>
           </DialogHeader>
           {editingCategory && renderCategoryFormFields(editForm, setEditForm as React.Dispatch<React.SetStateAction<typeof editForm>>)}
           <DialogFooter>
             <DialogClose asChild>
-                <Button variant="outline" disabled={isMutating}>Cancel</Button>
+                <Button variant="outline" disabled={isMutating}>{t('cancelButton')}</Button>
             </DialogClose>
             <Button onClick={handleUpdateCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-             {isMutating ? 'Saving...' : 'Save Changes'}
+             {isMutating ? t('savingButton') : t('saveChanges')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -359,3 +419,5 @@ export function CategoryManagementSettings() {
     </Card>
   );
 }
+
+    

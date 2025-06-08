@@ -26,8 +26,8 @@ export interface MenuItem {
   imageUrl?: string;
   dataAiHint?: string; // For placeholder images
   availableModifiers?: Modifier[]; // Modifiers that can be applied to this item
-  categoryId: string; 
-  defaultPrinterRole?: PrinterRole | null; 
+  categoryId: string;
+  defaultPrinterRole?: PrinterRole | null;
 }
 
 export interface OrderItem {
@@ -75,7 +75,7 @@ export interface MenuCategory {
   name: string;
   iconName?: string; // Key for a lucide icon or custom SVG
   items: MenuItem[];
-  defaultPrinterRole?: PrinterRole | null; 
+  defaultPrinterRole?: PrinterRole | null;
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'mobile';
@@ -90,35 +90,35 @@ export type ExternalOrderStatus =
   | 'CANCELLED_BY_USER';
 
 export interface ExternalOrderItem {
-  id: string; 
+  id: string;
   name: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
   notes?: string;
-  modifiers?: { name: string; price: number }[]; 
+  modifiers?: { name: string; price: number }[];
 }
 
 export interface ExternalOrder {
-  id: string; 
-  platform: string; 
-  platformOrderId: string; 
+  id: string;
+  platform: string;
+  platformOrderId: string;
   customerName: string;
-  customerAddress: string; 
+  customerAddress: string;
   customerPhoneNumber?: string;
   items: ExternalOrderItem[];
   subtotal: number;
   deliveryFee: number;
-  platformFee?: number; 
-  totalAmount: number; 
-  restaurantPayout?: number; 
+  platformFee?: number;
+  totalAmount: number;
+  restaurantPayout?: number;
   status: ExternalOrderStatus;
-  placedAt: string; 
-  estimatedDeliveryTime?: string; 
-  notes?: string; 
-  paymentServiceType?: string; 
-  shortCode?: string; 
-  platformIcon?: React.ElementType; 
+  placedAt: string;
+  estimatedDeliveryTime?: string;
+  notes?: string;
+  paymentServiceType?: string;
+  shortCode?: string;
+  platformIcon?: React.ElementType;
 }
 
 export interface DeliveryPlatform {
@@ -127,7 +127,7 @@ export interface DeliveryPlatform {
   apiKey: string;
   apiSecret: string;
   isEnabled: boolean;
-  icon?: React.ElementType; 
+  icon?: React.ElementType;
 }
 
 export type Locale = 'en' | 'tr';
@@ -148,17 +148,17 @@ export type TranslationKey =
   | 'myAccount'
   | 'profile'
   | 'logout'
-  | 'restaurantSettings' 
-  | 'restaurantDetails' 
-  | 'manageRestaurantNameLogo' 
-  | 'saveChanges' 
+  | 'restaurantSettings'
+  | 'restaurantDetails'
+  | 'manageRestaurantNameLogo'
+  | 'saveChanges'
   | 'appearanceSettings'
   | 'tableManagementSettings'
   | 'categoryManagementSettings'
   | 'menuItemManagementSettings'
   | 'modifierManagementSettings'
   | 'orderPlatformSettings'
-  | 'restaurant' 
+  | 'restaurant'
   | 'appearance'
   | 'categories'
   | 'menu_items'
@@ -190,24 +190,66 @@ export type TranslationKey =
   | 'defaultPrinterRole'
   | 'selectDefaultPrinterRole'
   | 'noDefaultRole'
-  | 'localPrintServerSettings' 
-  | 'printServerURL' 
-  | 'configurePrintServerUrl' 
-  | 'settingsSaved' 
-  | 'printServerUrlUpdated' 
-  | 'restaurantDetailsUpdated' 
+  | 'localPrintServerSettings'
+  | 'printServerURL'
+  | 'configurePrintServerUrl'
+  | 'settingsSaved'
+  | 'printServerUrlUpdated'
+  | 'restaurantDetailsUpdated'
   | 'saveSettings'
   | 'restaurantName'
   | 'yourRestaurantNamePlaceholder'
   | 'logoUrl'
   | 'logoUrlPlaceholder'
-  | 'restaurantLogoPreviewAlt';
+  | 'restaurantLogoPreviewAlt'
+  | 'fetchRolesErrorDetailed'
+  | 'fetchRolesErrorGeneric'
+  | 'fetchRolesErrorTitle'
+  | 'rolesFetchedTitle'
+  | 'rolesFetchedDesc'
+  | 'fetchCategoriesError'
+  | 'categoryNameRequired'
+  | 'addCategoryErrorTitle'
+  | 'categoryAddedTitle'
+  | 'categoryAddedDesc'
+  | 'unexpectedErrorTitle'
+  | 'addCategoryErrorDesc'
+  | 'updateCategoryErrorTitle'
+  | 'categoryUpdatedTitle'
+  | 'categoryUpdatedDesc'
+  | 'updateCategoryErrorDesc'
+  | 'categoryDeletedTitle'
+  | 'categoryDeletedDesc'
+  | 'deleteCategoryErrorTitle'
+  | 'deleteCategoryErrorDesc'
+  | 'fetchingRoles'
+  | 'rolesFetchErrorWarning'
+  | 'manageCategoriesDesc'
+  | 'refreshing'
+  | 'addCategoryButton'
+  | 'addNewCategoryTitle'
+  | 'addNewCategoryDesc'
+  | 'cancelButton'
+  | 'addingButton'
+  | 'loadingCategories'
+  | 'categoryListCaption'
+  | 'nameColumn'
+  | 'iconNameColumn'
+  | 'actionsColumn'
+  | 'noneAbbreviation'
+  | 'confirmDeleteTitle'
+  | 'confirmDeleteCategoryDesc'
+  | 'deleteButton'
+  | 'deletingButton'
+  | 'editCategoryTitle'
+  | 'editCategoryDesc'
+  | 'savingButton';
 
 
 export interface CurrencyConfig {
   symbol: string;
-  code: string; 
-  name: string; 
+  code: string;
+  name: string;
 }
 
 export interface CurrencyProviderState {
@@ -216,37 +258,22 @@ export interface CurrencyProviderState {
   formatCurrency: (amount: number) => string;
 }
 
-// Mantıksal yazıcı rolleri. Bunlar kategorilere ve menü öğelerine atanır.
-// Bu rollerin fiziksel yazıcılara eşlenmesi Electron print server tarafında yapılır.
 export type PrinterRole = 'KITCHEN_KOT' | 'BAR_KOT' | 'RECEIPT' | 'REPORT';
 export const printerRoles: PrinterRole[] = ['KITCHEN_KOT', 'BAR_KOT', 'RECEIPT', 'REPORT'];
 
-// Electron'a gönderilecek KOT payload'ının yapısı
 export interface ElectronKotItem {
   name: string;
   quantity: number;
-  modifiers?: string[]; // Formatlanmış string listesi
+  modifiers?: string[];
   specialRequests?: string;
 }
 
 export interface ElectronKotPayload {
-  printerRole: PrinterRole | 'NO_ROLE_DEFINED'; // Next.js NO_ROLE_DEFINED gönderebilir
+  printerRole: PrinterRole | 'NO_ROLE_DEFINED';
   orderId: string;
   tableNumber: number;
   items: ElectronKotItem[];
   timestamp: string; // ISO Date string
 }
 
-// PrinterConnectionType ve PrinterConfiguration kaldırıldı.
-// export type PrinterConnectionType = 'NETWORK' | 'BLUETOOTH' | 'USB' | 'OTHER';
-// export const printerConnectionTypes: PrinterConnectionType[] = ['NETWORK', 'BLUETOOTH', 'USB', 'OTHER'];
-
-// export interface PrinterConfiguration {
-//   id: string;
-//   name: string;
-//   connectionType: PrinterConnectionType;
-//   connectionInfo: string;
-//   roles: PrinterRole[];
-//   createdAt: string; 
-//   updatedAt: string; 
-// }
+    
