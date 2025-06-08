@@ -3,6 +3,7 @@
 
 import prisma from '@backend/lib/prisma';
 import type { MenuCategory as PrismaMenuCategory, PrinterRole as PrismaPrinterRole } from '@prisma/client';
+import { Prisma } from '@prisma/client'; // Prisma namespace'ini import et
 import type { PrinterRole } from '@/types'; // Import frontend PrinterRole
 
 // Define the AppMenuCategory type to be used by the frontend
@@ -12,6 +13,10 @@ export interface AppMenuCategory {
   iconName?: string; // Optional
   defaultPrinterRole?: PrinterRole; // Added optional field
 }
+
+// Geçerli PrinterRole değerlerini bir Set olarak tutalım
+// Prisma.PrinterRole enum'undan değerleri alarak oluşturulur
+const validPrinterRoles = new Set<string>(Object.values(Prisma.PrinterRole));
 
 // Helper function to map Prisma MenuCategory to our AppMenuCategory type
 function mapPrismaCategoryToAppCategory(prismaCategory: PrismaMenuCategory): AppMenuCategory {
@@ -59,7 +64,9 @@ export async function createCategoryAction(data: {
       data: {
         name: data.name,
         iconName: data.iconName || null,
-        defaultPrinterRole: data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : null,
+        defaultPrinterRole: data.defaultPrinterRole && validPrinterRoles.has(data.defaultPrinterRole)
+          ? data.defaultPrinterRole as PrismaPrinterRole
+          : null, // Geçerli değilse veya yoksa null ata
       },
     });
     return mapPrismaCategoryToAppCategory(newCategory);
@@ -94,14 +101,27 @@ export async function updateCategoryAction(
         }
     }
     
+    // defaultPrinterRole için veri hazırlığı
+    let roleToSave: PrismaPrinterRole | null | undefined = undefined;
+    if (data.hasOwnProperty('defaultPrinterRole')) { // Eğer defaultPrinterRole alanı data objesinde varsa (null bile olsa)
+      if (data.defaultPrinterRole === null) {
+        roleToSave = null;
+      } else if (data.defaultPrinterRole && validPrinterRoles.has(data.defaultPrinterRole)) {
+        roleToSave = data.defaultPrinterRole as PrismaPrinterRole;
+      } else {
+        // Gelen değer geçerli bir PrinterRole değilse veya tanımsızsa (ama null değilse), null ata
+        // Konsola uyarı basılabilir: console.warn(`Invalid printer role '${data.defaultPrinterRole}' received for category ${id}. Setting to null.`);
+        roleToSave = null; 
+      }
+    }
+    // Eğer data.defaultPrinterRole hiç gelmediyse (undefined), roleToSave undefined kalır ve Prisma bu alanı güncellemez.
+
     const updatedCategory = await prisma.menuCategory.update({
       where: { id },
       data: {
         name: data.name,
         iconName: data.iconName,
-        defaultPrinterRole: data.defaultPrinterRole === null 
-          ? null 
-          : (data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : undefined),
+        defaultPrinterRole: roleToSave, // Hazırlanan değeri kullan
       },
     });
     return mapPrismaCategoryToAppCategory(updatedCategory);
@@ -113,6 +133,10 @@ export async function updateCategoryAction(
     }
     if (prismaError.code === 'P2025') {
         return { error: 'Category to update not found.'};
+    }
+    // PrismaClientValidationError durumunda özel bir mesaj
+    if (error instanceof Prisma.PrismaClientValidationError) {
+        return { error: `Data validation error updating category: ${error.message.split('\n').slice(-2).join(' ')}` };
     }
     return { error: 'Failed to update category. Please check server logs.' };
   }
