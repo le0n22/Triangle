@@ -59,11 +59,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     customCurrency: 'Custom Currency',
     currencySymbol: 'Currency Symbol',
     currencyName: 'Currency Name',
-    printers: 'Printers',
+    printers: 'Printers', // Retained for Printer Roles tab label
     printerName: 'Printer Name',
     connectionType: 'Connection Type',
     connectionInfo: 'Connection Info',
-    printerRoles: 'Printer Roles',
+    printerRoles: 'Printer Roles', // Used for new settings tab
     network: 'Network',
     bluetooth: 'Bluetooth',
     usb: 'USB',
@@ -129,6 +129,36 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     editCategoryTitle: 'Edit Category: {name}',
     editCategoryDesc: 'Update the details for this category.',
     savingButton: 'Saving...',
+    // New keys for PrinterRoleManagement
+    managePrinterRolesDesc: 'Define and manage printer roles for your system.',
+    addPrinterRoleButton: 'Add Printer Role',
+    addNewPrinterRoleTitle: 'Add New Printer Role',
+    editPrinterRoleTitle: 'Edit Printer Role',
+    addNewPrinterRoleDesc: 'Define a new key and display name for a printer role.',
+    editPrinterRoleDesc: 'Update the display name for printer role "{name}".',
+    roleKeyLabel: 'Role Key',
+    displayNameLabel: 'Display Name',
+    roleKeyEditWarning: 'Role Key cannot be changed after creation.',
+    roleKeyFormatHint: 'Use UPPERCASE_SNAKE_CASE (e.g., KITCHEN_MAIN). This key is used by the print server.',
+    loadingPrinterRoles: 'Loading printer roles...',
+    printerRoleListCaption: 'A list of defined printer roles.',
+    noPrinterRolesFound: 'No printer roles defined. Add some to assign to categories or menu items.',
+    confirmDeletePrinterRoleDesc: 'This action will permanently delete the printer role "{name}" (Key: {key}). Ensure it\'s not critical for print server operations.',
+    // Menu Item Management
+    manageMenuItemsDesc: 'Manage your menu items, their categories, and modifiers.',
+    addMenuItemButton: 'Add Menu Item',
+    addNewMenuItemTitle: 'Add New Menu Item',
+    editMenuItemTitle: 'Edit Menu Item',
+    addNewMenuItemDesc: 'Enter details for the new menu item.',
+    editMenuItemDesc: 'Update details for "{name}".',
+    loadingMenuItems: 'Loading menu items...',
+    menuItemListCaption: 'A list of your menu items.',
+    priceColumn: 'Price',
+    imageColumn: 'Image',
+    categoryColumn: 'Category',
+    modifiersColumn: 'Modifiers',
+    noMenuItemsFound: 'No menu items found. Add some!',
+    confirmDeleteMenuItemDesc: 'This action will permanently delete "{name}". This might affect past order records if not handled carefully.',
   },
   tr: {
     dashboard: 'Kontrol Paneli',
@@ -170,11 +200,11 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     customCurrency: 'Özel Para Birimi',
     currencySymbol: 'Para Birimi Sembolü',
     currencyName: 'Para Birimi Adı',
-    printers: 'Yazıcılar',
+    printers: 'Yazıcılar', // Yazıcı Rolleri sekme başlığı için korunur
     printerName: 'Yazıcı Adı',
     connectionType: 'Bağlantı Türü',
     connectionInfo: 'Bağlantı Bilgisi',
-    printerRoles: 'Yazıcı Rolleri',
+    printerRoles: 'Yazıcı Rolleri', // Yeni ayar sekmesi için
     network: 'Ağ (IP)',
     bluetooth: 'Bluetooth',
     usb: 'USB',
@@ -240,6 +270,36 @@ export const translations: Record<Locale, Record<TranslationKey, string>> = {
     editCategoryTitle: 'Kategoriyi Düzenle: {name}',
     editCategoryDesc: 'Bu kategorinin detaylarını güncelleyin.',
     savingButton: 'Kaydediliyor...',
+    // PrinterRoleManagement için yeni çeviriler
+    managePrinterRolesDesc: 'Sisteminiz için yazıcı rollerini tanımlayın ve yönetin.',
+    addPrinterRoleButton: 'Yazıcı Rolü Ekle',
+    addNewPrinterRoleTitle: 'Yeni Yazıcı Rolü Ekle',
+    editPrinterRoleTitle: 'Yazıcı Rolünü Düzenle',
+    addNewPrinterRoleDesc: 'Yeni bir yazıcı rolü için anahtar ve görünen ad tanımlayın.',
+    editPrinterRoleDesc: '"{name}" yazıcı rolünün görünen adını güncelleyin.',
+    roleKeyLabel: 'Rol Anahtarı',
+    displayNameLabel: 'Görünen Ad',
+    roleKeyEditWarning: 'Rol Anahtarı oluşturulduktan sonra değiştirilemez.',
+    roleKeyFormatHint: 'BÜYÜK_HARF_YILAN_VAKA kullanın (örn: MUTFAK_ANA). Bu anahtar yazdırma sunucusu tarafından kullanılır.',
+    loadingPrinterRoles: 'Yazıcı rolleri yükleniyor...',
+    printerRoleListCaption: 'Tanımlanmış yazıcı rollerinin listesi.',
+    noPrinterRolesFound: 'Tanımlı yazıcı rolü bulunamadı. Kategori veya menü öğelerine atamak için ekleyin.',
+    confirmDeletePrinterRoleDesc: 'Bu işlem "{name}" (Anahtar: {key}) yazıcı rolünü kalıcı olarak silecektir. Yazdırma sunucusu işlemlerinde kritik olmadığından emin olun.',
+    // Menu Item Management için yeni/güncellenmiş çeviriler
+    manageMenuItemsDesc: 'Menü öğelerinizi, kategorilerini ve ek malzemelerini yönetin.',
+    addMenuItemButton: 'Menü Öğesi Ekle',
+    addNewMenuItemTitle: 'Yeni Menü Öğesi Ekle',
+    editMenuItemTitle: 'Menü Öğesini Düzenle',
+    addNewMenuItemDesc: 'Yeni menü öğesi için detayları girin.',
+    editMenuItemDesc: '"{name}" detaylarını güncelleyin.',
+    loadingMenuItems: 'Menü öğeleri yükleniyor...',
+    menuItemListCaption: 'Menü öğelerinizin listesi.',
+    priceColumn: 'Fiyat',
+    imageColumn: 'Görsel',
+    categoryColumn: 'Kategori',
+    modifiersColumn: 'Ek Malzemeler',
+    noMenuItemsFound: 'Menü öğesi bulunamadı. Ekleyin!',
+    confirmDeleteMenuItemDesc: 'Bu işlem "{name}" öğesini kalıcı olarak silecektir. Dikkatli bir şekilde ele alınmazsa geçmiş sipariş kayıtlarını etkileyebilir.',
   },
 };
 
@@ -303,5 +363,3 @@ export function LanguageProvider({
     </LanguageContext.Provider>
   );
 }
-
-    

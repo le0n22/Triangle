@@ -7,11 +7,11 @@ import { TableManagementSettings } from '@/components/features/settings/table-ma
 import { CategoryManagementSettings } from '@/components/features/settings/category-management-settings';
 import { MenuItemManagementSettings } from '@/components/features/settings/menu-item-management-settings';
 import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings';
+import { PrinterRoleManagementSettings } from '@/components/features/settings/printer-role-management-settings'; // New Import
 import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings';
 import { ThemeSettings } from '@/components/features/settings/theme-settings';
 import { LanguageSettings } from '@/components/features/settings/language-settings';
 import { CurrencySettings } from '@/components/features/settings/CurrencySettings';
-// PrinterSettings import is removed
 import type { TranslationKey } from '@/types'; 
 import { useLanguage } from '@/hooks/use-language';
 
@@ -23,10 +23,10 @@ export default function SettingsPage() {
     { value: 'restaurant', labelKey: 'restaurant' },
     { value: 'appearance', labelKey: 'appearance' },
     { value: 'tables', labelKey: 'tables' },
+    { value: 'printer_roles', labelKey: 'printerRoles' }, // New Tab
     { value: 'categories', labelKey: 'categories' },
     { value: 'menu_items', labelKey: 'menu_items' },
     { value: 'modifiers', labelKey: 'modifiers' },
-    // { value: 'printers', labelKey: 'printers' }, // "Printers" tab removed
     { value: 'order_platforms', labelKey: 'order_platforms' },
   ];
 
@@ -59,6 +59,9 @@ export default function SettingsPage() {
         <TabsContent value="tables">
           <TableManagementSettings />
         </TabsContent>
+        <TabsContent value="printer_roles"> {/* New Content */}
+          <PrinterRoleManagementSettings />
+        </TabsContent>
         <TabsContent value="categories">
           <CategoryManagementSettings />
         </TabsContent>
@@ -68,12 +71,6 @@ export default function SettingsPage() {
         <TabsContent value="modifiers">
           <ModifierManagementSettings />
         </TabsContent>
-        {/* 
-        PrinterSettings TabsContent removed
-        <TabsContent value="printers">
-          <PrinterSettings />
-        </TabsContent> 
-        */}
         <TabsContent value="order_platforms">
           <OrderPlatformSettings initialPlatforms={[]} /> 
         </TabsContent>

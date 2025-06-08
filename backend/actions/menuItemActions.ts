@@ -2,25 +2,8 @@
 'use server';
 
 import prisma from '@backend/lib/prisma';
-import type { MenuItem as PrismaMenuItem, MenuCategory as PrismaMenuCategory, Modifier as PrismaModifier, PrinterRole as PrismaPrinterRole } from '@prisma/client';
-import type { PrinterRole } from '@/types'; // Import frontend PrinterRole
-
-// Frontend'in kullanacağı MenuItem tipi
-// Kategori ve modifier detaylarını da içerebilir
-export interface AppMenuItem {
-  id: string;
-  name: string;
-  description?: string | null;
-  price: number; // Should be number
-  imageUrl?: string | null;
-  dataAiHint?: string | null;
-  categoryId: string;
-  categoryName: string; // Kategori adını göstermek için
-  availableModifiers: { id: string; name: string; priceChange: number }[]; // priceChange should be number
-  defaultPrinterRole?: PrinterRole | null; // Added field
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { MenuItem as PrismaMenuItem, MenuCategory as PrismaMenuCategory, Modifier as PrismaModifier } from '@prisma/client';
+import type { AppMenuItem } from '@/types'; // Ensure AppMenuItem uses string for roleKey
 
 // Veri transfer objesi (DTO) veya form verisi için tip
 export interface MenuItemFormData {
@@ -30,28 +13,33 @@ export interface MenuItemFormData {
   imageUrl?: string;
   dataAiHint?: string;
   categoryId: string;
-  availableModifierIds?: string[]; // Sadece ID'ler
-  defaultPrinterRole?: PrinterRole | null; // Added field for form data
+  availableModifierIds?: string[];
+  defaultPrinterRoleKey?: string | null; // Changed from PrinterRole to string (roleKey)
 }
 
 function mapPrismaMenuItemToAppMenuItem(
-  prismaMenuItem: PrismaMenuItem & { category: PrismaMenuCategory; availableModifiers: PrismaModifier[] }
+  prismaMenuItem: PrismaMenuItem & { 
+    category: PrismaMenuCategory; 
+    availableModifiers: PrismaModifier[];
+    defaultPrinterRole?: { roleKey: string; displayName: string } | null;
+  }
 ): AppMenuItem {
   return {
     id: prismaMenuItem.id,
     name: prismaMenuItem.name,
     description: prismaMenuItem.description,
-    price: prismaMenuItem.price.toNumber(), // Convert Decimal to number
+    price: prismaMenuItem.price.toNumber(),
     imageUrl: prismaMenuItem.imageUrl,
     dataAiHint: prismaMenuItem.dataAiHint,
     categoryId: prismaMenuItem.categoryId,
-    categoryName: prismaMenuItem.category.name,
+    categoryName: prismaMenuItem.category.name, // Kategori adını göstermek için
     availableModifiers: prismaMenuItem.availableModifiers.map(mod => ({
       id: mod.id,
       name: mod.name,
-      priceChange: mod.priceChange.toNumber(), // Convert Decimal to number
+      priceChange: mod.priceChange.toNumber(),
     })),
-    defaultPrinterRole: prismaMenuItem.defaultPrinterRole ? prismaMenuItem.defaultPrinterRole as PrinterRole : null, // Map the role
+    defaultPrinterRoleKey: prismaMenuItem.defaultPrinterRole?.roleKey ?? undefined,
+    defaultPrinterRoleDisplayName: prismaMenuItem.defaultPrinterRole?.displayName ?? undefined,
     createdAt: prismaMenuItem.createdAt,
     updatedAt: prismaMenuItem.updatedAt,
   };
@@ -63,6 +51,12 @@ export async function getAllMenuItemsAction(): Promise<AppMenuItem[] | { error: 
       include: {
         category: true,
         availableModifiers: true,
+        defaultPrinterRole: { // Include the related PrinterRoleDefinition
+          select: {
+            roleKey: true,
+            displayName: true,
+          }
+        }
       },
       orderBy: {
         name: 'asc',
@@ -91,26 +85,34 @@ export async function createMenuItemAction(data: MenuItemFormData): Promise<AppM
         return { error: `Menu item with name "${data.name}" already exists.`};
     }
 
-    const newMenuItem = await prisma.menuItem.create({
-      data: {
-        name: data.name,
-        description: data.description || null,
-        price: data.price, // Prisma handles number to Decimal conversion here
-        imageUrl: data.imageUrl || null,
-        dataAiHint: data.dataAiHint || null,
-        category: {
-          connect: { id: data.categoryId },
-        },
-        availableModifiers: data.availableModifierIds && data.availableModifierIds.length > 0
-          ? {
-              connect: data.availableModifierIds.map(id => ({ id })),
-            }
-          : undefined,
-        defaultPrinterRole: data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : null,
+    const createData: Prisma.MenuItemCreateInput = {
+      name: data.name,
+      description: data.description || null,
+      price: data.price,
+      imageUrl: data.imageUrl || null,
+      dataAiHint: data.dataAiHint || null,
+      category: {
+        connect: { id: data.categoryId },
       },
+      availableModifiers: data.availableModifierIds && data.availableModifierIds.length > 0
+        ? {
+            connect: data.availableModifierIds.map(id => ({ id })),
+          }
+        : undefined,
+    };
+
+    if (data.defaultPrinterRoleKey) {
+      createData.defaultPrinterRole = {
+        connect: { roleKey: data.defaultPrinterRoleKey }
+      };
+    }
+
+    const newMenuItem = await prisma.menuItem.create({
+      data: createData,
       include: {
         category: true,
         availableModifiers: true,
+        defaultPrinterRole: { select: { roleKey: true, displayName: true } }
       },
     });
     return mapPrismaMenuItemToAppMenuItem(newMenuItem);
@@ -120,8 +122,13 @@ export async function createMenuItemAction(data: MenuItemFormData): Promise<AppM
      if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('name')) {
       return { error: `Menu item with name "${data.name}" already exists.` };
     }
-    if (prismaError.code === 'P2025' && prismaError.meta?.cause?.includes('CategoryToConnect')) {
-        return { error: 'Selected category not found.'};
+    if (prismaError.code === 'P2025') {
+        if (prismaError.meta?.cause?.includes('CategoryToConnect')) {
+            return { error: 'Selected category not found.'};
+        }
+        if (prismaError.meta?.cause?.includes('PrinterRoleDefinitionToConnect')) {
+            return { error: `Selected printer role with key "${data.defaultPrinterRoleKey}" not found.` };
+        }
     }
     return { error: 'Failed to create menu item. Please check server logs.' };
   }
@@ -142,27 +149,35 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
         }
     }
 
+    const updateData: Prisma.MenuItemUpdateInput = {
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      imageUrl: data.imageUrl,
+      dataAiHint: data.dataAiHint,
+      category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
+      availableModifiers: data.availableModifierIds !== undefined
+        ? { set: data.availableModifierIds.map(modId => ({ id: modId })) }
+        : undefined,
+    };
+
+    if (data.hasOwnProperty('defaultPrinterRoleKey')) {
+      if (data.defaultPrinterRoleKey === null || data.defaultPrinterRoleKey === undefined || data.defaultPrinterRoleKey === '') {
+        updateData.defaultPrinterRole = { disconnect: true };
+      } else {
+        updateData.defaultPrinterRole = {
+          connect: { roleKey: data.defaultPrinterRoleKey }
+        };
+      }
+    }
+
     const updatedMenuItem = await prisma.menuItem.update({
       where: { id },
-      data: {
-        name: data.name,
-        description: data.description,
-        price: data.price, // Prisma handles number to Decimal conversion
-        imageUrl: data.imageUrl,
-        dataAiHint: data.dataAiHint,
-        category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
-        availableModifiers: data.availableModifierIds !== undefined // Check if it's explicitly passed
-          ? {
-              set: data.availableModifierIds.map(modId => ({ id: modId })),
-            }
-          : undefined,
-        defaultPrinterRole: data.defaultPrinterRole === null 
-          ? null 
-          : (data.defaultPrinterRole ? data.defaultPrinterRole as PrismaPrinterRole : undefined),
-      },
+      data: updateData,
       include: {
         category: true,
         availableModifiers: true,
+        defaultPrinterRole: { select: { roleKey: true, displayName: true } }
       },
     });
     return mapPrismaMenuItemToAppMenuItem(updatedMenuItem);
@@ -178,6 +193,9 @@ export async function updateMenuItemAction(id: string, data: Partial<MenuItemFor
         }
         if (prismaError.meta?.cause?.includes('CategoryToConnect')) {
             return { error: 'Selected category for update not found.'};
+        }
+        if (prismaError.meta?.cause?.includes('PrinterRoleDefinitionToConnect')) {
+            return { error: `Selected printer role with key "${data.defaultPrinterRoleKey}" not found for update.` };
         }
        return { error: 'Failed to update menu item: Record not found or related record missing.' };
     }
@@ -197,8 +215,11 @@ export async function deleteMenuItemAction(id: string): Promise<{ success: boole
     if (prismaError.code === 'P2025') {
          return { success: false, error: 'Menu item not found or already deleted.' };
     }
-    if (prismaError.code === 'P2003') {
-        return { success: false, error: 'Cannot delete menu item. It is part of one or more existing orders.' };
+    if (prismaError.code === 'P2003') { // Foreign key constraint failed
+        // Check if it's related to OrderItem
+        if (prismaError.meta?.cause?.toLowerCase().includes('orderitemtomenuitem')) {
+            return { success: false, error: 'Cannot delete menu item. It is part of one or more existing orders.' };
+        }
     }
     return { success: false, error: 'Failed to delete menu item. Please check server logs.' };
   }

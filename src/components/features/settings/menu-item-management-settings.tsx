@@ -3,33 +3,19 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { 
-  MenuItem as AppMenuItem, 
-  MenuCategory as AppMenuCategory, 
-  Modifier as AppModifier,
-  PrinterRole // Import PrinterRole
+  AppMenuItem, 
+  AppMenuCategory, 
+  AppModifier,
+  AppPrinterRoleDefinition // Import AppPrinterRoleDefinition
 } from '@/types';
-import { printerRoles as staticPrinterRoles } from '@/types'; // Import static printerRoles for fallback
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-  DialogTrigger,
-  DialogClose,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  DialogDescription, DialogTrigger, DialogClose
 } from '@/components/ui/dialog';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -37,46 +23,35 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit2, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, RefreshCw, PackageSearch, ListFilter } from 'lucide-react';
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  TableCaption,
+  Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
 import { useCurrency } from '@/hooks/useCurrency';
 import { 
-  getAllMenuItemsAction, 
-  createMenuItemAction, 
-  updateMenuItemAction, 
-  deleteMenuItemAction,
+  getAllMenuItemsAction, createMenuItemAction, updateMenuItemAction, deleteMenuItemAction,
   type MenuItemFormData
-} from '../../../../backend/actions/menuItemActions';
-import { getAllCategoriesAction } from '../../../../backend/actions/categoryActions';
-import { getAllModifiersAction } from '../../../../backend/actions/modifierActions';
-import { useLanguage } from '@/hooks/use-language'; // Import useLanguage
-import type { TranslationKey } from '@/types'; // Import TranslationKey
+} from '@backend/actions/menuItemActions';
+import { getAllCategoriesAction } from '@backend/actions/categoryActions';
+import { getAllModifiersAction } from '@backend/actions/modifierActions';
+import { getAllPrinterRoleDefinitionsAction } from '@backend/actions/printerRoleDefinitionActions'; // Import
+import { useLanguage } from '@/hooks/use-language';
+import type { TranslationKey } from '@/types';
 
 const NO_ROLE_VALUE = "_NONE_";
-
-interface ConfiguredPrinterRole {
-  role: PrinterRole;
-  displayName: string;
-}
 
 export function MenuItemManagementSettings() {
   const [menuItems, setMenuItems] = useState<AppMenuItem[]>([]);
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
   const [allModifiers, setAllModifiers] = useState<AppModifier[]>([]);
+  const [printerRoles, setPrinterRoles] = useState<AppPrinterRoleDefinition[]>([]); // State for dynamic roles
   
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFetchingCategories, setIsFetchingCategories] = useState(true);
-  const [isFetchingModifiers, setIsFetchingModifiers] = useState(true);
+  const [isLoadingItems, setIsLoadingItems] = useState(true);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [isLoadingModifiers, setIsLoadingModifiers] = useState(true);
+  const [isLoadingRoles, setIsLoadingRoles] = useState(true); // Separate loading for roles
   const [isMutating, setIsMutating] = useState(false);
 
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
@@ -85,119 +60,75 @@ export function MenuItemManagementSettings() {
   
   const { toast } = useToast();
   const { formatCurrency, currency } = useCurrency();
-  const { t } = useLanguage(); // Initialize useLanguage
-
-  const [configuredRoles, setConfiguredRoles] = useState<ConfiguredPrinterRole[]>([]);
-  const [isFetchingPrintRoles, setIsFetchingPrintRoles] = useState(true);
-  const [printRolesFetchError, setPrintRolesFetchError] = useState<string | null>(null);
-
+  const { t } = useLanguage();
 
   const initialFormState: MenuItemFormData = {
-    name: '',
-    description: '',
-    price: 0,
-    imageUrl: '',
-    dataAiHint: '',
-    categoryId: '', 
-    availableModifierIds: [],
-    defaultPrinterRole: null, // Added
+    name: '', description: '', price: 0, imageUrl: '', dataAiHint: '',
+    categoryId: '', availableModifierIds: [], defaultPrinterRoleKey: NO_ROLE_VALUE,
   };
   const [currentForm, setCurrentForm] = useState(initialFormState);
 
-  const fetchPrintServerUrl = useCallback(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('orderflow-print-server-url') || 'http://localhost:3001';
-    }
-    return 'http://localhost:3001';
-  }, []);
-
-  const fetchConfiguredPrintRoles = useCallback(async () => {
-    setIsFetchingPrintRoles(true);
-    setPrintRolesFetchError(null);
-    const printServerBaseUrl = fetchPrintServerUrl();
-    const rolesUrl = `${printServerBaseUrl.replace(/\/print-kot$/, '')}/configured-printer-roles`;
-    
-    try {
-      const response = await fetch(rolesUrl);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(t('fetchRolesErrorDetailed', { status: response.status, url: rolesUrl, message: errorText.substring(0,100) }) as string);
-      }
-      const data: ConfiguredPrinterRole[] = await response.json();
-      setConfiguredRoles(data);
-    } catch (error: any) {
-      console.error("Failed to fetch configured printer roles for menu items:", error);
-      setPrintRolesFetchError(error.message || t('fetchRolesErrorGeneric'));
-      setConfiguredRoles([]); // Fallback to empty or static roles
-    } finally {
-      setIsFetchingPrintRoles(false);
-    }
-  }, [fetchPrintServerUrl, t]);
-
-
   const fetchMenuItems = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const result = await getAllMenuItemsAction();
-      if ('error' in result) {
-        toast({ title: 'Error Fetching Menu Items', description: result.error, variant: 'destructive' });
-        setMenuItems([]);
-      } else {
-        setMenuItems(result.sort((a, b) => a.name.localeCompare(b.name)));
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to fetch menu items.', variant: 'destructive' });
+    setIsLoadingItems(true);
+    const result = await getAllMenuItemsAction();
+    if ('error' in result) {
+      toast({ title: t('error'), description: result.error, variant: 'destructive' });
       setMenuItems([]);
-    } finally {
-      setIsLoading(false);
+    } else {
+      setMenuItems(result.sort((a, b) => a.name.localeCompare(b.name)));
     }
-  }, [toast]);
+    setIsLoadingItems(false);
+  }, [toast, t]);
 
   const fetchCategories = useCallback(async () => {
-    setIsFetchingCategories(true);
-    try {
-      const result = await getAllCategoriesAction();
-      if (Array.isArray(result)) {
-        setCategories(result.sort((a, b) => a.name.localeCompare(b.name)));
-      } else {
-        toast({ title: 'Error Fetching Categories', description: result.error || 'Unexpected error', variant: 'destructive' });
-        setCategories([]);
+    setIsLoadingCategories(true);
+    const result = await getAllCategoriesAction();
+    if (Array.isArray(result)) {
+      setCategories(result.sort((a, b) => a.name.localeCompare(b.name)));
+      if (result.length > 0 && !currentForm.categoryId) {
+          // Set default category if none is selected (for add form)
+          if(!editingMenuItem) setCurrentForm(prev => ({ ...prev, categoryId: result[0].id }));
       }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to fetch categories.', variant: 'destructive' });
+    } else {
+      toast({ title: t('error'), description: result.error || 'Unexpected error fetching categories', variant: 'destructive' });
       setCategories([]);
-    } finally {
-      setIsFetchingCategories(false);
     }
-  }, [toast]);
+    setIsLoadingCategories(false);
+  }, [toast, t, currentForm.categoryId, editingMenuItem]);
 
   const fetchModifiers = useCallback(async () => {
-    setIsFetchingModifiers(true);
-    try {
-      const result = await getAllModifiersAction();
-      if (Array.isArray(result)) {
-        setAllModifiers(result.sort((a, b) => a.name.localeCompare(b.name)));
-      } else if (result && 'error' in result) {
-        toast({ title: 'Error Fetching Modifiers', description: result.error, variant: 'destructive' });
-        setAllModifiers([]);
-      } else {
-         toast({ title: 'Error', description: 'Unexpected error fetching modifiers.', variant: 'destructive' });
-        setAllModifiers([]);
-      }
-    } catch (error) {
-      toast({ title: 'Error', description: 'Failed to fetch modifiers.', variant: 'destructive' });
+    setIsLoadingModifiers(true);
+    const result = await getAllModifiersAction();
+    if (Array.isArray(result)) {
+      setAllModifiers(result.sort((a, b) => a.name.localeCompare(b.name)));
+    } else if (result && 'error' in result) {
+      toast({ title: t('error'), description: result.error, variant: 'destructive' });
       setAllModifiers([]);
-    } finally {
-      setIsFetchingModifiers(false);
+    } else {
+      toast({ title: t('error'), description: 'Unexpected error fetching modifiers.', variant: 'destructive' });
+      setAllModifiers([]);
     }
-  }, [toast]);
+    setIsLoadingModifiers(false);
+  }, [toast, t]);
+
+  const fetchPrinterRoles = useCallback(async () => {
+    setIsLoadingRoles(true);
+    const result = await getAllPrinterRoleDefinitionsAction();
+    if ('error' in result) {
+      toast({ title: t('error'), description: result.error, variant: 'destructive' });
+      setPrinterRoles([]);
+    } else {
+      setPrinterRoles(result);
+    }
+    setIsLoadingRoles(false);
+  }, [toast, t]);
   
   useEffect(() => {
     fetchMenuItems();
     fetchCategories();
     fetchModifiers();
-    fetchConfiguredPrintRoles();
-  }, [fetchMenuItems, fetchCategories, fetchModifiers, fetchConfiguredPrintRoles]);
+    fetchPrinterRoles();
+  }, [fetchMenuItems, fetchCategories, fetchModifiers, fetchPrinterRoles]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -214,24 +145,25 @@ export function MenuItemManagementSettings() {
 
   const handleModifierToggle = (modifierId: string, checked: boolean) => {
     setCurrentForm(prev => {
+      const currentIds = prev.availableModifierIds || [];
       const newModifierIds = checked
-        ? [...prev.availableModifierIds, modifierId]
-        : prev.availableModifierIds.filter(id => id !== modifierId);
+        ? [...currentIds, modifierId]
+        : currentIds.filter(id => id !== modifierId);
       return { ...prev, availableModifierIds: newModifierIds };
     });
   };
 
-  const handleDefaultPrinterRoleChange = (role: string) => {
-    setCurrentForm(prev => ({ ...prev, defaultPrinterRole: role === NO_ROLE_VALUE ? null : role as PrinterRole }));
+  const handleDefaultPrinterRoleChange = (roleKey: string) => {
+    setCurrentForm(prev => ({ ...prev, defaultPrinterRoleKey: roleKey }));
   };
   
   const openAddDialog = () => {
     setEditingMenuItem(null);
-    let defaultCategoryId = '';
-    if (categories.length > 0 && !isFetchingCategories) {
-        defaultCategoryId = categories[0].id;
+    let defaultCatId = '';
+    if (categories.length > 0 && !isLoadingCategories) {
+        defaultCatId = categories[0].id;
     }
-    setCurrentForm({...initialFormState, categoryId: defaultCategoryId });
+    setCurrentForm({...initialFormState, categoryId: defaultCatId, defaultPrinterRoleKey: NO_ROLE_VALUE });
     setIsFormDialogOpen(true);
   };
 
@@ -245,59 +177,50 @@ export function MenuItemManagementSettings() {
       dataAiHint: menuItem.dataAiHint || '',
       categoryId: menuItem.categoryId,
       availableModifierIds: menuItem.availableModifiers ? menuItem.availableModifiers.map(mod => mod.id) : [],
-      defaultPrinterRole: menuItem.defaultPrinterRole || null, // Added
+      defaultPrinterRoleKey: menuItem.defaultPrinterRoleKey || NO_ROLE_VALUE,
     });
     setIsFormDialogOpen(true);
   };
 
   const handleSubmitMenuItem = async () => {
     if (!currentForm.name || !currentForm.categoryId || currentForm.price === null || currentForm.price === undefined) {
-      toast({ title: 'Validation Error', description: 'Name, category, and price are required.', variant: 'destructive' });
+      toast({ title: t('error'), description: 'Name, category, and price are required.', variant: 'destructive' });
       return;
     }
-    
     if (isNaN(currentForm.price) || currentForm.price < 0) {
-      toast({ title: 'Validation Error', description: 'Price must be a non-negative number.', variant: 'destructive' });
+      toast({ title: t('error'), description: 'Price must be a non-negative number.', variant: 'destructive' });
       return;
     }
 
     setIsMutating(true);
     const formData: MenuItemFormData = {
-      name: currentForm.name,
+      ...currentForm,
       description: currentForm.description || undefined,
-      price: currentForm.price,
       imageUrl: currentForm.imageUrl || undefined,
       dataAiHint: currentForm.dataAiHint || undefined,
-      categoryId: currentForm.categoryId,
-      availableModifierIds: currentForm.availableModifierIds,
-      defaultPrinterRole: currentForm.defaultPrinterRole, // Added
+      defaultPrinterRoleKey: currentForm.defaultPrinterRoleKey === NO_ROLE_VALUE ? null : currentForm.defaultPrinterRoleKey,
     };
 
     try {
-      let result;
-      if (editingMenuItem) {
-        result = await updateMenuItemAction(editingMenuItem.id, formData);
-      } else {
-        result = await createMenuItemAction(formData);
-      }
+      const result = editingMenuItem
+        ? await updateMenuItemAction(editingMenuItem.id, formData)
+        : await createMenuItemAction(formData);
 
       if ('error' in result) {
-        toast({ title: `Error ${editingMenuItem ? 'Updating' : 'Adding'} Menu Item`, description: result.error, variant: 'destructive' });
+        toast({ title: t('error'), description: result.error, variant: 'destructive' });
       } else {
-        toast({ title: `Menu Item ${editingMenuItem ? 'Updated' : 'Added'}`, description: `"${result.name}" has been successfully ${editingMenuItem ? 'updated' : 'added'}.` });
+        toast({ title: `Menu Item ${editingMenuItem ? 'Updated' : 'Added'}`, description: `"${result.name}" was successfully ${editingMenuItem ? 'updated' : 'added'}.` });
         setIsFormDialogOpen(false);
         fetchMenuItems(); 
       }
     } catch (error) {
-      toast({ title: 'Unexpected Error', description: `Could not ${editingMenuItem ? 'update' : 'add'} menu item.`, variant: 'destructive' });
+      toast({ title: t('unexpectedErrorTitle'), description: `Could not ${editingMenuItem ? 'update' : 'add'} menu item.`, variant: 'destructive' });
     } finally {
       setIsMutating(false);
     }
   };
   
-  const confirmDeleteMenuItem = (menuItem: AppMenuItem) => {
-    setMenuItemToDelete(menuItem);
-  };
+  const confirmDeleteMenuItem = (menuItem: AppMenuItem) => setMenuItemToDelete(menuItem);
 
   const handleDeleteMenuItem = async () => {
     if (!menuItemToDelete) return;
@@ -308,10 +231,10 @@ export function MenuItemManagementSettings() {
         toast({ title: 'Menu Item Deleted', description: `"${menuItemToDelete.name}" has been deleted.` });
         fetchMenuItems(); 
       } else {
-        toast({ title: 'Error Deleting Menu Item', description: result.error || 'Failed to delete menu item.', variant: 'destructive' });
+        toast({ title: t('error'), description: result.error || 'Failed to delete menu item.', variant: 'destructive' });
       }
     } catch (error) {
-      toast({ title: 'Unexpected Error', description: 'Could not delete menu item.', variant: 'destructive' });
+      toast({ title: t('unexpectedErrorTitle'), description: 'Could not delete menu item.', variant: 'destructive' });
     } finally {
       setMenuItemToDelete(null);
       setIsMutating(false);
@@ -323,26 +246,16 @@ export function MenuItemManagementSettings() {
     return `${sign}${currency.symbol}${Math.abs(priceChange).toFixed(2)}`;
   };
 
-  const getRoleDisplayName = (roleValue?: PrinterRole | null): string => {
-    if (!roleValue) return t('noDefaultRole');
-    const dynamicRole = configuredRoles.find(r => r.role === roleValue);
-    if (dynamicRole) return dynamicRole.displayName;
-    
-    // Fallback for static roles if not found in dynamic ones (e.g. during fetch error)
-    const roleMap: Record<PrinterRole, TranslationKey> = {
-        KITCHEN_KOT: 'kitchenKOT',
-        BAR_KOT: 'barKOT',
-        RECEIPT: 'receiptPrinting',
-        REPORT: 'reportPrinting',
-    };
-    return t(roleMap[roleValue] || roleValue as TranslationKey); // Use roleValue itself as a last resort or ensure it's a TranslationKey
+  const getRoleDisplayNameSafe = (roleKey?: string): string => {
+    if (!roleKey || roleKey === NO_ROLE_VALUE) return t('noDefaultRole');
+    const role = printerRoles.find(r => r.roleKey === roleKey);
+    return role ? role.displayName : roleKey;
   };
-
 
   const renderFormFields = () => (
     <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="itemName" className="text-right">Name*</Label>
+        <Label htmlFor="itemName" className="text-right">{t('nameColumn')}*</Label>
         <Input id="itemName" name="name" value={currentForm.name} onChange={handleInputChange} className="col-span-3" />
       </div>
       <div className="grid grid-cols-4 items-start gap-4">
@@ -350,7 +263,7 @@ export function MenuItemManagementSettings() {
         <Textarea id="itemDescription" name="description" value={currentForm.description || ''} onChange={handleInputChange} className="col-span-3" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="itemPrice" className="text-right">Price*</Label>
+        <Label htmlFor="itemPrice" className="text-right">{t('priceColumn')}*</Label>
         <Input id="itemPrice" name="price" type="number" step="0.01" value={currentForm.price.toString()} onChange={handlePriceChange} className="col-span-3" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
@@ -360,7 +273,7 @@ export function MenuItemManagementSettings() {
       {currentForm.imageUrl && (
           <div className="grid grid-cols-4 items-center gap-4">
             <div className="col-start-2 col-span-3">
-                 <Image src={currentForm.imageUrl} alt="Preview" width={80} height={80} className="rounded border" onError={(e) => (e.currentTarget.src = 'https://placehold.co/80x80.png?text=Error')}/>
+                 <Image src={currentForm.imageUrl} alt="Preview" width={80} height={80} className="rounded border" onError={(e) => ((e.target as HTMLImageElement).src = 'https://placehold.co/80x80.png?text=Error')}/>
             </div>
           </div>
       )}
@@ -369,60 +282,48 @@ export function MenuItemManagementSettings() {
         <Input id="itemDataAiHint" name="dataAiHint" value={currentForm.dataAiHint || ''} onChange={handleInputChange} className="col-span-3" placeholder="e.g., burger fries (max 2 words)" />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="itemCategory" className="text-right">Category*</Label>
-        {isFetchingCategories ? (
+        <Label htmlFor="itemCategory" className="text-right">{t('categoryColumn')}*</Label>
+        {isLoadingCategories ? (
             <div className="col-span-3 text-muted-foreground">Loading categories...</div>
         ) : categories.length === 0 ? (
-            <div className="col-span-3 text-destructive">No categories available. Please add categories first.</div>
+            <div className="col-span-3 text-destructive">No categories. Add categories first.</div>
         ) : (
           <Select value={currentForm.categoryId || ''} onValueChange={handleCategoryChange} disabled={categories.length === 0}>
             <SelectTrigger className="col-span-3">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
-              {categories.map(cat => (
-                <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-              ))}
+              {categories.map(cat => (<SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>))}
             </SelectContent>
           </Select>
         )}
       </div>
-       <div className="grid grid-cols-4 items-center gap-4">
+      <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="itemDefaultPrinterRole" className="text-right">{t('defaultPrinterRole')}</Label>
         <Select
-          value={currentForm.defaultPrinterRole || NO_ROLE_VALUE}
+          value={currentForm.defaultPrinterRoleKey || NO_ROLE_VALUE}
           onValueChange={handleDefaultPrinterRoleChange}
-          disabled={isFetchingPrintRoles && configuredRoles.length === 0 && !printRolesFetchError}
+          disabled={isLoadingRoles && printerRoles.length === 0}
         >
           <SelectTrigger id="itemDefaultPrinterRole" className="col-span-3">
             <SelectValue placeholder={t('selectDefaultPrinterRole')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_ROLE_VALUE}>{t('noDefaultRole')}</SelectItem>
-            {(configuredRoles.length > 0 ? configuredRoles : staticPrinterRoles.map(r => ({ role: r, displayName: getRoleDisplayName(r) }))).map(item => (
-              <SelectItem key={item.role} value={item.role}>
-                {item.displayName || item.role}
+            {printerRoles.map(role => (
+              <SelectItem key={role.roleKey} value={role.roleKey}>
+                {role.displayName} ({role.roleKey})
               </SelectItem>
             ))}
+            {isLoadingRoles && printerRoles.length === 0 && <SelectItem value="loading" disabled>Loading roles...</SelectItem>}
+            {!isLoadingRoles && printerRoles.length === 0 && <SelectItem value="no_roles_defined" disabled>No printer roles defined.</SelectItem>}
           </SelectContent>
         </Select>
       </div>
-      {isFetchingPrintRoles && (
-        <div className="col-span-4 text-xs text-muted-foreground text-center">
-          <RefreshCw className="inline-block mr-1 h-3 w-3 animate-spin" />
-          {t('fetchingRoles')}...
-        </div>
-      )}
-      {printRolesFetchError && !isFetchingPrintRoles && (
-         <div className="col-span-4 text-xs text-destructive text-center p-2 border border-destructive/50 rounded-md">
-            <AlertTriangle className="inline-block mr-1 h-3 w-3" />
-            {t('rolesFetchErrorWarning')}: {printRolesFetchError}
-         </div>
-      )}
       <div className="grid grid-cols-4 items-start gap-4">
-        <Label className="text-right pt-2">Modifiers</Label>
-        <div className="col-span-3 space-y-2">
-          {isFetchingModifiers ? (
+        <Label className="text-right pt-2">{t('modifiersColumn')}</Label>
+        <div className="col-span-3 space-y-2 max-h-40 overflow-y-auto border p-2 rounded-md">
+          {isLoadingModifiers ? (
             <div className="text-muted-foreground">Loading modifiers...</div>
           ) : allModifiers.length === 0 ? (
              <div className="text-muted-foreground">No modifiers configured.</div>
@@ -431,7 +332,7 @@ export function MenuItemManagementSettings() {
               <div key={modifier.id} className="flex items-center space-x-2">
                 <Checkbox
                   id={`mod-menuitem-${modifier.id}`}
-                  checked={currentForm.availableModifierIds.includes(modifier.id)}
+                  checked={(currentForm.availableModifierIds || []).includes(modifier.id)}
                   onCheckedChange={(checked) => handleModifierToggle(modifier.id, !!checked)}
                 />
                 <Label htmlFor={`mod-menuitem-${modifier.id}`} className="font-normal">
@@ -446,39 +347,38 @@ export function MenuItemManagementSettings() {
   );
   
   const getCategoryName = (categoryId: string) => categories.find(c => c.id === categoryId)?.name || 'N/A';
+  const isInitialLoading = isLoadingItems || isLoadingCategories || isLoadingModifiers || isLoadingRoles;
 
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row justify-between items-center">
         <div>
-          <CardTitle className="font-headline">Menu Item Management</CardTitle>
-          <CardDescription>Manage your menu items, their categories, and modifiers.</CardDescription>
+          <CardTitle className="font-headline flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>{t('menuItemManagementSettings')}</CardTitle>
+          <CardDescription>{t('manageMenuItemsDesc')}</CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { fetchMenuItems(); fetchCategories(); fetchModifiers(); fetchConfiguredPrintRoles(); }} disabled={isLoading || isFetchingCategories || isFetchingModifiers || isMutating || isFetchingPrintRoles}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${(isLoading || isFetchingCategories || isFetchingModifiers || isFetchingPrintRoles) && !isFormDialogOpen ? 'animate-spin' : ''}`} /> 
-            { (isLoading || isFetchingCategories || isFetchingModifiers || isFetchingPrintRoles) && !isFormDialogOpen ? 'Refreshing...' : 'Refresh All'}
+          <Button variant="outline" onClick={() => { fetchMenuItems(); fetchCategories(); fetchModifiers(); fetchPrinterRoles(); }} disabled={isInitialLoading || isMutating}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isInitialLoading && !isFormDialogOpen ? 'animate-spin' : ''}`} /> 
+            { isInitialLoading && !isFormDialogOpen ? t('refreshing') : t('refresh')}
           </Button>
           <Dialog open={isFormDialogOpen} onOpenChange={(open) => { if(!open) setIsFormDialogOpen(false); }}>
             <DialogTrigger asChild>
-              <Button onClick={openAddDialog} disabled={isMutating || isLoading || isFetchingCategories || isFetchingModifiers || isFetchingPrintRoles}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Menu Item
+              <Button onClick={openAddDialog} disabled={isMutating || isInitialLoading}>
+                <PlusCircle className="mr-2 h-4 w-4" /> {t('addMenuItemButton')}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg bg-card text-card-foreground">
               <DialogHeader>
-                <DialogTitle>{editingMenuItem ? 'Edit Menu Item' : 'Add New Menu Item'}</DialogTitle>
+                <DialogTitle>{editingMenuItem ? t('editMenuItemTitle') : t('addNewMenuItemTitle')}</DialogTitle>
                 <DialogDescription>
-                  {editingMenuItem ? `Update details for "${editingMenuItem.name}".` : 'Enter details for the new menu item.'}
+                  {editingMenuItem ? t('editMenuItemDesc', {name: editingMenuItem.name}) : t('addNewMenuItemDesc')}
                 </DialogDescription>
               </DialogHeader>
               {renderFormFields()}
               <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="outline" disabled={isMutating}>Cancel</Button>
-                </DialogClose>
-                <Button onClick={handleSubmitMenuItem} disabled={isMutating || isFetchingCategories || isFetchingModifiers || (categories.length === 0 && !editingMenuItem) } className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  {isMutating ? 'Saving...' : (editingMenuItem ? 'Save Changes' : 'Add Menu Item')}
+                <DialogClose asChild><Button variant="outline" disabled={isMutating}>{t('cancelButton')}</Button></DialogClose>
+                <Button onClick={handleSubmitMenuItem} disabled={isMutating || isLoadingCategories || isLoadingModifiers || isLoadingRoles || (categories.length === 0 && !editingMenuItem) } className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  {isMutating ? t('savingButton') : (editingMenuItem ? t('saveChanges') : t('addMenuItemButton'))}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -486,23 +386,23 @@ export function MenuItemManagementSettings() {
         </div>
       </CardHeader>
       <CardContent>
-        {(isLoading || (isFetchingCategories && categories.length === 0) || (isFetchingModifiers && allModifiers.length === 0) ) && menuItems.length === 0 ? (
+        {isInitialLoading && menuItems.length === 0 ? (
           <div className="text-center py-10">
             <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="mt-2 text-muted-foreground">Loading data...</p>
+            <p className="mt-2 text-muted-foreground">{t('loadingMenuItems')}</p>
           </div>
         ) : (
           <Table>
-            <TableCaption>A list of your menu items from the database.</TableCaption>
+            <TableCaption>{t('menuItemListCaption')}</TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px]">Image</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead>Modifiers</TableHead>
-                <TableHead>Default Printer Role</TableHead> {/* Added column */}
-                <TableHead className="text-right w-[150px]">Actions</TableHead>
+                <TableHead className="w-[80px]">{t('imageColumn')}</TableHead>
+                <TableHead>{t('nameColumn')}</TableHead>
+                <TableHead>{t('categoryColumn')}</TableHead>
+                <TableHead className="text-right">{t('priceColumn')}</TableHead>
+                <TableHead>{t('modifiersColumn')}</TableHead>
+                <TableHead>{t('defaultPrinterRole')}</TableHead>
+                <TableHead className="text-right w-[150px]">{t('actionsColumn')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -511,10 +411,7 @@ export function MenuItemManagementSettings() {
                   <TableCell>
                     <Image 
                         src={item.imageUrl || 'https://placehold.co/60x60.png?text=NoImg'} 
-                        alt={item.name} 
-                        width={50} 
-                        height={50} 
-                        className="rounded-md object-cover"
+                        alt={item.name} width={50} height={50} className="rounded-md object-cover"
                         data-ai-hint={item.dataAiHint}
                     />
                   </TableCell>
@@ -523,32 +420,30 @@ export function MenuItemManagementSettings() {
                   <TableCell className="text-right">{formatCurrency(item.price)}</TableCell>
                   <TableCell className="text-xs">
                     {item.availableModifiers && item.availableModifiers.length > 0 
-                      ? item.availableModifiers.map(m => m.name).join(', ') 
-                      : 'None'}
+                      ? item.availableModifiers.map(m => m.name).join(', ') : t('noneAbbreviation')}
                   </TableCell>
-                  <TableCell>{getRoleDisplayName(item.defaultPrinterRole)}</TableCell> {/* Display role */}
+                  <TableCell>{getRoleDisplayNameSafe(item.defaultPrinterRoleKey)}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)} className="mr-2" disabled={isMutating || isLoading || isFetchingCategories || isFetchingModifiers || isFetchingPrintRoles}>
+                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)} className="mr-2" disabled={isMutating || isInitialLoading}>
                       <Edit2 className="h-4 w-4" />
                     </Button>
                     <AlertDialog open={!!menuItemToDelete && menuItemToDelete.id === item.id} onOpenChange={(isOpen) => !isOpen && setMenuItemToDelete(null)}>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteMenuItem(item)} disabled={isMutating || isLoading || isFetchingCategories || isFetchingModifiers || isFetchingPrintRoles}>
+                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteMenuItem(item)} disabled={isMutating || isInitialLoading}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogTitle>{t('confirmDeleteTitle')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action will permanently delete the menu item "{menuItemToDelete?.name}".
-                            If this item is part of existing orders, deletion might be restricted.
+                            {t('confirmDeleteMenuItemDesc', {name: menuItemToDelete?.name || ''})}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel onClick={() => setMenuItemToDelete(null)} disabled={isMutating}>Cancel</AlertDialogCancel>
+                          <AlertDialogCancel onClick={() => setMenuItemToDelete(null)} disabled={isMutating}>{t('cancelButton')}</AlertDialogCancel>
                           <AlertDialogAction onClick={handleDeleteMenuItem} disabled={isMutating} className="bg-destructive hover:bg-destructive/90">
-                            {isMutating ? 'Deleting...' : 'Delete'}
+                            {isMutating ? t('deletingButton') : t('deleteButton')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -556,9 +451,9 @@ export function MenuItemManagementSettings() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && !isFetchingCategories && !isFetchingModifiers && menuItems.length === 0 && (
+              {!isInitialLoading && menuItems.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-6">No menu items found in the database. Add some!</TableCell>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-6">{t('noMenuItemsFound')}</TableCell>
                 </TableRow>
               )}
             </TableBody>
