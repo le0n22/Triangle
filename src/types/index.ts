@@ -1,3 +1,4 @@
+
 export type TableStatus = 'available' | 'occupied' | 'reserved' | 'dirty';
 
 export interface Table {
@@ -16,17 +17,18 @@ export interface Modifier {
   priceChange: number; // Can be positive or negative
 }
 
+// For frontend components like MenuBrowser, OrderPanel
 export interface MenuItem {
   id: string;
   name: string;
   description: string;
   price: number;
-  category: string; // Category name, might change to categoryId if needed for filtering
+  category: string; // Category name
   imageUrl?: string;
-  dataAiHint?: string; // For placeholder images
-  availableModifiers?: Modifier[]; // Modifiers that can be applied to this item
-  categoryId: string;
-  defaultPrinterRole?: PrinterRole | null; // Added field
+  dataAiHint?: string;
+  availableModifiers?: Modifier[];
+  categoryId: string; // To find the category for fallback printer role
+  defaultPrinterRole?: { roleKey: string; displayName: string } | null;
 }
 
 export interface OrderItem {
@@ -69,12 +71,13 @@ export interface KOT {
   createdAt: string; // ISO Date string
 }
 
+// For frontend components like MenuBrowser, OrderPanel
 export interface MenuCategory {
   id: string;
   name: string;
-  iconName?: string; // Key for a lucide icon or custom SVG
+  iconName?: string;
   items: MenuItem[];
-  defaultPrinterRole?: PrinterRole | null;
+  defaultPrinterRole?: { roleKey: string; displayName: string } | null;
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'mobile';
@@ -171,16 +174,15 @@ export type TranslationKey =
   | 'customCurrency'
   | 'currencySymbol'
   | 'currencyName'
-  // Printer related keys are removed as settings page is removed
-  // | 'printers'
-  // | 'printerName'
-  // | 'connectionType'
-  // | 'connectionInfo'
-  // | 'printerRoles'
-  // | 'network'
-  // | 'bluetooth'
-  // | 'usb'
-  // | 'other_connection'
+  | 'printers'
+  | 'printerName'
+  | 'connectionType'
+  | 'connectionInfo'
+  | 'printerRoles'
+  | 'network'
+  | 'bluetooth'
+  | 'usb'
+  | 'other_connection'
   | 'kitchenKOT'
   | 'barKOT'
   | 'receiptPrinting'
@@ -243,7 +245,35 @@ export type TranslationKey =
   | 'deletingButton'
   | 'editCategoryTitle'
   | 'editCategoryDesc'
-  | 'savingButton';
+  | 'savingButton'
+  | 'managePrinterRolesDesc'
+  | 'addPrinterRoleButton'
+  | 'addNewPrinterRoleTitle'
+  | 'editPrinterRoleTitle'
+  | 'addNewPrinterRoleDesc'
+  | 'editPrinterRoleDesc'
+  | 'roleKeyLabel'
+  | 'displayNameLabel'
+  | 'roleKeyEditWarning'
+  | 'roleKeyFormatHint'
+  | 'loadingPrinterRoles'
+  | 'printerRoleListCaption'
+  | 'noPrinterRolesFound'
+  | 'confirmDeletePrinterRoleDesc'
+  | 'manageMenuItemsDesc'
+  | 'addMenuItemButton'
+  | 'addNewMenuItemTitle'
+  | 'editMenuItemTitle'
+  | 'addNewMenuItemDesc'
+  | 'editMenuItemDesc'
+  | 'loadingMenuItems'
+  | 'menuItemListCaption'
+  | 'priceColumn'
+  | 'imageColumn'
+  | 'categoryColumn'
+  | 'modifiersColumn'
+  | 'noMenuItemsFound'
+  | 'confirmDeleteMenuItemDesc';
 
 
 export interface CurrencyConfig {
@@ -258,8 +288,42 @@ export interface CurrencyProviderState {
   formatCurrency: (amount: number) => string;
 }
 
-export type PrinterRole = 'KITCHEN_KOT' | 'BAR_KOT' | 'RECEIPT' | 'REPORT';
-export const printerRoles: PrinterRole[] = ['KITCHEN_KOT', 'BAR_KOT', 'RECEIPT', 'REPORT'];
+// Representing what's stored in the DB and used in backend actions
+export interface AppPrinterRoleDefinition {
+  id: string;
+  roleKey: string;
+  displayName: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// For backend actions and data retrieval
+export interface AppMenuCategory {
+  id: string;
+  name: string;
+  iconName?: string;
+  defaultPrinterRoleId?: string; // Foreign key to PrinterRoleDefinition
+  defaultPrinterRoleKey?: string; // Denormalized for convenience
+  defaultPrinterRoleDisplayName?: string; // Denormalized for convenience
+}
+
+export interface AppMenuItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  imageUrl: string | null;
+  dataAiHint: string | null;
+  categoryId: string;
+  categoryName: string; // Denormalized
+  availableModifiers: { id: string; name: string; priceChange: number }[];
+  defaultPrinterRoleId?: string; // Foreign key to PrinterRoleDefinition
+  defaultPrinterRoleKey?: string; // Denormalized for convenience
+  defaultPrinterRoleDisplayName?: string; // Denormalized for convenience
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 
 export interface ElectronKotItem {
   name: string;
@@ -269,9 +333,11 @@ export interface ElectronKotItem {
 }
 
 export interface ElectronKotPayload {
-  printerRole: PrinterRole | 'NO_ROLE_DEFINED';
+  printerRole: string; // This will now be the roleKey (e.g., "KITCHEN_KOT") or "NO_ROLE_DEFINED"
   orderId: string;
   tableNumber: number;
   items: ElectronKotItem[];
   timestamp: string; // ISO Date string
 }
+
+    

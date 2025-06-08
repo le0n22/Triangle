@@ -1,5 +1,6 @@
 
-import type { MenuCategory, Order as AppOrder, PrinterRole } from '@/types';
+
+import type { MenuCategory, Order as AppOrder } from '@/types'; // Using frontend MenuCategory type
 import { OrderPanel } from '@/components/features/order-entry/order-panel';
 import { getAllCategoriesAction, type AppMenuCategory as BackendMenuCategory } from '@backend/actions/categoryActions';
 import { getAllMenuItemsAction, type AppMenuItem as BackendMenuItem } from '@backend/actions/menuItemActions';
@@ -37,7 +38,9 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
         priceChange: mod.priceChange,
       })),
       categoryId: dbItem.categoryId,
-      defaultPrinterRole: dbItem.defaultPrinterRole, // Pass item's default printer role
+      defaultPrinterRole: dbItem.defaultPrinterRoleKey && dbItem.defaultPrinterRoleDisplayName
+        ? { roleKey: dbItem.defaultPrinterRoleKey, displayName: dbItem.defaultPrinterRoleDisplayName }
+        : null,
     };
   }).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -46,19 +49,20 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
     name: 'All',
     iconName: 'List',
     items: allFrontendMenuItems,
-    defaultPrinterRole: null, // "All" category doesn't have a specific default role
+    defaultPrinterRole: null, 
   };
 
   const mappedDbCategories: MenuCategory[] = dbCategories.map(dbCategory => {
     const itemsForThisCategory = dbMenuItems
       .filter(dbItem => dbItem.categoryId === dbCategory.id)
       .map(dbItem => {
+        // This mapping needs to be for the MenuItem type expected by MenuCategory['items']
         return {
           id: dbItem.id,
           name: dbItem.name,
           description: dbItem.description || '',
           price: dbItem.price,
-          category: dbCategory.name,
+          category: dbCategory.name, // Set category name for the item
           imageUrl: dbItem.imageUrl || undefined,
           dataAiHint: dbItem.dataAiHint || undefined,
           availableModifiers: dbItem.availableModifiers.map(mod => ({
@@ -67,7 +71,9 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
             priceChange: mod.priceChange,
           })),
           categoryId: dbItem.categoryId,
-          defaultPrinterRole: dbItem.defaultPrinterRole, // Pass item's default printer role
+          defaultPrinterRole: dbItem.defaultPrinterRoleKey && dbItem.defaultPrinterRoleDisplayName
+            ? { roleKey: dbItem.defaultPrinterRoleKey, displayName: dbItem.defaultPrinterRoleDisplayName }
+            : null,
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -76,8 +82,10 @@ async function getMenuDataForOrderPanel(): Promise<MenuCategory[] | { error: str
       id: dbCategory.id,
       name: dbCategory.name,
       iconName: dbCategory.iconName,
-      items: itemsForThisCategory,
-      defaultPrinterRole: dbCategory.defaultPrinterRole, // Pass category's default printer role
+      items: itemsForThisCategory, // items are now correctly typed as MenuItem[]
+      defaultPrinterRole: dbCategory.defaultPrinterRoleKey && dbCategory.defaultPrinterRoleDisplayName
+        ? { roleKey: dbCategory.defaultPrinterRoleKey, displayName: dbCategory.defaultPrinterRoleDisplayName }
+        : null,
     };
   }).sort((a,b) => a.name.localeCompare(b.name));
   
@@ -93,8 +101,7 @@ interface OrderPageProps {
 
 export default async function OrderPage({ params }: OrderPageProps) {
   const { tableId } = params;
-  // This console.log is added to try and force a recompile of the chunk
-  console.log(`OrderPage: Rendering for tableId: ${tableId} - Attempting to fix ChunkLoadError.`);
+  console.log(`OrderPage: Rendering for tableId: ${tableId} - Applying dynamic printer role logic.`);
 
   const menuDataResult = await getMenuDataForOrderPanel();
   const initialOrderResult = await getOpenOrderByTableIdAction(tableId);
@@ -102,7 +109,6 @@ export default async function OrderPage({ params }: OrderPageProps) {
   let initialOrder: AppOrder | null = null;
   if (initialOrderResult && 'error' in initialOrderResult) {
     console.error(`Error fetching open order for table ${tableId}:`, initialOrderResult.error);
-    // Potentially show a toast or a small error message, but don't block rendering the order panel
   } else if (initialOrderResult) {
     initialOrder = initialOrderResult;
   }
@@ -142,7 +148,7 @@ export default async function OrderPage({ params }: OrderPageProps) {
 }
 
 export async function generateStaticParams() {
-  // In a dynamic app with many tables, this might fetch all table IDs.
-  // For now, returning an empty array means Next.js will generate pages on demand.
   return [];
 }
+
+    
