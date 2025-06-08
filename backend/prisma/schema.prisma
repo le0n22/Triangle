@@ -12,17 +12,20 @@ datasource db {
 }
 
 model Table {
-  id                 String    @id @default(cuid())
-  name               String?
-  number             Int       @unique
-  capacity           Int
-  status             TableStatus @default(AVAILABLE)
-  currentOrderId     String?   // CUID of the current open order on this table
-  currentOrderTotal  Decimal?  // Optional: Store total of current order for quick display
-  orders             Order[]   // Relation to Order model
+  id        String  @id @default(cuid())
+  name      String?
+  number    Int     @unique
+  capacity  Int
+  status    TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
+  
+  // For tracking current order details directly on the table
+  currentOrderId    String?   @unique
+  currentOrderTotal Decimal?  @db.Decimal(10, 2)
 
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  orders    Order[] // Relation to Order model
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum TableStatus {
@@ -33,105 +36,124 @@ enum TableStatus {
 }
 
 model MenuCategory {
-  id                 String    @id @default(cuid())
-  name               String    @unique
-  iconName           String?
-  defaultPrinterRole PrinterRole? // Optional: Default role for items in this category
-  menuItems          MenuItem[]
+  id                 String @id @default(cuid())
+  name               String @unique
+  iconName           String? // For Lucide icon name or custom SVG identifier
+  defaultPrinterRole PrinterRole? // Default role for items in this category
 
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  menuItems MenuItem[] // Relation to MenuItem model
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model MenuItem {
-  id                 String      @id @default(cuid())
-  name               String      @unique // Ensuring menu item names are unique
+  id                 String     @id @default(cuid())
+  name               String     @unique
   description        String?
-  price              Decimal
+  price              Decimal    @db.Decimal(10, 2)
   imageUrl           String?
-  dataAiHint         String?
-  categoryId         String
-  category           MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  orderItems         OrderItem[] // Relation to OrderItem
-  availableModifiers Modifier[]  @relation("MenuItemModifiers")
+  dataAiHint         String?    // For Unsplash search hint
+  defaultPrinterRole PrinterRole? // Item-specific printer role override
 
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  categoryId String
+  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  // Many-to-many relationship with Modifier
+  availableModifiers Modifier[] @relation("MenuItemModifiers")
+
+  // Relation to OrderItem model (menu items can be part of many order items)
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Modifier {
-  id                 String     @id @default(cuid())
-  name               String     @unique
-  priceChange        Decimal    @default(0) // Price change (can be positive or negative)
-  menuItems          MenuItem[] @relation("MenuItemModifiers")
+  id          String   @id @default(cuid())
+  name        String   @unique
+  priceChange Decimal  @db.Decimal(10, 2) // Can be positive or negative
 
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
+  // Many-to-many relationship with MenuItem
+  menuItems MenuItem[] @relation("MenuItemModifiers")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Order {
-  id          String    @id @default(cuid())
-  tableId     String
-  table       Table     @relation(fields: [tableId], references: [id])
-  items       OrderItem[]
-  status      OrderStatus @default(OPEN)
-  subtotal    Decimal
-  taxRate     Decimal   @default(0) // e.g., 0.08 for 8%
-  taxAmount   Decimal   @default(0)
-  totalAmount Decimal   @default(0)
-  // paymentDetails Json? // Could store payment method, transaction ID, etc.
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-enum OrderStatus {
-  OPEN        // Order is newly created or items are being added/modified
-  IN_PROGRESS // Order sent to KDS, kitchen is preparing
-  DONE        // All items prepared, order is ready for payment or delivery
-  PAID        // Order is fully paid
-  CANCELLED   // Order was cancelled
+  id        String   @id @default(cuid())
+  tableId   String
+  table     Table    @relation(fields: [tableId], references: [id])
+  
+  items     OrderItem[] // Relation to OrderItem model
+  
+  status    OrderStatus @default(OPEN) // e.g., OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
+  
+  subtotal  Decimal  @db.Decimal(10, 2)
+  taxRate   Decimal  @db.Decimal(5, 4) // e.g., 0.08 for 8%
+  taxAmount Decimal  @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model OrderItem {
-  id                String    @id @default(cuid())
-  orderId           String
-  order             Order     @relation(fields: [orderId], references: [id])
-  menuItemId        String
-  menuItem          MenuItem  @relation(fields: [menuItemId], references: [id]) // Relation back to MenuItem
-  menuItemName      String    // Denormalized for KOT/receipts
-  quantity          Int
-  unitPrice         Decimal   // Price of one unit of the item *before* modifiers
-  selectedModifiers Json?     // Array of Modifier objects { id, name, priceChange }
-  specialRequests   String?
-  totalPrice        Decimal   // (unitPrice + sum of selectedModifier.priceChange) * quantity
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Prevent deletion of MenuItem if it's in an order
+  menuItemName String // Denormalized for easy KOT/receipt generation
+  
+  quantity  Int
+  unitPrice Decimal  @db.Decimal(10, 2) // Price of the item at the time of order
+  
+  // Store selected modifiers as JSON
+  // Example: [{"id": "mod1", "name": "Extra Cheese", "priceChange": 1.50}, ...]
+  selectedModifiers Json? 
+  
+  specialRequests String?
+  
+  totalPrice Decimal @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
 
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// Model for Printer Configuration
-model PrinterConfiguration {
-  id             String                 @id @default(cuid())
-  name           String                 @unique
-  connectionType PrinterConnectionType
-  connectionInfo String                 // IP address, BT name, USB port, etc.
-  roles          PrinterRole[]          // e.g., KITCHEN_KOT, BAR_KOT, RECEIPT
-
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+enum OrderStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  PAID
+  CANCELLED
 }
 
-enum PrinterConnectionType {
-  NETWORK
-  BLUETOOTH
-  USB
-  OTHER
-}
-
+// Roles a printer can fulfill (e.g., for KOTs, receipts)
+// This enum is used by MenuCategory and MenuItem to suggest a default printer.
+// The actual mapping of these roles to physical printers is handled by the Electron print server.
 enum PrinterRole {
   KITCHEN_KOT
   BAR_KOT
   RECEIPT
   REPORT
 }
+
+// Removed PrinterConfiguration model
+// enum PrinterConnectionType {
+//   NETWORK
+//   BLUETOOTH
+//   USB
+//   OTHER
+// }
+// model PrinterConfiguration {
+//   id             String                @id @default(cuid())
+//   name           String                @unique
+//   connectionType PrinterConnectionType
+//   connectionInfo String // e.g., IP address, COM port, Bluetooth MAC
+//   roles          PrinterRole[] // List of roles this printer fulfills
+//   createdAt      DateTime              @default(now())
+//   updatedAt      DateTime              @updatedAt
+// }

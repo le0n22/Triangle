@@ -27,7 +27,7 @@ export interface MenuItem {
   dataAiHint?: string; // For placeholder images
   availableModifiers?: Modifier[]; // Modifiers that can be applied to this item
   categoryId: string; 
-  defaultPrinterRole?: PrinterRole | null; // Updated to allow null
+  defaultPrinterRole?: PrinterRole | null; 
 }
 
 export interface OrderItem {
@@ -41,7 +41,6 @@ export interface OrderItem {
   totalPrice: number;
 }
 
-// Updated OrderStatus
 export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'PAID' | 'CANCELLED';
 
 export interface Order {
@@ -76,12 +75,11 @@ export interface MenuCategory {
   name: string;
   iconName?: string; // Key for a lucide icon or custom SVG
   items: MenuItem[];
-  defaultPrinterRole?: PrinterRole | null; // Can be null if no role is set
+  defaultPrinterRole?: PrinterRole | null; 
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'mobile';
 
-// For Order Tracking System
 export type ExternalOrderStatus =
   | 'PENDING_CONFIRMATION'
   | 'PREPARING'
@@ -92,35 +90,35 @@ export type ExternalOrderStatus =
   | 'CANCELLED_BY_USER';
 
 export interface ExternalOrderItem {
-  id: string; // Could be platform's item ID or an internal one
+  id: string; 
   name: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
   notes?: string;
-  modifiers?: { name: string; price: number }[]; // Simplified modifiers
+  modifiers?: { name: string; price: number }[]; 
 }
 
 export interface ExternalOrder {
-  id: string; // Internal unique ID for this tracked order
-  platform: string; // e.g., "Trendyol GO", "Yemeksepeti"
-  platformOrderId: string; // The ID from the external platform
+  id: string; 
+  platform: string; 
+  platformOrderId: string; 
   customerName: string;
-  customerAddress: string; // Simplified for now
+  customerAddress: string; 
   customerPhoneNumber?: string;
   items: ExternalOrderItem[];
   subtotal: number;
   deliveryFee: number;
-  platformFee?: number; // Optional fee charged by the platform
-  totalAmount: number; // Amount paid by customer
-  restaurantPayout?: number; // Amount restaurant receives
+  platformFee?: number; 
+  totalAmount: number; 
+  restaurantPayout?: number; 
   status: ExternalOrderStatus;
-  placedAt: string; // ISO Date string
-  estimatedDeliveryTime?: string; // ISO Date string
-  notes?: string; // Customer notes or special instructions
-  paymentServiceType?: string; // e.g., "Card - Delivery", "Nakit - Paket Servis"
-  shortCode?: string; // e.g., "P-9" / platform order ID fragment
-  platformIcon?: React.ElementType; // Component for platform icon
+  placedAt: string; 
+  estimatedDeliveryTime?: string; 
+  notes?: string; 
+  paymentServiceType?: string; 
+  shortCode?: string; 
+  platformIcon?: React.ElementType; 
 }
 
 export interface DeliveryPlatform {
@@ -129,7 +127,7 @@ export interface DeliveryPlatform {
   apiKey: string;
   apiSecret: string;
   isEnabled: boolean;
-  icon?: React.ElementType; // Optional: for displaying platform logo
+  icon?: React.ElementType; 
 }
 
 export type Locale = 'en' | 'tr';
@@ -208,8 +206,8 @@ export type TranslationKey =
 
 export interface CurrencyConfig {
   symbol: string;
-  code: string; // e.g., 'TRY', 'USD', 'EUR', 'CUSTOM'
-  name: string; // e.g., 'Turkish Lira', 'US Dollar'
+  code: string; 
+  name: string; 
 }
 
 export interface CurrencyProviderState {
@@ -218,19 +216,37 @@ export interface CurrencyProviderState {
   formatCurrency: (amount: number) => string;
 }
 
-// Printer Configuration Types
-export type PrinterConnectionType = 'NETWORK' | 'BLUETOOTH' | 'USB' | 'OTHER';
-export const printerConnectionTypes: PrinterConnectionType[] = ['NETWORK', 'BLUETOOTH', 'USB', 'OTHER'];
-
+// Mantıksal yazıcı rolleri. Bunlar kategorilere ve menü öğelerine atanır.
+// Bu rollerin fiziksel yazıcılara eşlenmesi Electron print server tarafında yapılır.
 export type PrinterRole = 'KITCHEN_KOT' | 'BAR_KOT' | 'RECEIPT' | 'REPORT';
 export const printerRoles: PrinterRole[] = ['KITCHEN_KOT', 'BAR_KOT', 'RECEIPT', 'REPORT'];
 
-export interface PrinterConfiguration {
-  id: string;
+// Electron'a gönderilecek KOT payload'ının yapısı
+export interface ElectronKotItem {
   name: string;
-  connectionType: PrinterConnectionType;
-  connectionInfo: string;
-  roles: PrinterRole[];
-  createdAt: string; // ISO Date string
-  updatedAt: string; // ISO Date string
+  quantity: number;
+  modifiers?: string[]; // Formatlanmış string listesi
+  specialRequests?: string;
 }
+
+export interface ElectronKotPayload {
+  printerRole: PrinterRole | 'NO_ROLE_DEFINED'; // Next.js NO_ROLE_DEFINED gönderebilir
+  orderId: string;
+  tableNumber: number;
+  items: ElectronKotItem[];
+  timestamp: string; // ISO Date string
+}
+
+// PrinterConnectionType ve PrinterConfiguration kaldırıldı.
+// export type PrinterConnectionType = 'NETWORK' | 'BLUETOOTH' | 'USB' | 'OTHER';
+// export const printerConnectionTypes: PrinterConnectionType[] = ['NETWORK', 'BLUETOOTH', 'USB', 'OTHER'];
+
+// export interface PrinterConfiguration {
+//   id: string;
+//   name: string;
+//   connectionType: PrinterConnectionType;
+//   connectionInfo: string;
+//   roles: PrinterRole[];
+//   createdAt: string; 
+//   updatedAt: string; 
+// }
