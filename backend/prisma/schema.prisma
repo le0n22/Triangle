@@ -8,15 +8,15 @@ datasource db {
 }
 
 model Table {
-  id        String  @id @default(cuid())
-  number    Int     @unique
-  capacity  Int
-  name      String?
-  status    TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
-  orders    Order[]
+  id       String      @id @default(cuid())
+  number   Int         @unique
+  capacity Int
+  name     String?
+  status   TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
+  orders   Order[]
 
-  currentOrderId    String?    // Store the ID of the current open or in_progress order
-  currentOrderTotal Decimal?   @db.Decimal(10, 2) // Store the total of the current order for quick display
+  currentOrderId    String? // Store the ID of the current open or in_progress order
+  currentOrderTotal Decimal? @db.Decimal(10, 2) // Store the total of the current order for quick display
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -39,7 +39,7 @@ model MenuItem {
   description        String?
   price              Decimal      @db.Decimal(10, 2)
   imageUrl           String?
-  dataAiHint         String?      // For Unsplash/placeholder hints
+  dataAiHint         String? // For Unsplash/placeholder hints
   category           MenuCategory @relation(fields: [categoryId], references: [id])
   categoryId         String
   orderItems         OrderItem[]
@@ -51,41 +51,42 @@ model MenuItem {
 }
 
 model Modifier {
-  id            String     @id @default(cuid())
-  name          String     @unique
-  priceChange   Decimal    @db.Decimal(10, 2) // Positive for add-ons, negative for discounts/removals
-  menuItems     MenuItem[] @relation("MenuItemModifiers")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String     @id @default(cuid())
+  name        String     @unique
+  priceChange Decimal    @db.Decimal(10, 2) // Positive for add-ons, negative for discounts/removals
+  menuItems   MenuItem[] @relation("MenuItemModifiers")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Order {
-  id          String        @id @default(cuid())
-  table       Table         @relation(fields: [tableId], references: [id])
+  id          String      @id @default(cuid())
+  table       Table       @relation(fields: [tableId], references: [id])
   tableId     String
   items       OrderItem[]
-  status      OrderStatus   @default(OPEN) // OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
-  subtotal    Decimal       @db.Decimal(10, 2)
-  taxRate     Decimal       @db.Decimal(4, 3) // e.g., 0.08 for 8%
-  taxAmount   Decimal       @db.Decimal(10, 2)
-  totalAmount Decimal       @db.Decimal(10, 2)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  status      OrderStatus @default(OPEN) // OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
+  subtotal    Decimal     @db.Decimal(10, 2)
+  taxRate     Decimal     @db.Decimal(4, 3) // e.g., 0.08 for 8%
+  taxAmount   Decimal     @db.Decimal(10, 2)
+  totalAmount Decimal     @db.Decimal(10, 2)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
 model OrderItem {
-  id                String    @id @default(cuid())
-  order             Order     @relation(fields: [orderId], references: [id])
+  id                String   @id @default(cuid())
+  order             Order    @relation(fields: [orderId], references: [id])
   orderId           String
-  menuItemId        String    // References MenuItem.id, but no direct relation to avoid cascade delete issues on MenuItem
-  menuItemName      String    // Denormalized for historical data integrity
+  menuItemId        String // References MenuItem.id, but no direct relation to avoid cascade delete issues on MenuItem
+  menuItemName      String // Denormalized for historical data integrity
   quantity          Int
-  unitPrice         Decimal   @db.Decimal(10, 2) // Price at the time of order
-  selectedModifiers Json      // Store as JSON: [{ id, name, priceChange }]
+  unitPrice         Decimal  @db.Decimal(10, 2) // Price at the time of order
+  selectedModifiers Json // Store as JSON: [{ id, name, priceChange }]
   specialRequests   String?
-  totalPrice        Decimal   @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  totalPrice        Decimal  @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  MenuItem          MenuItem @relation(fields: [menuItemId], references: [id])
 }
 
 enum TableStatus {
