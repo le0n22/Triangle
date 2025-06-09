@@ -1,3 +1,4 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -10,101 +11,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String // Hashlenmiş şifre
-  role      UserRole @default(USER) // USER, ADMIN, STAFF vb.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-enum UserRole {
-  USER
-  ADMIN
-  STAFF
-  MANAGER
-}
-
-model Table {
-  id       String      @id @default(cuid())
-  number   Int         @unique
-  capacity Int
-  status   TableStatus @default(AVAILABLE)
-  name     String? // Masanın adı (örneğin, "Pencere Kenarı", "VIP Alanı")
-
-  // Aktif sipariş bilgileri (denormalize edilebilir veya ayrı bir sorgu ile alınabilir)
-  currentOrderId    String?
-  currentOrderTotal Decimal? @db.Decimal(10, 2)
-
-  Order Order[] // Bir masa birden fazla siparişe sahip olabilir
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-enum TableStatus {
-  AVAILABLE // Boş ve kullanıma hazır
-  OCCUPIED // Dolu, aktif bir sipariş var
-  RESERVED // Rezerve edilmiş
-  DIRTY // Temizlenmesi gerekiyor
-}
-
 model MenuCategory {
-  id       String  @id @default(cuid())
-  name     String  @unique
-  iconName String? // Lucide icon key veya SVG path
-
-  defaultPrinterRoleId String?
-  defaultPrinterRole   PrinterRoleDefinition? @relation("CategoryToPrinterRoleDefinition", fields: [defaultPrinterRoleId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  id        String   @id @default(cuid())
+  name      String   @unique
+  iconName  String? // Lucide icon key veya SVG path
+  // defaultPrinterRoleId String? // REMOVED
+  // defaultPrinterRole   PrinterRoleDefinition? @relation("CategoryToPrinterRoleDefinition", fields: [defaultPrinterRoleId], references: [id], onDelete: SetNull, onUpdate: Cascade) // REMOVED
 
   menuItems MenuItem[] // Bu kategoriye ait menü öğeleri
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model MenuItem {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  description String?
-  price       Decimal @db.Decimal(10, 2)
-  imageUrl    String?
-  dataAiHint  String? // For Unsplash image search hint
-
-  category   MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId String
+  id                   String   @id @default(cuid())
+  name                 String   @unique
+  description          String?
+  price                Decimal  @db.Decimal(10, 2)
+  imageUrl             String?
+  dataAiHint           String?  // For AI image search
+  categoryId           String
+  category             MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  availableModifiers   Modifier[] @relation("MenuItemAvailableModifiers")
 
   defaultPrinterRoleId String?
   defaultPrinterRole   PrinterRoleDefinition? @relation("MenuItemToPrinterRoleDefinition", fields: [defaultPrinterRoleId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   orderItems OrderItem[] // Bu menü öğesini içeren sipariş kalemleri
-
-  availableModifiers Modifier[] @relation("MenuItemAvailableModifiers") // Corrected many-to-many
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 model Modifier {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  priceChange Decimal @db.Decimal(10, 2) // Positive for add-ons, negative for discounts/removals
-
-  menuItemsWhereAvailable MenuItem[] @relation("MenuItemAvailableModifiers") // Corrected many-to-many counterpart
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String     @id @default(cuid())
+  name        String     @unique
+  priceChange Decimal    @db.Decimal(10, 2) // Positive for add-ons, negative for discounts/removals
+  menuItemsWhereAvailable MenuItem[] @relation("MenuItemAvailableModifiers")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Order {
   id          String      @id @default(cuid())
-  table       Table       @relation(fields: [tableId], references: [id])
   tableId     String
+  table       Table       @relation(fields: [tableId], references: [id])
   items       OrderItem[]
-  status      OrderStatus @default(OPEN)
+  status      OrderStatus @default(OPEN) // OPEN, IN_PROGRESS, DONE, PAID, CANCELLED
   subtotal    Decimal     @db.Decimal(10, 2)
-  taxRate     Decimal     @db.Decimal(4, 3) // e.g., 0.08 for 8%
+  taxRate     Decimal     @db.Decimal(5, 4) // e.g., 0.08 for 8%
   taxAmount   Decimal     @db.Decimal(10, 2)
   totalAmount Decimal     @db.Decimal(10, 2)
   createdAt   DateTime    @default(now())
@@ -112,36 +67,55 @@ model Order {
 }
 
 model OrderItem {
-  id                String   @id @default(cuid())
-  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
   orderId           String
-  menuItem          MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade) // Relation to MenuItem
-  menuItemId        String // Foreign key for MenuItem
-  menuItemName      String // Denormalized for KOT and display
+  order             Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId        String
+  menuItem          MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Sipariş varsa menü öğesi silinmemeli
+  menuItemName      String // Denormalized for easy display on bills/KOTs
   quantity          Int
-  unitPrice         Decimal  @db.Decimal(10, 2) // Price of one unit before modifiers
-  selectedModifiers Json? // Array of selected modifier objects: { id: string, name: string, priceChange: number }
+  unitPrice         Decimal @db.Decimal(10, 2) // Price at the time of order
+  selectedModifiers Json? // JSON array of selected modifier objects { id, name, priceChange }
   specialRequests   String?
-  totalPrice        Decimal  @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifierPriceChanges)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  totalPrice        Decimal @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
 }
 
 enum OrderStatus {
-  OPEN // Sipariş alındı, hazırlanıyor veya hazırlanmaya başlanacak
-  IN_PROGRESS // Sipariş mutfakta aktif olarak hazırlanıyor
-  DONE // Sipariş hazır, servis bekliyor veya ödeme için hazır
-  PAID // Sipariş ödendi
-  CANCELLED // Sipariş iptal edildi
+  OPEN
+  IN_PROGRESS
+  DONE
+  PAID
+  CANCELLED
+}
+
+model Table {
+  id        String      @id @default(cuid())
+  name      String?
+  number    Int         @unique
+  status    TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
+  capacity  Int
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  orders    Order[]
+
+  currentOrderId    String? // Track current active order ID on the table
+  currentOrderTotal Decimal? @db.Decimal(10, 2) // Track total of current active order
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+  DIRTY
 }
 
 model PrinterRoleDefinition {
-  id          String   @id @default(cuid())
-  roleKey     String   @unique // e.g., KITCHEN_KOT, BAR_MAIN
-  displayName String // e.g., Main Kitchen Printer, Bar Drinks
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String    @id @default(cuid())
+  roleKey     String    @unique // e.g., KITCHEN_KOT, BAR_MAIN
+  displayName String    // e.g., Main Kitchen Printer, Bar Drinks
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  menuCategories MenuCategory[] @relation("CategoryToPrinterRoleDefinition")
+  // menuCategories MenuCategory[] @relation("CategoryToPrinterRoleDefinition") // REMOVED
   menuItems      MenuItem[]     @relation("MenuItemToPrinterRoleDefinition")
 }
