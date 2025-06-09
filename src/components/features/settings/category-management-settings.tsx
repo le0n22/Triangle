@@ -14,9 +14,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// Select and related imports are removed if no longer needed for other fields
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit2, Trash2, RefreshCw, PackageSearch, ListFilter } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, RefreshCw, ListFilter } from 'lucide-react';
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption
 } from '@/components/ui/table';
@@ -24,18 +23,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   getAllCategoriesAction, createCategoryAction, updateCategoryAction, deleteCategoryAction
 } from '@backend/actions/categoryActions';
-// getAllPrinterRoleDefinitionsAction and AppPrinterRoleDefinition are removed as they are no longer used here
 import { useLanguage } from '@/hooks/use-language';
 import type { TranslationKey } from '@/types';
 
-// NO_ROLE_VALUE is removed as it's no longer applicable here
 
 export function CategoryManagementSettings() {
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
-  // printerRoles state is removed
-  
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
-  // isLoadingRoles state is removed
   const [isMutating, setIsMutating] = useState(false);
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -43,10 +37,8 @@ export function CategoryManagementSettings() {
   const [editingCategory, setEditingCategory] = useState<AppMenuCategory | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<AppMenuCategory | null>(null);
 
-  // defaultPrinterRoleKey is removed from initialFormState
   const initialFormState = { name: '', iconName: '' };
   const [addForm, setAddForm] = useState(initialFormState);
-  // defaultPrinterRoleKey is removed from editForm
   const [editForm, setEditForm] = useState({ id: '', ...initialFormState });
 
   const { toast } = useToast();
@@ -64,11 +56,8 @@ export function CategoryManagementSettings() {
     setIsLoadingCategories(false);
   }, [t, toast]);
 
-  // fetchPrinterRoles function is removed
-
   useEffect(() => {
     fetchCategories();
-    // fetchPrinterRoles call is removed
   }, [fetchCategories]);
 
   const handleAddCategory = async () => {
@@ -78,7 +67,6 @@ export function CategoryManagementSettings() {
     }
     setIsMutating(true);
     try {
-      // defaultPrinterRoleKey is removed from createCategoryAction call
       const result = await createCategoryAction({
         name: addForm.name,
         iconName: addForm.iconName || undefined,
@@ -102,7 +90,6 @@ export function CategoryManagementSettings() {
 
   const openEditDialog = (category: AppMenuCategory) => {
     setEditingCategory(category);
-    // defaultPrinterRoleKey is removed from editForm state setting
     setEditForm({
       id: category.id,
       name: category.name,
@@ -118,7 +105,6 @@ export function CategoryManagementSettings() {
     }
     setIsMutating(true);
     try {
-      // defaultPrinterRoleKey is removed from updateCategoryAction call
       const result = await updateCategoryAction(editingCategory.id, {
         name: editForm.name,
         iconName: editForm.iconName || undefined,
@@ -164,8 +150,6 @@ export function CategoryManagementSettings() {
     }
   };
 
-  // getRoleDisplayNameSafe function is removed
-
   const renderCategoryFormFields = (
     formState: typeof addForm | typeof editForm,
     setFormState: React.Dispatch<React.SetStateAction<any>> 
@@ -179,12 +163,10 @@ export function CategoryManagementSettings() {
         <Label htmlFor="categoryFormIcon" className="text-right">{t('iconNameColumn')}</Label>
         <Input id="categoryFormIcon" value={formState.iconName || ''} onChange={(e) => setFormState((prev: any) => ({...prev, iconName: e.target.value}))} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
       </div>
-      {/* Select dropdown for printer role is completely removed */}
-      {/* isLoadingRoles related text is removed */}
     </div>
   );
 
-  const isInitialLoading = isLoadingCategories; // Only isLoadingCategories now
+  const isInitialLoading = isLoadingCategories;
 
   return (
     <Card className="shadow-lg">
@@ -194,7 +176,7 @@ export function CategoryManagementSettings() {
           <CardDescription>{t('manageCategoriesDesc')}</CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { fetchCategories(); /* fetchPrinterRoles call removed */ }} disabled={isInitialLoading || isMutating}>
+          <Button variant="outline" onClick={fetchCategories} disabled={isInitialLoading || isMutating}>
             <RefreshCw className={`mr-2 h-4 w-4 ${(isInitialLoading) && !isAddDialogOpen && !isEditDialogOpen ? 'animate-spin' : ''}`} />
             {isInitialLoading ? t('refreshing') : t('refresh')}
           </Button>
@@ -215,7 +197,7 @@ export function CategoryManagementSettings() {
               {renderCategoryFormFields(addForm, setAddForm)}
               <DialogFooter>
                 <DialogClose asChild><Button variant="outline" disabled={isMutating}>{t('cancelButton')}</Button></DialogClose>
-                <Button onClick={handleAddCategory} disabled={isMutating /* || isLoadingRoles removed */} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button onClick={handleAddCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   {isMutating ? t('addingButton') : t('addCategoryButton')}
                 </Button>
               </DialogFooter>
@@ -236,7 +218,6 @@ export function CategoryManagementSettings() {
               <TableRow>
                 <TableHead>{t('nameColumn')}</TableHead>
                 <TableHead>{t('iconNameColumn')}</TableHead>
-                {/* Default Printer Role column header removed */}
                 <TableHead className="text-right w-[150px]">{t('actionsColumn')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -245,7 +226,6 @@ export function CategoryManagementSettings() {
                 <TableRow key={category.id}>
                   <TableCell className="font-medium">{category.name}</TableCell>
                   <TableCell>{category.iconName || t('noneAbbreviation')}</TableCell>
-                  {/* TableCell for defaultPrinterRoleKey removed */}
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)} className="mr-2" disabled={isMutating || isInitialLoading}>
                       <Edit2 className="h-4 w-4" />
@@ -276,7 +256,6 @@ export function CategoryManagementSettings() {
               ))}
               {!isInitialLoading && categories.length === 0 && (
                 <TableRow>
-                  {/* ColSpan adjusted */}
                   <TableCell colSpan={3} className="text-center text-muted-foreground py-6">{t('noCategoriesFound')}</TableCell>
                 </TableRow>
               )}
@@ -294,7 +273,7 @@ export function CategoryManagementSettings() {
           {editingCategory && renderCategoryFormFields(editForm, setEditForm)}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={isMutating}>{t('cancelButton')}</Button></DialogClose>
-            <Button onClick={handleUpdateCategory} disabled={isMutating /* || isLoadingRoles removed */} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button onClick={handleUpdateCategory} disabled={isMutating} className="bg-primary hover:bg-primary/90 text-primary-foreground">
              {isMutating ? t('savingButton') : t('saveChanges')}
             </Button>
           </DialogFooter>
