@@ -15,11 +15,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { PlusCircle, Edit2, Trash2, RefreshCw, KeyRound, Users } from 'lucide-react';
+import { PlusCircle, Edit2, Trash2, RefreshCw, KeyRound, Users, Info } from 'lucide-react'; // Added Info
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Added Alert components
 import {
   getAllPrinterRoleDefinitionsAction,
   createPrinterRoleDefinitionAction,
@@ -131,6 +132,10 @@ export function PrinterRoleManagementSettings() {
     setIsFormDialogOpen(true);
   };
 
+  const apiEndpointUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/api/printer-roles` 
+    : '/api/printer-roles (Full URL depends on your Next.js app host)';
+
   return (
     <Card className="shadow-lg">
       <CardHeader className="flex flex-row justify-between items-center">
@@ -179,6 +184,20 @@ export function PrinterRoleManagementSettings() {
         </div>
       </CardHeader>
       <CardContent>
+        <Alert className="mb-6 border-primary/50">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertTitle className="text-primary">API Endpoint for Print Server</AlertTitle>
+          <AlertDescription>
+            The printer roles defined below can be fetched by your print server application (e.g., Electron app)
+            via a GET request to the following API endpoint:
+            <br />
+            <code className="font-mono bg-muted px-1.5 py-1 rounded-sm text-sm my-1 inline-block">{apiEndpointUrl}</code>
+            <br />
+            Ensure your print server uses the correct base URL for your Next.js application if it's hosted.
+            For local development, this is typically <code className="font-mono bg-muted px-1.5 py-1 rounded-sm text-sm">http://localhost:[PORT]/api/printer-roles</code>.
+          </AlertDescription>
+        </Alert>
+
         {isLoading && roles.length === 0 ? (
           <div className="text-center py-10">
             <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
