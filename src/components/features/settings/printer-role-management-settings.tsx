@@ -20,7 +20,7 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableCaption
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { AlertDescription } from '@/components/ui/alert'; // Removed Alert, AlertTitle
+import { AlertDescription as ShadcnAlertDescription } from '@/components/ui/alert'; // Renamed to avoid conflict
 import {
   getAllPrinterRoleDefinitionsAction,
   createPrinterRoleDefinitionAction,
@@ -167,15 +167,16 @@ export function PrinterRoleManagementSettings() {
             <CardTitle className="font-headline flex items-center"><Info className="mr-2 h-5 w-5 text-primary"/>API Endpoint Info</CardTitle>
           </CardHeader>
           <CardContent>
-            <AlertDescription>
-              The printer roles defined below can be fetched by your print server application (e.g., Electron app)
-              via a GET request to the following API endpoint:
+            <ShadcnAlertDescription>
+              The printer roles defined below can be fetched by your print
+              server application (e.g., Electron app) via a GET request to the
+              following API endpoint:
               <br />
-              <code className="font-mono bg-muted px-1.5 py-1 rounded-sm text-sm my-1 inline-block">{apiEndpointUrl}</code>
+              <code className="font-mono bg-muted px-1.5 py-1 rounded-sm text-sm my-1 inline-block break-all">{apiEndpointUrl}</code>
               <br />
-              Ensure your print server uses the correct base URL for your Next.js application if it's hosted.
-              For local development, this is typically <code className="font-mono bg-muted px-1.5 py-1 rounded-sm text-sm">http://localhost:[PORT]/api/printer-roles</code>.
-            </AlertDescription>
+              Ensure your print server uses the correct base URL for your Next.js application if it's hosted. For local development, this is
+              typically <code className="font-mono bg-muted px-1.5 py-1 rounded-sm text-sm">http://localhost:[PORT]/api/printer-roles</code>.
+            </ShadcnAlertDescription>
           </CardContent>
         </Card>
 
