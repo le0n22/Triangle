@@ -25,7 +25,7 @@ import { Settings, UserCircle, LogOut } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useLanguage } from '@/hooks/use-language';
 import { useRouter } from 'next/navigation';
-import { translations } from '@/context/language-provider'; // Import for default translations
+import { translations, type TranslationKey } from '@/context/language-provider'; // Import for default translations
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
@@ -114,7 +114,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 backdrop-blur-sm px-6 md:hidden">
           <SidebarTrigger />
         </div>
-        <main className="flex-1 p-6 bg-background">
+        <main className="flex-1 px-6 pt-10 pb-6 bg-background"> {/* Changed p-6 to px-6 pt-10 pb-6 */}
           {children}
         </main>
       </SidebarInset>
