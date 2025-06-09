@@ -7,7 +7,7 @@ import { TableManagementSettings } from '@/components/features/settings/table-ma
 import { CategoryManagementSettings } from '@/components/features/settings/category-management-settings';
 import { MenuItemManagementSettings } from '@/components/features/settings/menu-item-management-settings';
 import { ModifierManagementSettings } from '@/components/features/settings/modifier-management-settings';
-import { PrinterRoleManagementSettings } from '@/components/features/settings/printer-role-management-settings'; // New Import
+import { PrinterRoleManagementSettings } from '@/components/features/settings/printer-role-management-settings';
 import { OrderPlatformSettings } from '@/components/features/settings/order-platform-settings';
 import { ThemeSettings } from '@/components/features/settings/theme-settings';
 import { LanguageSettings } from '@/components/features/settings/language-settings';
@@ -23,7 +23,7 @@ export default function SettingsPage() {
     { value: 'restaurant', labelKey: 'restaurant' },
     { value: 'appearance', labelKey: 'appearance' },
     { value: 'tables', labelKey: 'tables' },
-    { value: 'printer_roles', labelKey: 'printerRoles' }, // New Tab
+    { value: 'printer_roles', labelKey: 'printerRoles' },
     { value: 'categories', labelKey: 'categories' },
     { value: 'menu_items', labelKey: 'menu_items' },
     { value: 'modifiers', labelKey: 'modifiers' },
@@ -35,7 +35,7 @@ export default function SettingsPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">{t('settings')}</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-2 mb-6">
+        <TabsList className="grid w-full grid-cols-4 gap-2 mb-6">
            {settingsTabs.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
           ))}
@@ -59,7 +59,7 @@ export default function SettingsPage() {
         <TabsContent value="tables">
           <TableManagementSettings />
         </TabsContent>
-        <TabsContent value="printer_roles"> {/* New Content */}
+        <TabsContent value="printer_roles">
           <PrinterRoleManagementSettings />
         </TabsContent>
         <TabsContent value="categories">
