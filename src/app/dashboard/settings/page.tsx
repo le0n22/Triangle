@@ -35,15 +35,15 @@ export default function SettingsPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-headline font-bold mb-8">{t('settings')}</h1>
       <Tabs defaultValue="restaurant" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 gap-2 mb-6">
+        <TabsList className="grid w-full grid-cols-4 gap-2 mb-8">
            {settingsTabs.map(tab => (
             <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="restaurant" className="mt-6">
+        <TabsContent value="restaurant" className="mt-8">
           <RestaurantSettings />
         </TabsContent>
-        <TabsContent value="appearance" className="mt-6">
+        <TabsContent value="appearance" className="mt-8">
           <div className="flex flex-wrap gap-8 justify-start">
             <div className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.07rem)] xl:w-[calc(33.333%-1.07rem)]">
               <ThemeSettings />
@@ -56,22 +56,22 @@ export default function SettingsPage() {
             </div>
           </div>
         </TabsContent>
-        <TabsContent value="tables" className="mt-6">
+        <TabsContent value="tables" className="mt-8">
           <TableManagementSettings />
         </TabsContent>
-        <TabsContent value="printer_roles" className="mt-6">
+        <TabsContent value="printer_roles" className="mt-8">
           <PrinterRoleManagementSettings />
         </TabsContent>
-        <TabsContent value="categories" className="mt-6">
+        <TabsContent value="categories" className="mt-8">
           <CategoryManagementSettings />
         </TabsContent>
-        <TabsContent value="menu_items" className="mt-6">
+        <TabsContent value="menu_items" className="mt-8">
           <MenuItemManagementSettings /> 
         </TabsContent>
-        <TabsContent value="modifiers" className="mt-6">
+        <TabsContent value="modifiers" className="mt-8">
           <ModifierManagementSettings />
         </TabsContent>
-        <TabsContent value="order_platforms" className="mt-6">
+        <TabsContent value="order_platforms" className="mt-8">
           <OrderPlatformSettings initialPlatforms={[]} /> 
         </TabsContent>
       </Tabs>
