@@ -10,7 +10,6 @@ import type { AppMenuCategory } from '@/types';
 function mapPrismaCategoryToAppCategory(
   prismaCategory: PrismaMenuCategory
 ): AppMenuCategory {
-  // Removed defaultPrinterRoleKey and defaultPrinterRoleDisplayName mapping
   return {
     id: prismaCategory.id,
     name: prismaCategory.name,
@@ -20,7 +19,7 @@ function mapPrismaCategoryToAppCategory(
 
 export async function getAllCategoriesAction(): Promise<AppMenuCategory[]> {
   try {
-    // Removed include for defaultPrinterRole
+    // Removed include for defaultPrinterRole completely
     const categories = await prisma.menuCategory.findMany({
       orderBy: {
         name: 'asc',
@@ -29,18 +28,18 @@ export async function getAllCategoriesAction(): Promise<AppMenuCategory[]> {
     return categories.map(mapPrismaCategoryToAppCategory);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    // Return an empty array or an object with an error property,
-    // depending on how you want to handle errors on the frontend.
-    // For now, returning empty array as before.
-    // If you want to propagate the error, consider: return { error: (error as Error).message };
-    return [];
+    // Propagate the error so the frontend can know something went wrong.
+    // Consider if you want to return an empty array or a more specific error object.
+    // For now, throwing the error to make it clear.
+    // If you prefer to return { error: string }, you can change this.
+    throw error; 
+    // Or return { error: (error as Error).message } if you adapt the frontend.
   }
 }
 
 export async function createCategoryAction(data: {
   name: string;
   iconName?: string;
-  // Removed defaultPrinterRoleKey from parameters
 }): Promise<AppMenuCategory | { error: string }> {
   try {
     if (!data.name) {
@@ -55,7 +54,6 @@ export async function createCategoryAction(data: {
         return { error: `Category with name "${data.name}" already exists.` };
     }
     
-    // Removed defaultPrinterRole connection logic
     const createData: Prisma.MenuCategoryCreateInput = {
       name: data.name,
       iconName: data.iconName || null,
@@ -63,7 +61,6 @@ export async function createCategoryAction(data: {
 
     const newCategory = await prisma.menuCategory.create({
       data: createData,
-      // Removed include for defaultPrinterRole
     });
     return mapPrismaCategoryToAppCategory(newCategory);
   } catch (error) {
@@ -72,14 +69,13 @@ export async function createCategoryAction(data: {
     if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('name')) {
         return { error: `Category with name "${data.name}" already exists.` };
     }
-    // Removed P2025 check for PrinterRoleDefinitionToConnect as it's no longer relevant here
     return { error: 'Failed to create category. Please check server logs.' };
   }
 }
 
 export async function updateCategoryAction(
   id: string,
-  data: Partial<{ name: string; iconName?: string; /* Removed defaultPrinterRoleKey */ }>
+  data: Partial<{ name: string; iconName?: string; }>
 ): Promise<AppMenuCategory | { error: string }> {
   try {
     if (data.name === '') {
@@ -88,6 +84,7 @@ export async function updateCategoryAction(
 
     if (data.name !== undefined) {
         const currentCategory = await prisma.menuCategory.findUnique({ where: { id } });
+        // Check if name is being changed and if the new name already exists for another category
         if (currentCategory && currentCategory.name !== data.name) {
             const existingCategoryWithNewName = await prisma.menuCategory.findUnique({
                 where: { name: data.name }
@@ -98,7 +95,6 @@ export async function updateCategoryAction(
         }
     }
 
-    // Removed defaultPrinterRole connection/disconnection logic
     const updateData: Prisma.MenuCategoryUpdateInput = {
       name: data.name,
       iconName: data.iconName,
@@ -107,7 +103,6 @@ export async function updateCategoryAction(
     const updatedCategory = await prisma.menuCategory.update({
       where: { id },
       data: updateData,
-      // Removed include for defaultPrinterRole
     });
     return mapPrismaCategoryToAppCategory(updatedCategory);
   } catch (error) {
@@ -117,11 +112,11 @@ export async function updateCategoryAction(
         return { error: `Another category with name "${data.name}" already exists.`};
     }
     if (prismaError.code === 'P2025') {
-        // Removed check for PrinterRoleDefinitionToConnect
         return { error: 'Category to update not found.'};
     }
     if (error instanceof Prisma.PrismaClientValidationError) {
-        return { error: `Data validation error updating category: ${error.message.split('\n').slice(-2).join(' ')}` };
+        // Attempt to provide a more specific validation error message
+        return { error: `Data validation error updating category: ${error.message.split('\\n').slice(-2).join(' ')}` };
     }
     return { error: 'Failed to update category. Please check server logs.' };
   }
@@ -145,7 +140,7 @@ export async function deleteCategoryAction(id: string): Promise<{ success: boole
   } catch (error) {
     console.error('Error deleting category:', error);
     const prismaError = error as { code?: string };
-    if (prismaError.code === 'P2025') {
+    if (prismaError.code === 'P2025') { // Record to delete not found.
          return { success: false, error: 'Category not found or already deleted.' };
     }
     return { success: false, error: 'Failed to delete category. It might no longer exist or there was a server error.' };
