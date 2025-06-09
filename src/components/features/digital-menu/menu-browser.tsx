@@ -101,7 +101,7 @@ export function MenuBrowser({ categories: initialCategories }: MenuBrowserProps)
                 variant="ghost"
                 className={cn(
                   "w-full justify-start text-left h-auto py-2.5 px-3 text-sm",
-                  selectedCategoryId === category.id && "bg-accent text-accent-foreground"
+                  selectedCategoryId === category.id && "bg-primary text-primary-foreground"
                 )}
                 onClick={() => setSelectedCategoryId(category.id)}
               >
