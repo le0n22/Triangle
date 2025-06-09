@@ -12,23 +12,23 @@ generator client {
 model MenuCategory {
   id        String     @id @default(cuid())
   name      String     @unique
-  iconName  String?    // Lucide icon key veya SVG path
+  iconName  String? // Lucide icon key veya SVG path
   menuItems MenuItem[] // Bu kategoriye ait menü öğeleri
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
 
 model Table {
-  id                String    @id @default(cuid())
-  number            Int       @unique
+  id                String      @id @default(cuid())
+  number            Int         @unique
   capacity          Int
   name              String?
   status            TableStatus @default(AVAILABLE) // AVAILABLE, OCCUPIED, RESERVED, DIRTY
   orders            Order[]
-  currentOrderId    String?   // Store the ID of the current open or in_progress order
-  currentOrderTotal Decimal?  @db.Decimal(10, 2) // Store the total of the current order for quick display
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  currentOrderId    String? // Store the ID of the current open or in_progress order
+  currentOrderTotal Decimal?    @db.Decimal(10, 2) // Store the total of the current order for quick display
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 model MenuItem {
@@ -37,7 +37,7 @@ model MenuItem {
   description          String?
   price                Decimal                @db.Decimal(10, 2)
   imageUrl             String?
-  dataAiHint           String?                // For AI image search
+  dataAiHint           String? // For AI image search
   categoryId           String
   category             MenuCategory           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   createdAt            DateTime               @default(now())
@@ -45,7 +45,7 @@ model MenuItem {
   availableModifiers   Modifier[]             @relation("MenuItemAvailableModifiers")
   defaultPrinterRoleId String?
   defaultPrinterRole   PrinterRoleDefinition? @relation("MenuItemToPrinterRoleDefinition", fields: [defaultPrinterRoleId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  orderItems           OrderItem[]            // Bu menü öğesini içeren sipariş kalemleri
+  orderItems           OrderItem[] // Bu menü öğesini içeren sipariş kalemleri
 }
 
 model Modifier {
@@ -72,19 +72,19 @@ model Order {
 }
 
 model OrderItem {
-  id                String    @id @default(cuid())
+  id                String   @id @default(cuid())
   orderId           String
-  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   menuItemId        String
-  menuItem          MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Sipariş varsa menü öğesi silinmemeli
-  menuItemName      String    // Denormalized for easy display on bills/KOTs
+  menuItem          MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict) // Sipariş varsa menü öğesi silinmemeli
+  menuItemName      String // Denormalized for easy display on bills/KOTs
   quantity          Int
-  unitPrice         Decimal   @db.Decimal(10, 2) // Price at the time of order
-  selectedModifiers Json?     // JSON array of selected modifier objects { id, name, priceChange }
+  unitPrice         Decimal  @db.Decimal(10, 2) // Price at the time of order
+  selectedModifiers Json? // JSON array of selected modifier objects { id, name, priceChange }
   specialRequests   String?
-  totalPrice        Decimal   @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  totalPrice        Decimal  @db.Decimal(10, 2) // quantity * (unitPrice + sum of modifier priceChanges)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 enum OrderStatus {
@@ -105,7 +105,7 @@ enum TableStatus {
 model PrinterRoleDefinition {
   id          String     @id @default(cuid())
   roleKey     String     @unique // e.g., KITCHEN_KOT, BAR_MAIN
-  displayName String     // e.g., Main Kitchen Printer, Bar Drinks
+  displayName String // e.g., Main Kitchen Printer, Bar Drinks
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   menuItems   MenuItem[] @relation("MenuItemToPrinterRoleDefinition")
