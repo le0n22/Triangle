@@ -114,7 +114,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 backdrop-blur-sm px-6 md:hidden">
           <SidebarTrigger />
         </div>
-        <main className="flex-1 px-6 pt-9 pb-6 bg-background"> {/* Changed pt-10 to pt-9 */}
+        <main className="flex-1 px-6 pt-12 pb-6 bg-background"> {/* Changed pt-9 to pt-12 */}
           {children}
         </main>
       </SidebarInset>
