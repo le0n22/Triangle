@@ -40,10 +40,10 @@ export default function SettingsPage() {
             <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="restaurant">
+        <TabsContent value="restaurant" className="mt-6">
           <RestaurantSettings />
         </TabsContent>
-        <TabsContent value="appearance">
+        <TabsContent value="appearance" className="mt-6">
           <div className="flex flex-wrap gap-8 justify-start">
             <div className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.07rem)] xl:w-[calc(33.333%-1.07rem)]">
               <ThemeSettings />
@@ -56,22 +56,22 @@ export default function SettingsPage() {
             </div>
           </div>
         </TabsContent>
-        <TabsContent value="tables">
+        <TabsContent value="tables" className="mt-6">
           <TableManagementSettings />
         </TabsContent>
-        <TabsContent value="printer_roles">
+        <TabsContent value="printer_roles" className="mt-6">
           <PrinterRoleManagementSettings />
         </TabsContent>
-        <TabsContent value="categories">
+        <TabsContent value="categories" className="mt-6">
           <CategoryManagementSettings />
         </TabsContent>
-        <TabsContent value="menu_items">
+        <TabsContent value="menu_items" className="mt-6">
           <MenuItemManagementSettings /> 
         </TabsContent>
-        <TabsContent value="modifiers">
+        <TabsContent value="modifiers" className="mt-6">
           <ModifierManagementSettings />
         </TabsContent>
-        <TabsContent value="order_platforms">
+        <TabsContent value="order_platforms" className="mt-6">
           <OrderPlatformSettings initialPlatforms={[]} /> 
         </TabsContent>
       </Tabs>
