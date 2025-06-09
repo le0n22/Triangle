@@ -37,7 +37,13 @@ export default function SettingsPage() {
       <Tabs defaultValue="restaurant" className="w-full">
         <TabsList className="grid w-full grid-cols-4 gap-2 mb-10">
            {settingsTabs.map(tab => (
-            <TabsTrigger key={tab.value} value={tab.value}>{t(tab.labelKey)}</TabsTrigger>
+            <TabsTrigger 
+              key={tab.value} 
+              value={tab.value}
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md"
+            >
+              {t(tab.labelKey)}
+            </TabsTrigger>
           ))}
         </TabsList>
         <TabsContent value="restaurant" className="mt-10">
