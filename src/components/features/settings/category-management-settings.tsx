@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { AppMenuCategory, AppPrinterRoleDefinition } from '@/types'; // Using AppPrinterRoleDefinition
+import type { AppMenuCategory } from '@/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+// Select and related imports are removed if no longer needed for other fields
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Edit2, Trash2, RefreshCw, PackageSearch, ListFilter } from 'lucide-react';
 import {
@@ -24,18 +24,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import {
   getAllCategoriesAction, createCategoryAction, updateCategoryAction, deleteCategoryAction
 } from '@backend/actions/categoryActions';
-import { getAllPrinterRoleDefinitionsAction } from '@backend/actions/printerRoleDefinitionActions'; // Import new action
+// getAllPrinterRoleDefinitionsAction and AppPrinterRoleDefinition are removed as they are no longer used here
 import { useLanguage } from '@/hooks/use-language';
 import type { TranslationKey } from '@/types';
 
-const NO_ROLE_VALUE = "_NONE_"; // Represents no role selected
+// NO_ROLE_VALUE is removed as it's no longer applicable here
 
 export function CategoryManagementSettings() {
   const [categories, setCategories] = useState<AppMenuCategory[]>([]);
-  const [printerRoles, setPrinterRoles] = useState<AppPrinterRoleDefinition[]>([]); // State for dynamic roles
+  // printerRoles state is removed
   
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
-  const [isLoadingRoles, setIsLoadingRoles] = useState(true); // Separate loading for roles
+  // isLoadingRoles state is removed
   const [isMutating, setIsMutating] = useState(false);
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -43,8 +43,10 @@ export function CategoryManagementSettings() {
   const [editingCategory, setEditingCategory] = useState<AppMenuCategory | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<AppMenuCategory | null>(null);
 
-  const initialFormState = { name: '', iconName: '', defaultPrinterRoleKey: NO_ROLE_VALUE };
+  // defaultPrinterRoleKey is removed from initialFormState
+  const initialFormState = { name: '', iconName: '' };
   const [addForm, setAddForm] = useState(initialFormState);
+  // defaultPrinterRoleKey is removed from editForm
   const [editForm, setEditForm] = useState({ id: '', ...initialFormState });
 
   const { toast } = useToast();
@@ -62,22 +64,12 @@ export function CategoryManagementSettings() {
     setIsLoadingCategories(false);
   }, [t, toast]);
 
-  const fetchPrinterRoles = useCallback(async () => { // New function to fetch roles from DB
-    setIsLoadingRoles(true);
-    const result = await getAllPrinterRoleDefinitionsAction();
-    if ('error' in result) {
-      toast({ title: t('error'), description: result.error, variant: 'destructive' });
-      setPrinterRoles([]);
-    } else {
-      setPrinterRoles(result);
-    }
-    setIsLoadingRoles(false);
-  }, [t, toast]);
+  // fetchPrinterRoles function is removed
 
   useEffect(() => {
     fetchCategories();
-    fetchPrinterRoles(); // Fetch roles on component mount
-  }, [fetchCategories, fetchPrinterRoles]);
+    // fetchPrinterRoles call is removed
+  }, [fetchCategories]);
 
   const handleAddCategory = async () => {
     if (!addForm.name) {
@@ -86,10 +78,10 @@ export function CategoryManagementSettings() {
     }
     setIsMutating(true);
     try {
+      // defaultPrinterRoleKey is removed from createCategoryAction call
       const result = await createCategoryAction({
         name: addForm.name,
         iconName: addForm.iconName || undefined,
-        defaultPrinterRoleKey: addForm.defaultPrinterRoleKey === NO_ROLE_VALUE ? null : addForm.defaultPrinterRoleKey,
       });
 
       if ('error' in result) {
@@ -110,11 +102,11 @@ export function CategoryManagementSettings() {
 
   const openEditDialog = (category: AppMenuCategory) => {
     setEditingCategory(category);
+    // defaultPrinterRoleKey is removed from editForm state setting
     setEditForm({
       id: category.id,
       name: category.name,
       iconName: category.iconName || '',
-      defaultPrinterRoleKey: category.defaultPrinterRoleKey || NO_ROLE_VALUE
     });
     setIsEditDialogOpen(true);
   };
@@ -126,10 +118,10 @@ export function CategoryManagementSettings() {
     }
     setIsMutating(true);
     try {
+      // defaultPrinterRoleKey is removed from updateCategoryAction call
       const result = await updateCategoryAction(editingCategory.id, {
         name: editForm.name,
         iconName: editForm.iconName || undefined,
-        defaultPrinterRoleKey: editForm.defaultPrinterRoleKey === NO_ROLE_VALUE ? null : editForm.defaultPrinterRoleKey,
       });
 
       if ('error' in result) {
@@ -172,15 +164,11 @@ export function CategoryManagementSettings() {
     }
   };
 
-  const getRoleDisplayNameSafe = (roleKey?: string): string => {
-    if (!roleKey || roleKey === NO_ROLE_VALUE) return t('noDefaultRole');
-    const role = printerRoles.find(r => r.roleKey === roleKey);
-    return role ? role.displayName : roleKey; // Fallback to roleKey if not found
-  };
+  // getRoleDisplayNameSafe function is removed
 
   const renderCategoryFormFields = (
     formState: typeof addForm | typeof editForm,
-    setFormState: React.Dispatch<React.SetStateAction<any>> // Using any for simplicity here
+    setFormState: React.Dispatch<React.SetStateAction<any>> 
   ) => (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-4 items-center gap-4">
@@ -189,42 +177,14 @@ export function CategoryManagementSettings() {
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="categoryFormIcon" className="text-right">{t('iconNameColumn')}</Label>
-        <Input id="categoryFormIcon" value={formState.iconName} onChange={(e) => setFormState((prev: any) => ({...prev, iconName: e.target.value}))} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
+        <Input id="categoryFormIcon" value={formState.iconName || ''} onChange={(e) => setFormState((prev: any) => ({...prev, iconName: e.target.value}))} placeholder="e.g., Soup (Lucide)" className="col-span-3" />
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="categoryFormPrinterRole" className="text-right">{t('defaultPrinterRole')}</Label>
-        <Select
-          value={formState.defaultPrinterRoleKey}
-          onValueChange={(value) => {
-            setFormState((prev: any) => ({ ...prev, defaultPrinterRoleKey: value }))
-          }}
-          disabled={isLoadingRoles && printerRoles.length === 0}
-        >
-          <SelectTrigger id="categoryFormPrinterRole" className="col-span-3">
-            <SelectValue placeholder={t('selectDefaultPrinterRole')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_ROLE_VALUE}>{t('noDefaultRole')}</SelectItem>
-            {printerRoles.map(role => (
-              <SelectItem key={role.roleKey} value={role.roleKey}>
-                {role.displayName} ({role.roleKey})
-              </SelectItem>
-            ))}
-             {isLoadingRoles && printerRoles.length === 0 && <SelectItem value="loading" disabled>Loading roles...</SelectItem>}
-             {!isLoadingRoles && printerRoles.length === 0 && <SelectItem value="no_roles" disabled>No printer roles defined.</SelectItem>}
-          </SelectContent>
-        </Select>
-      </div>
-       {isLoadingRoles && (
-        <div className="col-span-4 text-xs text-muted-foreground text-center">
-          <RefreshCw className="inline-block mr-1 h-3 w-3 animate-spin" />
-          {t('loadingPrinterRoles')}...
-        </div>
-      )}
+      {/* Select dropdown for printer role is completely removed */}
+      {/* isLoadingRoles related text is removed */}
     </div>
   );
 
-  const isInitialLoading = isLoadingCategories || isLoadingRoles;
+  const isInitialLoading = isLoadingCategories; // Only isLoadingCategories now
 
   return (
     <Card className="shadow-lg">
@@ -234,7 +194,7 @@ export function CategoryManagementSettings() {
           <CardDescription>{t('manageCategoriesDesc')}</CardDescription>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { fetchCategories(); fetchPrinterRoles(); }} disabled={isInitialLoading || isMutating}>
+          <Button variant="outline" onClick={() => { fetchCategories(); /* fetchPrinterRoles call removed */ }} disabled={isInitialLoading || isMutating}>
             <RefreshCw className={`mr-2 h-4 w-4 ${(isInitialLoading) && !isAddDialogOpen && !isEditDialogOpen ? 'animate-spin' : ''}`} />
             {isInitialLoading ? t('refreshing') : t('refresh')}
           </Button>
@@ -255,7 +215,7 @@ export function CategoryManagementSettings() {
               {renderCategoryFormFields(addForm, setAddForm)}
               <DialogFooter>
                 <DialogClose asChild><Button variant="outline" disabled={isMutating}>{t('cancelButton')}</Button></DialogClose>
-                <Button onClick={handleAddCategory} disabled={isMutating || isLoadingRoles} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button onClick={handleAddCategory} disabled={isMutating /* || isLoadingRoles removed */} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   {isMutating ? t('addingButton') : t('addCategoryButton')}
                 </Button>
               </DialogFooter>
@@ -276,7 +236,7 @@ export function CategoryManagementSettings() {
               <TableRow>
                 <TableHead>{t('nameColumn')}</TableHead>
                 <TableHead>{t('iconNameColumn')}</TableHead>
-                <TableHead>{t('defaultPrinterRole')}</TableHead>
+                {/* Default Printer Role column header removed */}
                 <TableHead className="text-right w-[150px]">{t('actionsColumn')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -285,7 +245,7 @@ export function CategoryManagementSettings() {
                 <TableRow key={category.id}>
                   <TableCell className="font-medium">{category.name}</TableCell>
                   <TableCell>{category.iconName || t('noneAbbreviation')}</TableCell>
-                  <TableCell>{getRoleDisplayNameSafe(category.defaultPrinterRoleKey)}</TableCell>
+                  {/* TableCell for defaultPrinterRoleKey removed */}
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(category)} className="mr-2" disabled={isMutating || isInitialLoading}>
                       <Edit2 className="h-4 w-4" />
@@ -316,7 +276,8 @@ export function CategoryManagementSettings() {
               ))}
               {!isInitialLoading && categories.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-6">{t('noCategoriesFound')}</TableCell>
+                  {/* ColSpan adjusted */}
+                  <TableCell colSpan={3} className="text-center text-muted-foreground py-6">{t('noCategoriesFound')}</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -333,7 +294,7 @@ export function CategoryManagementSettings() {
           {editingCategory && renderCategoryFormFields(editForm, setEditForm)}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={isMutating}>{t('cancelButton')}</Button></DialogClose>
-            <Button onClick={handleUpdateCategory} disabled={isMutating || isLoadingRoles} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button onClick={handleUpdateCategory} disabled={isMutating /* || isLoadingRoles removed */} className="bg-primary hover:bg-primary/90 text-primary-foreground">
              {isMutating ? t('savingButton') : t('saveChanges')}
             </Button>
           </DialogFooter>
